@@ -1,0 +1,23 @@
+name: regression-tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.14"
+      - name: Create Python environment
+        run: uv venv .venv --python 3.11
+      - name: Install project and tests
+        run: uv pip install --python .\.venv\Scripts\python.exe -e ".[dev]"
+      - name: Run regression tests
+        run: .\.venv\Scripts\python.exe -m pytest
+      - name: Run health check
+        run: .\.venv\Scripts\python.exe -m vsm_postprocessing.doctor_cli --project-root .

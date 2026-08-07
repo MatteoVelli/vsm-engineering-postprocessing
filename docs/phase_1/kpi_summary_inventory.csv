@@ -1,0 +1,47 @@
+﻿column,summary_label,formula,cached_value,style_id
+BT,Time [hrs],B17423/60,4.838055555555556,48
+BU,Distance [Km],G17423,114.0011,35
+BV,Max Speed [kph],E17423,62.6233,35
+BW,Max Acceleration [m/sec²],C17423,2.20455,47
+BX,Max Engine Speed [RPM],AG17423,1999.98,46
+BY,Max Engine Torque Required [Nm],AH17423,567.246,46
+BZ,Max Engine Power Required [kW],AI17423,82.66317798257373,46
+CA,Engine Energy Delivered [kWh],AJ17423,219.3011310532373,45
+CB,Generator Cont Power [kW],,80,44
+CC,Fuel Consumption [Kg],AD17423,39.8380600000014,36
+CD,Fuel Consumption [lts],CC4/0.84,47.42626190476357,43
+CE,Fuel Energy Consumed [kWh],CB4*12,960,41
+CF,Engine Efficiency [%],CA4/CE4,0.22843867818045552,42
+CG,Recuperated Energy [kWh],S17423,1.760681,41
+CH,Released Energy [kWh],T17423,161.06459999999998,41
+CI,Used Energy (EDU+I) [kwh],CH4-CG4,159.30391899999998,35
+CJ,Max Auxiliaries Power Demand [kW],BK17423,28.7527,34
+CK,Auxiliaries Energy Consumption [kWh],BL17423,109.35260816664805,34
+CL,Tyre RR Energy Consumption [kWh],AX17423,77.67730124737605,34
+CM,Total Energy Consumption (Tyres + Aux) [kWh],CL4+CK4,187.0299094140241,40
+CN,Battery Capacity Used (EDU+I+A) [kWh] ,Q17423,71.0617,35
+CO,Battery Energy Consumption (EDU+I+A) [Wh/Km] ,1000*CN4/BU4,623.3422309082982,37
+CP,Range for 85% Battery + Range Extender (EDU+I+A) [Km],1000*CR4/CO4,136.3616899117246,39
+CQ,100% Battery Capacity  [kWh],Q5/0.95,100,35
+CR,0.85,CQ4*CR3,85,38
+CS, Battery Capacity  [kWh],,,38
+CT,Max Battery Power (EDU+I+A) [kW],-1*M17424,149.18,37
+CU,Battery Initial SOC (EDU+I+A) [%],R5,95,33
+CV,Battery Final SOC (EDU+I+A) [%],R17423,23.9383,33
+CW,Battery Heat Generation (EDU+I+A) RMS [kW],P2,4.554083085618828,35
+CX,Battery Max HeatFlow (EDU+I+A) [kW],O17423,14.7541,35
+CY,Battery Efficiency RMS [%],,,36
+CZ,Battery Max Cell Temp (EDU+I) [°C],,,35
+DA,Battery Max In Temp (EDU+I) [°C],,,35
+DB,Battery Max Out Temp (EDU+I) [°C],,,35
+DC,EDU Max Speed [RPM],V17423,3237.7,33
+DD,EDU Max Torque [Nm],W17423,684.009,33
+DE,EDU Max Power [kW],X17423,55.68205194495644,34
+DF,EDU+I+GB Heat Generation RMS [kW],,,33
+DG,EDU+I+GB Max Heatflow [kW],,,33
+DH,EDU Max In Temp [°C],,,33
+DI,EDU Max Out Temp [°C],,,33
+DJ,EDU Max Stator Temp [°C],,,33
+DK,EDU Max Current [A],,,33
+DL,EDU+I+GB Max. Efficiency [%],A43920,0,32
+DM,EDU+I+GB RMS Efficiency [%],C4,m/s^2,31

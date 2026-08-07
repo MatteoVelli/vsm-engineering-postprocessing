@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vsm-postprocessing"
+version = "1.2.0"
+description = "Deterministic end-to-end VSM post-processing and engineering reporting"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26,<3",
+    "openpyxl>=3.1,<4",
+    "PyYAML>=6.0,<7",
+    "matplotlib>=3.9,<4",
+    "streamlit>=1.37,<2",
+    "python-pptx>=1.0,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+
+[project.scripts]
+vsm-inspect = "vsm_postprocessing.cli:main"
+vsm-select = "vsm_postprocessing.channel_cli:main"
+vsm-math = "vsm_postprocessing.math_cli:main"
+vsm-stats = "vsm_postprocessing.statistics_cli:main"
+vsm-plot = "vsm_postprocessing.plotting_cli:main"
+vsm-excel = "vsm_postprocessing.excel_report_cli:main"
+vsm-pptx = "vsm_postprocessing.powerpoint_report_cli:main"
+vsm-run = "vsm_postprocessing.pipeline_cli:main"
+vsm-doctor = "vsm_postprocessing.doctor_cli:main"
+vsm-release = "vsm_postprocessing.release_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

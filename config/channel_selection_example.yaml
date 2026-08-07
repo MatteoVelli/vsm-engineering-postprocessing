@@ -1,0 +1,25 @@
+version: 1
+
+selection:
+  # The detected time channel is inserted first unless already listed below.
+  include_time: true
+
+  # Always select channels by channel_id from channel_catalogue.csv.
+  # Display names are not safe keys because the source workbook contains duplicates.
+  export_channels:
+    - chassis_speed__col_005
+    - vehicle_distance__col_006
+    - driver_acceleratorpedal__col_008
+    - total_edu_elect_power__col_012
+    - electricsystem_battery_power__col_013
+    - electricsystem_battery_soc__col_018
+    - engine_fuelconsumption_absolut__col_030
+    - engine_speed__col_033
+    - engine_power_required__col_035
+    - total_auxiliary_power__col_063
+    - total_generator_power__col_070
+
+output:
+  data_filename: selected_channels.csv
+  include_units_row: true
+  float_precision: 12

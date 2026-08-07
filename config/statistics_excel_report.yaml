@@ -1,0 +1,112 @@
+version: 1
+
+# Statistics used specifically by the client-style Excel report.
+# Calculations remain deterministic in Python; the workbook displays results only.
+statistics:
+  - statistic_id: report_battery_power_rms
+    channel_id: electricsystem_battery_power__col_013
+    operation: rms
+    placement_group: top_rms
+    display_name: Battery Power RMS
+    description: Ordinary sample RMS, sqrt(mean(x^2)).
+
+  - statistic_id: report_auxiliary_power_rms
+    channel_id: calc_total_auxiliary_power
+    operation: rms
+    placement_group: top_rms
+    display_name: Auxiliary Power RMS
+
+  - statistic_id: report_time_last
+    channel_id: calc_time_minutes
+    operation: last
+    placement_group: bottom_channel
+    display_name: Time [min]
+
+  - statistic_id: report_speed_max
+    channel_id: chassis_speed__col_005
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Speed [kph]
+
+  - statistic_id: report_distance_last
+    channel_id: calc_distance_km
+    operation: last
+    placement_group: bottom_channel
+    display_name: Distance [km]
+
+  - statistic_id: report_total_edu_power_max
+    channel_id: calc_total_edu_elect_power
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Total EDU Electric Power [kW]
+
+  - statistic_id: report_battery_power_max
+    channel_id: electricsystem_battery_power__col_013
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Battery Charging Power [kW]
+
+  - statistic_id: report_battery_power_min
+    channel_id: electricsystem_battery_power__col_013
+    operation: min
+    placement_group: bottom_channel
+    display_name: Min Battery Power [kW]
+
+  - statistic_id: report_battery_soc_last
+    channel_id: electricsystem_battery_soc__col_018
+    operation: last
+    placement_group: bottom_channel
+    display_name: Final Battery SOC [%]
+
+  - statistic_id: report_fuel_last
+    channel_id: engine_fuelconsumption_absolut__col_030
+    operation: last
+    placement_group: bottom_channel
+    display_name: Fuel Consumption [kg]
+
+  - statistic_id: report_engine_speed_max
+    channel_id: engine_speed__col_033
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Engine Speed [rpm]
+
+  - statistic_id: report_engine_power_max
+    channel_id: calc_engine_power_required
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Engine Power Required [kW]
+
+  - statistic_id: report_wheel_power_rl_max
+    channel_id: wheel_power_rl__col_058
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Wheel Power RL [kW]
+
+  - statistic_id: report_auxiliary_power_max
+    channel_id: calc_total_auxiliary_power
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Auxiliary Power [kW]
+
+  - statistic_id: report_auxiliary_energy_sum
+    channel_id: calc_auxiliary_energy_per_sample
+    operation: sum
+    placement_group: bottom_channel
+    display_name: Auxiliary Energy Consumption [kWh]
+
+  - statistic_id: report_auxiliary_energy_last
+    channel_id: calc_auxiliary_energy_accumulated
+    operation: last
+    placement_group: bottom_channel
+    display_name: Accumulated Auxiliary Energy [kWh]
+
+  - statistic_id: report_total_generator_power_max
+    channel_id: calc_total_generator_power
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Total Generator Power [kW]
+
+output:
+  results_filename: statistics_results.csv
+  wide_filename: statistics_by_channel.csv
+  float_precision: 12

@@ -1,0 +1,95 @@
+version: 1
+
+# Statistics may target imported raw channels, imported Excel math channels,
+# or the newly calculated channels from --math-config.
+statistics:
+  - statistic_id: battery_power_rms
+    channel_id: electricsystem_battery_power__col_013
+    operation: rms
+    placement_group: top_rms
+    display_name: Battery Power RMS
+    description: Ordinary sample RMS, defined as sqrt(mean(x^2)).
+
+  - statistic_id: battery_power_time_weighted_rms
+    channel_id: electricsystem_battery_power__col_013
+    operation: time_weighted_rms
+    placement_group: top_rms
+    display_name: Battery Power Time-Weighted RMS
+    description: Trapezoidal time-weighted RMS using the detected time channel.
+
+  - statistic_id: chassis_speed_max
+    channel_id: chassis_speed__col_005
+    operation: max
+    placement_group: bottom_channel
+    display_name: Maximum Chassis Speed
+
+  - statistic_id: vehicle_distance_last
+    channel_id: vehicle_distance__col_006
+    operation: last
+    placement_group: bottom_channel
+    display_name: Final Vehicle Distance
+
+  - statistic_id: battery_power_max
+    channel_id: electricsystem_battery_power__col_013
+    operation: max
+    placement_group: bottom_channel
+    display_name: Maximum Battery Charging Power
+
+  - statistic_id: battery_power_min
+    channel_id: electricsystem_battery_power__col_013
+    operation: min
+    placement_group: bottom_channel
+    display_name: Maximum Battery Discharge Power
+
+  - statistic_id: battery_soc_last
+    channel_id: electricsystem_battery_soc__col_018
+    operation: last
+    placement_group: bottom_channel
+    display_name: Final Battery SOC
+
+  - statistic_id: engine_speed_max
+    channel_id: engine_speed__col_033
+    operation: max
+    placement_group: bottom_channel
+    display_name: Maximum Engine Speed
+
+  - statistic_id: calculated_engine_power_max
+    channel_id: calc_engine_power_required
+    operation: max
+    placement_group: bottom_channel
+    display_name: Maximum Calculated Engine Power
+
+  - statistic_id: auxiliary_power_rms
+    channel_id: calc_total_auxiliary_power
+    operation: rms
+    placement_group: top_rms
+    display_name: Auxiliary Power RMS
+
+  - statistic_id: auxiliary_power_max
+    channel_id: calc_total_auxiliary_power
+    operation: max
+    placement_group: bottom_channel
+    display_name: Maximum Auxiliary Power
+
+  - statistic_id: auxiliary_energy_sum
+    channel_id: calc_auxiliary_energy_per_sample
+    operation: sum
+    placement_group: bottom_channel
+    display_name: Auxiliary Energy Consumption
+
+  - statistic_id: auxiliary_energy_accumulated_last
+    channel_id: calc_auxiliary_energy_accumulated
+    operation: last
+    placement_group: kpi_block
+    display_name: Final Accumulated Auxiliary Energy
+
+  - statistic_id: total_generator_power_max
+    channel_id: calc_total_generator_power
+    operation: max
+    placement_group: kpi_block
+    display_name: Maximum Total Generator Power
+
+output:
+  results_filename: statistics_results.csv
+  wide_filename: statistics_by_channel.csv
+  float_precision: 12

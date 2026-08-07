@@ -1,0 +1,136 @@
+version: 1
+
+selection:
+  # The detected time channel is inserted first in the exported dataset.
+  include_time: true
+
+  # Exported source channels remain distinct from the calculated channels below.
+  # Always use stable channel_id values from channel_catalogue.csv.
+  export_source_channels:
+    - chassis_speed__col_005
+    - vehicle_distance__col_006
+    - electricsystem_battery_em3_power__col_010
+    - electricsystem_battery_em4_power__col_011
+    - electricsystem_battery_power__col_013
+    - engine_speed__col_033
+    - engine_torque__col_034
+    - electricsystem_auxiliary_lowvoltagepowerconsumption__col_061
+    - auxiliary_haigh_voltage_power_consumption__col_062
+    - engine_auxiliarytorque_1__col_066
+    - engine_auxiliarytorque_2__col_068
+
+constants:
+  # Divisor used by the supplied Sergio workbook for rpm * Nm -> kW.
+  rpm_nm_to_kw_divisor: 9548.8
+
+math_channels:
+  - channel_id: calc_time_minutes
+    display_name: Calculated Time
+    unit: min
+    description: Converts the source time channel from seconds to minutes.
+    expression: track_time__col_001 / 60
+    compare_to:
+      channel_id: time__col_002
+      absolute_tolerance: 1.0e-12
+      relative_tolerance: 1.0e-12
+
+  - channel_id: calc_distance_km
+    display_name: Calculated Distance
+    unit: km
+    description: Converts vehicle distance from metres to kilometres.
+    expression: vehicle_distance__col_006 / 1000
+    compare_to:
+      channel_id: distance__col_007
+      absolute_tolerance: 1.0e-12
+      relative_tolerance: 1.0e-12
+
+  - channel_id: calc_total_edu_elect_power
+    display_name: Calculated Total EDU Electrical Power
+    unit: kW
+    description: Sum of the rear-left and rear-right EDU electrical powers.
+    expression: electricsystem_battery_em3_power__col_010 + electricsystem_battery_em4_power__col_011
+    compare_to:
+      channel_id: total_edu_elect_power__col_012
+      absolute_tolerance: 1.0e-10
+      relative_tolerance: 1.0e-10
+
+  - channel_id: calc_battery_power_squared
+    display_name: Battery Power Squared
+    unit: kW^2
+    description: Squared battery power; this is the per-sample quantity labelled RMS in the client workbook.
+    expression: square(electricsystem_battery_power__col_013)
+    compare_to:
+      channel_id: battery_power_rms__col_014
+      absolute_tolerance: 1.0e-9
+      relative_tolerance: 1.0e-10
+
+  - channel_id: calc_engine_power_required
+    display_name: Calculated Engine Power Required
+    unit: kW
+    description: Mechanical engine power from engine speed and torque using the client workbook divisor.
+    expression: engine_speed__col_033 * engine_torque__col_034 / rpm_nm_to_kw_divisor
+    compare_to:
+      channel_id: engine_power_required__col_035
+      absolute_tolerance: 1.0e-9
+      relative_tolerance: 1.0e-10
+
+  - channel_id: calc_total_auxiliary_power
+    display_name: Calculated Total Auxiliary Power
+    unit: kW
+    description: Sum of low-voltage and high-voltage auxiliary consumption.
+    expression: electricsystem_auxiliary_lowvoltagepowerconsumption__col_061 + auxiliary_haigh_voltage_power_consumption__col_062
+    compare_to:
+      channel_id: total_auxiliary_power__col_063
+      absolute_tolerance: 1.0e-10
+      relative_tolerance: 1.0e-10
+
+  - channel_id: calc_auxiliary_energy_per_sample
+    display_name: Calculated Auxiliary Energy per Sample
+    unit: kWh
+    description: Rectangle-rule energy for each sample using the actual time intervals.
+    expression: sample_energy_kwh(calc_total_auxiliary_power, track_time__col_001)
+    compare_to:
+      channel_id: auxiliary_energy_consumption__col_064
+      absolute_tolerance: 1.0e-10
+      relative_tolerance: 1.0e-10
+
+  - channel_id: calc_auxiliary_energy_accumulated
+    display_name: Corrected Auxiliary Energy Accumulated
+    unit: kWh
+    description: Deterministic cumulative sum of the per-sample auxiliary energy; not compared with the suspicious workbook accumulation.
+    expression: cumulative_sum(calc_auxiliary_energy_per_sample)
+
+  - channel_id: calc_generator_power_1
+    display_name: Calculated Generator Power 1
+    unit: kW
+    description: Generator 1 mechanical power from engine speed and auxiliary torque.
+    expression: engine_speed__col_033 * engine_auxiliarytorque_1__col_066 / rpm_nm_to_kw_divisor
+    compare_to:
+      channel_id: generator_power_1__col_067
+      absolute_tolerance: 1.0e-9
+      relative_tolerance: 1.0e-10
+
+  - channel_id: calc_generator_power_2
+    display_name: Calculated Generator Power 2
+    unit: kW
+    description: Generator 2 mechanical power from engine speed and auxiliary torque.
+    expression: engine_speed__col_033 * engine_auxiliarytorque_2__col_068 / rpm_nm_to_kw_divisor
+    compare_to:
+      channel_id: generator_power_2__col_069
+      absolute_tolerance: 1.0e-9
+      relative_tolerance: 1.0e-10
+
+  - channel_id: calc_total_generator_power
+    display_name: Calculated Total Generator Power
+    unit: kW
+    description: Sum of the two configured generator-power math channels.
+    expression: calc_generator_power_1 + calc_generator_power_2
+    compare_to:
+      channel_id: total_generator_power__col_070
+      absolute_tolerance: 1.0e-9
+      relative_tolerance: 1.0e-10
+
+output:
+  data_filename: dataset_with_math_channels.csv
+  include_units_row: true
+  float_precision: 12

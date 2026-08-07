@@ -1,0 +1,94 @@
+version: 1
+
+defaults:
+  width_inches: 12
+  height_inches: 6
+  dpi: 150
+  grid: true
+  legend: true
+  line_width: 1.2
+
+plots:
+  - plot_id: speed_vs_time
+    title: Speed Vs Time
+    x_channel_id: calc_time_minutes
+    x_label: Time [min]
+    primary_y_label: Speed [kph]
+    output_filename: speed_vs_time.png
+    series:
+      - channel_id: chassis_speed__col_005
+        axis: primary
+        label: Speed
+
+  - plot_id: battery_soc_vs_distance
+    title: Battery SOC Vs Distance
+    x_channel_id: calc_distance_km
+    x_label: Distance [km]
+    primary_y_label: Speed [kph]
+    secondary_y_label: Battery SOC [%]
+    output_filename: battery_soc_vs_distance.png
+    series:
+      - channel_id: chassis_speed__col_005
+        axis: primary
+        label: Speed
+      - channel_id: electricsystem_battery_soc__col_018
+        axis: secondary
+        label: Battery SOC
+
+  - plot_id: battery_and_generator_power_vs_time
+    title: Battery Power Charge-Discharge
+    x_channel_id: calc_time_minutes
+    x_label: Time [min]
+    primary_y_label: Power [kW]
+    output_filename: battery_and_generator_power_vs_time.png
+    series:
+      - channel_id: electricsystem_battery_power__col_013
+        axis: primary
+        label: Battery Power
+      - channel_id: calc_total_generator_power
+        axis: primary
+        label: Total Generator Power
+
+  - plot_id: engine_power_and_fuel_vs_distance
+    title: Engine Power Required & Fuel Consumption Vs Distance
+    x_channel_id: calc_distance_km
+    x_label: Distance [km]
+    primary_y_label: Engine Power [kW]
+    secondary_y_label: Fuel Consumption [kg]
+    output_filename: engine_power_and_fuel_vs_distance.png
+    series:
+      - channel_id: calc_engine_power_required
+        axis: primary
+        label: Engine Power Required
+      - channel_id: engine_fuelconsumption_absolut__col_030
+        axis: secondary
+        label: Engine Fuel Consumption
+
+  - plot_id: auxiliaries_energy_consumption
+    title: Auxiliaries Energy Consumption
+    x_channel_id: calc_time_minutes
+    x_label: Time [min]
+    primary_y_label: Auxiliary Power [kW]
+    secondary_y_label: Accumulated Energy [kWh]
+    output_filename: auxiliaries_energy_consumption.png
+    series:
+      - channel_id: calc_total_auxiliary_power
+        axis: primary
+        label: Total Auxiliary Power
+      - channel_id: calc_auxiliary_energy_accumulated
+        axis: secondary
+        label: Auxiliary Energy Accumulated
+
+  - plot_id: power_at_wheels_and_edu
+    title: Power at Wheels and EDU
+    x_channel_id: calc_distance_km
+    x_label: Distance [km]
+    primary_y_label: Power [kW]
+    output_filename: power_at_wheels_and_edu.png
+    series:
+      - channel_id: wheel_power_rl__col_058
+        axis: primary
+        label: Wheel Power RL
+      - channel_id: edu_mech_power_rl__col_024
+        axis: primary
+        label: EDU Mech Power RL

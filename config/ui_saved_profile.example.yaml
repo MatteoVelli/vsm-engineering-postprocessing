@@ -1,0 +1,81 @@
+version: 1
+export_channels:
+  - chassis_speed__col_005
+  - vehicle_distance__col_006
+  - driver_acceleratorpedal__col_008
+  - total_edu_elect_power__col_012
+  - electricsystem_battery_power__col_013
+  - electricsystem_battery_soc__col_018
+  - engine_fuelconsumption_absolut__col_030
+  - engine_speed__col_033
+  - engine_power_required__col_035
+  - total_auxiliary_power__col_063
+  - total_generator_power__col_070
+math_channels:
+  - calc_time_minutes
+  - calc_distance_km
+  - calc_total_edu_elect_power
+  - calc_battery_power_squared
+  - calc_engine_power_required
+  - calc_total_auxiliary_power
+  - calc_auxiliary_energy_per_sample
+  - calc_auxiliary_energy_accumulated
+  - calc_generator_power_1
+  - calc_generator_power_2
+  - calc_total_generator_power
+report_channels:
+  - track_time__col_001
+  - calc_time_minutes
+  - chassis_speed__col_005
+  - vehicle_distance__col_006
+  - calc_distance_km
+  - electricsystem_battery_power__col_013
+  - calc_battery_power_squared
+  - electricsystem_battery_soc__col_018
+  - engine_fuelconsumption_absolut__col_030
+  - engine_speed__col_033
+  - engine_torque__col_034
+  - calc_engine_power_required
+  - calc_total_edu_elect_power
+  - wheel_power_rl__col_058
+  - calc_total_auxiliary_power
+  - calc_auxiliary_energy_per_sample
+  - calc_auxiliary_energy_accumulated
+  - calc_generator_power_1
+  - calc_total_generator_power
+statistics:
+  - report_battery_power_rms
+  - report_auxiliary_power_rms
+  - report_time_last
+  - report_speed_max
+  - report_distance_last
+  - report_total_edu_power_max
+  - report_battery_power_max
+  - report_battery_power_min
+  - report_battery_soc_last
+  - report_fuel_last
+  - report_engine_speed_max
+  - report_engine_power_max
+  - report_wheel_power_rl_max
+  - report_auxiliary_power_max
+  - report_auxiliary_energy_sum
+  - report_auxiliary_energy_last
+  - report_total_generator_power_max
+kpis:
+  - report_time_last
+  - report_distance_last
+  - report_speed_max
+  - report_engine_speed_max
+  - report_engine_power_max
+  - report_fuel_last
+  - report_auxiliary_energy_sum
+  - report_total_generator_power_max
+plots:
+  - speed_vs_time
+  - battery_soc_vs_distance
+  - battery_and_generator_power_vs_time
+  - engine_power_and_fuel_vs_distance
+  - auxiliaries_energy_consumption
+  - power_at_wheels_and_edu
+
+generate_powerpoint: true

@@ -1,0 +1,26 @@
+﻿column,math_channel_name,unit,representative_formula,inputs_or_dependency_note
+B,Time,min,A5/60,See cell references in formula
+G,Distance,Km,F5/1000,See cell references in formula
+L,Total EDU Elect Power,kW,K5+J5,See cell references in formula
+N,Battery Power RMS,kW^2,M5^2,See cell references in formula
+P,Battery Heatflow RMS,kW^2,O5^2,See cell references in formula
+X,EDU Mech Power RL,kW,V5*W5/9548.8,See cell references in formula
+AB,EDU Mech Power RR,kW,Z5*AA5/9548.8,See cell references in formula
+AC,Total EDU Mech Power,kW,AB5+X5,See cell references in formula
+AI,Engine Power Required,kW,AG5*AH5/9548.8,See cell references in formula
+AJ,Engine Energy Delivered [kWh],kWh,AI5/3600,See cell references in formula
+AL,Agrochemical Discharge,Kg,-1*AK5/9.81,See cell references in formula
+AU, Total Rolling Resistance Power,kW,AQ5+AR5+AS5+AT5,See cell references in formula
+AV, Tyre Rolling Resistance Energy,kWh,(AU5)*1/3600,See cell references in formula
+AW, Tyre Rolling Resistance Energy,Wh,AV5*1000,See cell references in formula
+AX, Tyre Rolling Resistance Energy Accomulated,kWh,SUM(AV5:AV$6),See cell references in formula
+BE,Wheel Total Torque,Nm,BC5+BD5,See cell references in formula
+BF,Wheel Power RL,kW,BA5*BC5/9548.8,See cell references in formula
+BG,Wheel Power RR,kW,BB6*BD6/9548.8,See cell references in formula
+BH,Wheel Power Total,kW,BF5+BG5,See cell references in formula
+BK,Total Auxiliary Power,kW,BI5+BJ5,See cell references in formula
+BL,Auxiliary Energy Consumption,kWh,(BK5)*1/3600,See cell references in formula
+BM,Auxiliary Energy Consumption Accumulated,kWh,BL5,See cell references in formula
+BO,Generator Power_1,kW,AG5*BN5/9548.8,See cell references in formula
+BQ,Generator Power_2,kW,AG5*BP5/9548.8,See cell references in formula
+BR,Total Generator Power,kW,BO5+BQ5,See cell references in formula
