@@ -126,7 +126,7 @@ def test_supplied_source_workbook_end_to_end_acceptance(tmp_path: Path) -> None:
     assert all(stage.status == "PASS" for stage in result.stages)
     assert result.stages[0].metrics["samples"] == 1866
     assert result.stages[1].metrics["selected_channels"] == 12
-    assert result.stages[2].metrics["math_channels"] == 12
-    assert result.stages[4].metrics["plots"] == 6
+    assert result.stages[2].metrics["math_channels"] == 13
+    assert result.stages[4].metrics["plots"] == 24
     assert result.stages[5].metrics["report_channels"] == 21
     assert result.stages[6].metrics["slides"] == 4

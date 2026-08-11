@@ -18,7 +18,7 @@ statistics:
     description: Ordinary sample RMS, sqrt(mean(x^2)); selected to match Sergio's top RMS pair.
 
   - statistic_id: report_time_last
-    channel_id: calc_time_minutes
+    channel_id: time__col_002
     operation: last
     placement_group: bottom_channel
     display_name: Time [min]
@@ -29,14 +29,44 @@ statistics:
     placement_group: bottom_channel
     display_name: Max Speed [kph]
 
+  - statistic_id: report_longitudinal_acceleration_max
+    channel_id: chassis_acceleration_longitudinal__col_003
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Longitudinal Acceleration [m/s^2]
+
+  - statistic_id: report_vertical_acceleration_max
+    channel_id: chassis_acceleration_vertical__col_004
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Vertical Acceleration [m/s^2]
+
   - statistic_id: report_distance_last
-    channel_id: calc_distance_km
+    channel_id: distance__col_007
     operation: last
     placement_group: bottom_channel
     display_name: Distance [km]
 
+  - statistic_id: report_vehicle_distance_last
+    channel_id: vehicle_distance__col_006
+    operation: last
+    placement_group: bottom_channel
+    display_name: Vehicle Distance [m]
+
+  - statistic_id: report_edu_elect_power_rl_max
+    channel_id: electricsystem_battery_em3_power__col_010
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Electric Power RL [kW]
+
+  - statistic_id: report_edu_elect_power_rr_max
+    channel_id: electricsystem_battery_em4_power__col_011
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Electric Power RR [kW]
+
   - statistic_id: report_total_edu_power_max
-    channel_id: calc_total_edu_elect_power
+    channel_id: total_edu_elect_power__col_012
     operation: max
     placement_group: bottom_channel
     display_name: Max Total EDU Electric Power [kW]
@@ -65,11 +95,103 @@ statistics:
     placement_group: bottom_channel
     display_name: Final Battery SOC [%]
 
+  - statistic_id: report_battery_initial_soc
+    channel_id: electricsystem_battery_soc__col_018
+    operation: first
+    placement_group: kpi_block
+    display_name: Initial Battery SOC [%]
+
+  - statistic_id: report_battery_discharge_power_max
+    channel_id: calc_battery_discharge_power_magnitude
+    operation: max
+    placement_group: kpi_block
+    display_name: Max Battery Discharge Power [kW]
+    description: Positive magnitude, max(-Battery Power); distinct from MAX(Battery Power), which is maximum charging power.
+
+  - statistic_id: report_battery_capacity_used
+    channel_id: electricsystem_battery_energy__col_017
+    operation: max
+    placement_group: kpi_block
+    display_name: Battery Capacity Used [kWh]
+    description: Report-facing compatibility proxy for battery capacity used; canonical cell-level reconciliation remains documented separately.
+
+  - statistic_id: report_energy_recuperated_last
+    channel_id: electricsystem_em_energy_recuperated__col_019
+    operation: last
+    placement_group: bottom_channel
+    display_name: Energy Recuperated [kWh]
+
+  - statistic_id: report_energy_released_last
+    channel_id: electricsystem_em_energy_released__col_020
+    operation: last
+    placement_group: bottom_channel
+    display_name: Energy Released [kWh]
+
+  - statistic_id: report_edu_heatflow_rl_max
+    channel_id: electricsystem_em3_heatflow__col_021
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Heatflow RL [kW]
+
+  - statistic_id: report_edu_speed_rl_max
+    channel_id: electricsystem_em3_speed__col_022
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Speed RL [rpm]
+
+  - statistic_id: report_edu_torque_rl_max
+    channel_id: electricsystem_em3_torque__col_023
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Torque RL [Nm]
+
+  - statistic_id: report_edu_power_rl_max
+    channel_id: edu_mech_power_rl__col_024
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Power RL [kW]
+
+  - statistic_id: report_edu_heatflow_rr_max
+    channel_id: electricsystem_em4_heatflow__col_025
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Heatflow RR [kW]
+
+  - statistic_id: report_edu_speed_rr_max
+    channel_id: electricsystem_em4_speed__col_026
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Speed RR [rpm]
+
+  - statistic_id: report_edu_torque_rr_max
+    channel_id: electricsystem_em4_torque__col_027
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Torque RR [Nm]
+
+  - statistic_id: report_edu_power_rr_max
+    channel_id: edu_mech_power_rr__col_028
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max EDU Power RR [kW]
+
+  - statistic_id: report_total_edu_mech_power_max
+    channel_id: total_edu_mech_power__col_029
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Total EDU Mech Power [kW]
+
   - statistic_id: report_fuel_last
     channel_id: engine_fuelconsumption_absolut__col_030
     operation: last
     placement_group: bottom_channel
     display_name: Fuel Consumption [kg]
+
+  - statistic_id: report_fuel_flow_max
+    channel_id: engine_fuelconsumption_volumeflow__col_032
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Fuel Flow [l/h]
 
   - statistic_id: report_engine_speed_max
     channel_id: engine_speed__col_033
@@ -77,11 +199,53 @@ statistics:
     placement_group: bottom_channel
     display_name: Max Engine Speed [rpm]
 
+  - statistic_id: report_engine_torque_max
+    channel_id: engine_torque__col_034
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Engine Torque [Nm]
+
   - statistic_id: report_engine_power_max
-    channel_id: calc_engine_power_required
+    channel_id: engine_power_required__col_035
     operation: max
     placement_group: bottom_channel
     display_name: Max Engine Power Required [kW]
+
+  - statistic_id: report_engine_energy_sum
+    channel_id: engine_energy_delivered_kwh__col_036
+    operation: sum
+    placement_group: bottom_channel
+    display_name: Engine Energy Delivered [kWh]
+
+  - statistic_id: report_agrochemical_discharge_max
+    channel_id: agrochemical_discharge__col_038
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Agrochemical Discharge [kg]
+
+  - statistic_id: report_tyre_energy_kwh_sum
+    channel_id: tyre_rolling_resistance_energy__col_048
+    operation: sum
+    placement_group: bottom_channel
+    display_name: Tyre Rolling Resistance Energy [kWh]
+
+  - statistic_id: report_tyre_energy_wh_sum
+    channel_id: tyre_rolling_resistance_energy__col_049
+    operation: sum
+    placement_group: bottom_channel
+    display_name: Tyre Rolling Resistance Energy [Wh]
+
+  - statistic_id: report_tyre_energy_accumulated_last
+    channel_id: tyre_rolling_resistance_energy_accomulated__col_050
+    operation: last
+    placement_group: bottom_channel
+    display_name: Accumulated Tyre Rolling Resistance Energy [kWh]
+
+  - statistic_id: report_wheel_total_torque_max
+    channel_id: wheel_total_torque__col_057
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Wheel Total Torque [Nm]
 
   - statistic_id: report_wheel_power_rl_max
     channel_id: wheel_power_rl__col_058
@@ -89,29 +253,77 @@ statistics:
     placement_group: bottom_channel
     display_name: Max Wheel Power RL [kW]
 
+  - statistic_id: report_wheel_power_total_max
+    channel_id: wheel_power_total__col_060
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Wheel Power Total [kW]
+
+  - statistic_id: report_wheel_power_rr_max
+    channel_id: wheel_power_rr__col_059
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Wheel Power RR [kW]
+
+  - statistic_id: report_auxiliary_lv_power_max
+    channel_id: electricsystem_auxiliary_lowvoltagepowerconsumption__col_061
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max LV Auxiliary Power [kW]
+
+  - statistic_id: report_auxiliary_hv_power_max
+    channel_id: auxiliary_haigh_voltage_power_consumption__col_062
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max HV Auxiliary Power [kW]
+
   - statistic_id: report_auxiliary_power_max
-    channel_id: calc_total_auxiliary_power
+    channel_id: total_auxiliary_power__col_063
     operation: max
     placement_group: bottom_channel
     display_name: Max Auxiliary Power [kW]
 
   - statistic_id: report_auxiliary_energy_sum
-    channel_id: calc_auxiliary_energy_per_sample
+    channel_id: auxiliary_energy_consumption__col_064
     operation: sum
     placement_group: bottom_channel
     display_name: Auxiliary Energy Consumption [kWh]
 
   - statistic_id: report_auxiliary_energy_last
-    channel_id: calc_auxiliary_energy_accumulated
+    channel_id: auxiliary_energy_consumption_accumulated__col_065
     operation: last
     placement_group: bottom_channel
     display_name: Accumulated Auxiliary Energy [kWh]
 
   - statistic_id: report_total_generator_power_max
-    channel_id: calc_total_generator_power
+    channel_id: total_generator_power__col_070
     operation: max
     placement_group: bottom_channel
     display_name: Max Total Generator Power [kW]
+
+  - statistic_id: report_generator_power_1_max
+    channel_id: generator_power_1__col_067
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Generator Power 1 [kW]
+
+  - statistic_id: report_generator_torque_1_max
+    channel_id: engine_auxiliarytorque_1__col_066
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Generator Torque 1 [Nm]
+
+  - statistic_id: report_generator_power_2_max
+    channel_id: generator_power_2__col_069
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Generator Power 2 [kW]
+
+  - statistic_id: report_generator_torque_2_max
+    channel_id: engine_auxiliarytorque_2__col_068
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Generator Torque 2 [Nm]
 
 output:
   results_filename: statistics_results.csv

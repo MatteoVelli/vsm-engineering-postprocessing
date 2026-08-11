@@ -7,18 +7,75 @@ selection:
   # Exported source channels remain distinct from the calculated channels below.
   # Always use stable channel_id values from channel_catalogue.csv.
   export_source_channels:
+    - time__col_002
+    - chassis_acceleration_longitudinal__col_003
+    - chassis_acceleration_vertical__col_004
     - chassis_speed__col_005
     - vehicle_distance__col_006
+    - distance__col_007
+    - driver_acceleratorpedal__col_008
+    - driver_brakepedal__col_009
     - electricsystem_battery_em3_power__col_010
     - electricsystem_battery_em4_power__col_011
+    - total_edu_elect_power__col_012
     - electricsystem_battery_power__col_013
+    - battery_power_rms__col_014
     - electricsystem_battery_heatflow__col_015
+    - battery_heatflow_rms__col_016
+    - electricsystem_battery_energy__col_017
+    - electricsystem_battery_soc__col_018
+    - electricsystem_em_energy_recuperated__col_019
+    - electricsystem_em_energy_released__col_020
+    - electricsystem_em3_heatflow__col_021
+    - electricsystem_em3_speed__col_022
+    - electricsystem_em3_torque__col_023
+    - edu_mech_power_rl__col_024
+    - electricsystem_em4_heatflow__col_025
+    - electricsystem_em4_speed__col_026
+    - electricsystem_em4_torque__col_027
+    - edu_mech_power_rr__col_028
+    - total_edu_mech_power__col_029
+    - engine_fuelconsumption_absolut__col_030
+    - engine_fuelconsumption_specific__col_031
+    - engine_fuelconsumption_volumeflow__col_032
     - engine_speed__col_033
     - engine_torque__col_034
+    - engine_power_required__col_035
+    - engine_energy_delivered_kwh__col_036
+    - hitchrear_force_z_vehiclecoordinates__col_037
+    - agrochemical_discharge__col_038
+    - tyre_rollingresistanceforce_fl__col_039
+    - tyre_rollingresistanceforce_fr__col_040
+    - tyre_rollingresistanceforce_rl__col_041
+    - tyre_rollingresistanceforce_rr__col_042
+    - tyre_rollingresistancepower_fl__col_043
+    - tyre_rollingresistancepower_fr__col_044
+    - tyre_rollingresistancepower_rl__col_045
+    - tyre_rollingresistancepower_rr__col_046
+    - total_rolling_resistance_power__col_047
+    - tyre_rolling_resistance_energy__col_048
+    - tyre_rolling_resistance_energy__col_049
+    - tyre_rolling_resistance_energy_accomulated__col_050
+    - wheel_rotationalspeed_fl__col_051
+    - wheel_rotationalspeed_fr__col_052
+    - wheel_rotationalspeed_rl__col_053
+    - wheel_rotationalspeed_rr__col_054
+    - driveshaft_torque_rl__col_055
+    - driveshaft_torque_rr__col_056
+    - wheel_total_torque__col_057
+    - wheel_power_rl__col_058
+    - wheel_power_rr__col_059
+    - wheel_power_total__col_060
     - electricsystem_auxiliary_lowvoltagepowerconsumption__col_061
     - auxiliary_haigh_voltage_power_consumption__col_062
+    - total_auxiliary_power__col_063
+    - auxiliary_energy_consumption__col_064
+    - auxiliary_energy_consumption_accumulated__col_065
     - engine_auxiliarytorque_1__col_066
+    - generator_power_1__col_067
     - engine_auxiliarytorque_2__col_068
+    - generator_power_2__col_069
+    - total_generator_power__col_070
 
 constants:
   # Divisor used by the supplied Sergio workbook for rpm * Nm -> kW.
@@ -141,6 +198,12 @@ math_channels:
       channel_id: total_generator_power__col_070
       absolute_tolerance: 1.0e-9
       relative_tolerance: 1.0e-10
+
+  - channel_id: calc_battery_discharge_power_magnitude
+    display_name: Battery Max Discharge Magnitude
+    unit: kW
+    description: Positive discharge magnitude used for Sergio headline battery power semantics; max(-Battery Power).
+    expression: -1 * electricsystem_battery_power__col_013
 
 output:
   data_filename: dataset_with_math_channels.csv

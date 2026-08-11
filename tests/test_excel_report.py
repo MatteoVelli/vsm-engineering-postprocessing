@@ -159,8 +159,8 @@ def test_supplied_source_workbook_excel_report_acceptance(tmp_path: Path) -> Non
 
     assert result.sample_count == 1866
     assert result.channel_count == 21
-    assert result.statistic_count == 18
-    assert result.plot_count == 6
+    assert result.statistic_count == 53
+    assert result.plot_count == 24
     assert result.report_path.exists()
     assert result.manifest_path.exists()
     assert result.summary_path.exists()
@@ -170,7 +170,7 @@ def test_supplied_source_workbook_excel_report_acceptance(tmp_path: Path) -> Non
         assert workbook.sheetnames == ["Report", "Metadata"]
         report = workbook["Report"]
         metadata = workbook["Metadata"]
-        assert report.freeze_panes == "B5"
+        assert report.freeze_panes == "B6"
         assert report["A1"].value is None
         assert report["A3"].value == "Track_Time"
         assert report["A4"].value == "s"

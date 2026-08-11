@@ -1,55 +1,151 @@
 version: 1
 
 report:
-  title: VSM Engineering Post-Processing Report – Full Duty Cycle
+  title: VSM Engineering Post-Processing Report - Full Duty Cycle
   subtitle: Hybrid Caiman SP - reconstructed 17,418-sample Sergio duty cycle
   report_sheet: Report
   metadata_sheet: Metadata
 
-# Selected export channels. Math channels remain visibly distinct using the
-# pale-yellow header convention found in Sergio's supplied workbook.
 channels:
   - track_time__col_001
-  - calc_time_minutes
+  - time__col_002
+  - chassis_acceleration_longitudinal__col_003
+  - chassis_acceleration_vertical__col_004
   - chassis_speed__col_005
   - vehicle_distance__col_006
-  - calc_distance_km
+  - distance__col_007
+  - driver_acceleratorpedal__col_008
+  - driver_brakepedal__col_009
+  - electricsystem_battery_em3_power__col_010
+  - electricsystem_battery_em4_power__col_011
+  - total_edu_elect_power__col_012
   - electricsystem_battery_power__col_013
-  - calc_battery_power_squared
+  - battery_power_rms__col_014
   - electricsystem_battery_heatflow__col_015
-  - calc_battery_heatflow_squared
+  - battery_heatflow_rms__col_016
+  - electricsystem_battery_energy__col_017
   - electricsystem_battery_soc__col_018
+  - electricsystem_em_energy_recuperated__col_019
+  - electricsystem_em_energy_released__col_020
+  - electricsystem_em3_heatflow__col_021
+  - electricsystem_em3_speed__col_022
+  - electricsystem_em3_torque__col_023
+  - edu_mech_power_rl__col_024
+  - electricsystem_em4_heatflow__col_025
+  - electricsystem_em4_speed__col_026
+  - electricsystem_em4_torque__col_027
+  - edu_mech_power_rr__col_028
+  - total_edu_mech_power__col_029
   - engine_fuelconsumption_absolut__col_030
+  - engine_fuelconsumption_specific__col_031
+  - engine_fuelconsumption_volumeflow__col_032
   - engine_speed__col_033
   - engine_torque__col_034
-  - calc_engine_power_required
-  - calc_total_edu_elect_power
+  - engine_power_required__col_035
+  - engine_energy_delivered_kwh__col_036
+  - hitchrear_force_z_vehiclecoordinates__col_037
+  - agrochemical_discharge__col_038
+  - tyre_rollingresistanceforce_fl__col_039
+  - tyre_rollingresistanceforce_fr__col_040
+  - tyre_rollingresistanceforce_rl__col_041
+  - tyre_rollingresistanceforce_rr__col_042
+  - tyre_rollingresistancepower_fl__col_043
+  - tyre_rollingresistancepower_fr__col_044
+  - tyre_rollingresistancepower_rl__col_045
+  - tyre_rollingresistancepower_rr__col_046
+  - total_rolling_resistance_power__col_047
+  - tyre_rolling_resistance_energy__col_048
+  - tyre_rolling_resistance_energy__col_049
+  - tyre_rolling_resistance_energy_accomulated__col_050
+  - wheel_rotationalspeed_fl__col_051
+  - wheel_rotationalspeed_fr__col_052
+  - wheel_rotationalspeed_rl__col_053
+  - wheel_rotationalspeed_rr__col_054
+  - driveshaft_torque_rl__col_055
+  - driveshaft_torque_rr__col_056
+  - wheel_total_torque__col_057
   - wheel_power_rl__col_058
-  - calc_total_auxiliary_power
-  - calc_auxiliary_energy_per_sample
-  - calc_auxiliary_energy_accumulated
-  - calc_generator_power_1
-  - calc_total_generator_power
+  - wheel_power_rr__col_059
+  - wheel_power_total__col_060
+  - electricsystem_auxiliary_lowvoltagepowerconsumption__col_061
+  - auxiliary_haigh_voltage_power_consumption__col_062
+  - total_auxiliary_power__col_063
+  - auxiliary_energy_consumption__col_064
+  - auxiliary_energy_consumption_accumulated__col_065
+  - engine_auxiliarytorque_1__col_066
+  - generator_power_1__col_067
+  - engine_auxiliarytorque_2__col_068
+  - generator_power_2__col_069
+  - total_generator_power__col_070
+
+channel_metadata:
+  time__col_002: {display_name: Time, unit: min, kind: math}
+  distance__col_007: {display_name: Distance, unit: km, kind: math}
+  total_edu_elect_power__col_012: {display_name: Total EDU Elect Power, unit: kW, kind: math}
+  battery_power_rms__col_014: {display_name: Battery Power RMS, unit: kW^2, kind: math}
+  battery_heatflow_rms__col_016: {display_name: Battery Heatflow RMS, unit: kW^2, kind: math}
+  edu_mech_power_rl__col_024: {display_name: EDU Mech Power RL, unit: kW, kind: math}
+  edu_mech_power_rr__col_028: {display_name: EDU Mech Power RR, unit: kW, kind: math}
+  total_edu_mech_power__col_029: {display_name: Total EDU Mech Power, unit: kW, kind: math}
+  engine_power_required__col_035: {display_name: Engine Power Required, unit: kW, kind: math}
+  engine_energy_delivered_kwh__col_036: {display_name: "Engine Energy Delivered [kWh]", unit: kWh, kind: math}
+  agrochemical_discharge__col_038: {display_name: Agrochemical Discharge, unit: kg, kind: math}
+  total_rolling_resistance_power__col_047: {display_name: Total Rolling Resistance Power, unit: kW, kind: math}
+  tyre_rolling_resistance_energy__col_048: {display_name: Tyre Rolling Resistance Energy, unit: kWh, kind: math}
+  tyre_rolling_resistance_energy__col_049: {display_name: Tyre Rolling Resistance Energy, unit: Wh, kind: math}
+  tyre_rolling_resistance_energy_accomulated__col_050: {display_name: Tyre Rolling Resistance Energy Accomulated, unit: kWh, kind: math}
+  wheel_total_torque__col_057: {display_name: Wheel Total Torque, unit: Nm, kind: math}
+  wheel_power_rl__col_058: {display_name: Wheel Power RL, unit: kW, kind: math}
+  wheel_power_rr__col_059: {display_name: Wheel Power RR, unit: kW, kind: math}
+  wheel_power_total__col_060: {display_name: Wheel Power Total, unit: kW, kind: math}
+  total_auxiliary_power__col_063: {display_name: Total Auxiliary Power, unit: kW, kind: math}
+  auxiliary_energy_consumption__col_064: {display_name: Auxiliary Energy Consumption, unit: kWh, kind: math}
+  auxiliary_energy_consumption_accumulated__col_065: {display_name: Auxiliary Energy Consumption Accumulated, unit: kWh, kind: math}
+  generator_power_1__col_067: {display_name: Generator Power_1, unit: kW, kind: math}
+  generator_power_2__col_069: {display_name: Generator Power_2, unit: kW, kind: math}
+  total_generator_power__col_070: {display_name: Total Generator Power, unit: kW, kind: math}
 
 statistics:
-  # Displayed on rows 1-2 above their corresponding channel columns.
   top_rms:
     - report_battery_power_rms
     - report_battery_heatflow_rms
 
-  # Secondary selection: labels on row 3, values on row 4 to the right of the
-  # channel table, followed by plots underneath.
   kpis:
     - report_time_last
     - report_distance_last
     - report_speed_max
+    - report_longitudinal_acceleration_max
     - report_engine_speed_max
+    - report_engine_torque_max
     - report_engine_power_max
-    - report_fuel_last
-    - report_auxiliary_energy_sum
+    - report_engine_energy_sum
     - report_total_generator_power_max
+    - report_fuel_last
+    - report_fuel_flow_max
+    - report_energy_recuperated_last
+    - report_energy_released_last
+    - report_auxiliary_power_max
+    - report_auxiliary_energy_sum
+    - report_tyre_energy_kwh_sum
+    - report_battery_capacity_used
+    - report_battery_discharge_power_max
+    - report_battery_initial_soc
+    - report_battery_soc_last
+    - report_battery_heatflow_rms
+    - report_battery_heatflow_max
+    - report_battery_power_max
+    - report_edu_speed_rl_max
+    - report_edu_torque_rl_max
+    - report_edu_power_rl_max
+    - report_edu_heatflow_rl_max
+    - report_edu_speed_rr_max
+    - report_edu_torque_rr_max
+    - report_edu_power_rr_max
+    - report_tyre_energy_accumulated_last
+    - report_total_edu_power_max
+    - report_wheel_power_total_max
+    - report_generator_power_1_max
 
-  # Legacy engineering-layout option retained for backwards compatibility.
   bottom_operations:
     - max
     - min
@@ -58,24 +154,55 @@ statistics:
     - rms
     - time_weighted_rms
 
-  # Client-style per-channel summary. The first value for a channel is placed
-  # immediately below its last sample; additional values use the next row.
   bottom_summary:
     - report_time_last
+    - report_longitudinal_acceleration_max
+    - report_vertical_acceleration_max
     - report_speed_max
+    - report_vehicle_distance_last
     - report_distance_last
+    - report_edu_elect_power_rl_max
+    - report_edu_elect_power_rr_max
     - report_total_edu_power_max
     - report_battery_power_max
     - report_battery_power_min
     - report_battery_heatflow_max
+    - report_battery_capacity_used
     - report_battery_soc_last
+    - report_energy_recuperated_last
+    - report_energy_released_last
+    - report_edu_heatflow_rl_max
+    - report_edu_speed_rl_max
+    - report_edu_torque_rl_max
+    - report_edu_power_rl_max
+    - report_edu_heatflow_rr_max
+    - report_edu_speed_rr_max
+    - report_edu_torque_rr_max
+    - report_edu_power_rr_max
+    - report_total_edu_mech_power_max
     - report_fuel_last
+    - report_fuel_flow_max
     - report_engine_speed_max
+    - report_engine_torque_max
     - report_engine_power_max
+    - report_engine_energy_sum
+    - report_agrochemical_discharge_max
+    - report_tyre_energy_kwh_sum
+    - report_tyre_energy_wh_sum
+    - report_tyre_energy_accumulated_last
+    - report_wheel_total_torque_max
     - report_wheel_power_rl_max
+    - report_wheel_power_rr_max
+    - report_wheel_power_total_max
+    - report_auxiliary_lv_power_max
+    - report_auxiliary_hv_power_max
     - report_auxiliary_power_max
     - report_auxiliary_energy_sum
     - report_auxiliary_energy_last
+    - report_generator_torque_1_max
+    - report_generator_power_1_max
+    - report_generator_torque_2_max
+    - report_generator_power_2_max
     - report_total_generator_power_max
 
 layout:
@@ -85,18 +212,53 @@ layout:
   channel_width: 12
   header_row_height: 106
   unit_row_height: 16
+  rms_merges:
+    report_battery_power_rms: L1:N1
+    report_battery_heatflow_rms: P1:S1
 
 plots:
-  include:
-    - speed_vs_time
-    - battery_soc_vs_distance
-    - battery_and_generator_power_vs_time
-    - engine_power_and_fuel_vs_distance
-    - auxiliaries_energy_consumption
-    - power_at_wheels_and_edu
-  columns: 2
-  width_px: 720
-  height_px: 360
+  include: []
+  native_charts:
+    - report_fuel_consumption
+    - report_auxiliaries_energy_consumption
+    - report_speed_vs_distance
+    - report_power_at_wheels_and_edu
+    - report_generator_power
+    - report_battery_power_charge_discharge
+    - report_battery_energy_distance_based
+    - report_energy_released
+    - report_speed_vs_time
+    - report_battery_soc
+    - report_agrochemical_discharge_vs_distance
+    - report_battery_energy_time_based
+    - report_tyres_energy_consumption
+    - report_battery_energy_and_fuel_vs_time
+    - report_engine_power_and_fuel_vs_distance
+    - report_battery_energy_and_fuel_vs_distance
+    - report_engine_power_and_fuel_vs_time
+    - report_agrochemical_discharge_and_charge_vs_time
+  columns: 3
+  width_px: 1440
+  height_px: 720
+  chart_layout:
+    report_fuel_consumption: {anchor: CH6, width: 15.0, height: 7.5}
+    report_auxiliaries_energy_consumption: {anchor: CO22, width: 15.0, height: 7.5}
+    report_speed_vs_distance: {anchor: BT6, width: 15.0, height: 7.5}
+    report_power_at_wheels_and_edu: {anchor: DE6, width: 15.0, height: 7.5}
+    report_generator_power: {anchor: BT22, width: 15.0, height: 7.5}
+    report_battery_power_charge_discharge: {anchor: CA23, width: 15.0, height: 7.5}
+    report_battery_energy_distance_based: {anchor: CO6, width: 15.0, height: 7.5}
+    report_energy_released: {anchor: CI23, width: 15.0, height: 7.5}
+    report_speed_vs_time: {anchor: CA6, width: 15.0, height: 7.5}
+    report_battery_soc: {anchor: DL7, width: 15.0, height: 7.5}
+    report_agrochemical_discharge_vs_distance: {anchor: DE22, width: 15.0, height: 7.5}
+    report_battery_energy_time_based: {anchor: CW6, width: 15.0, height: 7.5}
+    report_tyres_energy_consumption: {anchor: CW22, width: 15.0, height: 7.5}
+    report_battery_energy_and_fuel_vs_time: {anchor: EA22, width: 15.0, height: 7.5}
+    report_engine_power_and_fuel_vs_distance: {anchor: DS6, width: 15.0, height: 7.5}
+    report_battery_energy_and_fuel_vs_distance: {anchor: EA7, width: 15.0, height: 7.5}
+    report_engine_power_and_fuel_vs_time: {anchor: DS22, width: 15.0, height: 7.5}
+    report_agrochemical_discharge_and_charge_vs_time: {anchor: DL22, width: 15.0, height: 7.5}
 
 output:
   filename: vsm_engineering_report.xlsx

@@ -3,12 +3,15 @@ from __future__ import annotations
 import json
 import math
 import shutil
+import csv
+from dataclasses import replace
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
 from openpyxl import Workbook
+from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -32,6 +35,7 @@ class ExcelReportConfig:
     report_sheet: str
     metadata_sheet: str
     channel_ids: tuple[str, ...]
+    channel_metadata: Mapping[str, Mapping[str, str]]
     top_rms_statistic_ids: tuple[str, ...]
     kpi_statistic_ids: tuple[str, ...]
     bottom_operations: tuple[str, ...]
@@ -46,6 +50,9 @@ class ExcelReportConfig:
     plot_columns: int
     plot_width_px: int
     plot_height_px: int
+    native_chart_ids: tuple[str, ...]
+    chart_layout: Mapping[str, Mapping[str, Any]]
+    rms_merges: Mapping[str, str]
     output_filename: str
     keep_plot_assets: bool
 
@@ -78,6 +85,18 @@ class ExcelReportResult:
     def plot_count(self) -> int:
         return self.plotting_result.plot_count
 
+    @property
+    def configured_plot_count(self) -> int:
+        return self.plotting_result.plot_count
+
+    @property
+    def native_excel_chart_count(self) -> int:
+        return len(self.config.native_chart_ids)
+
+    @property
+    def embedded_plot_image_count(self) -> int:
+        return len(self.config.plot_ids)
+
 
 def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
     config_path = Path(path).expanduser().resolve()
@@ -95,7 +114,11 @@ def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
 
     if not isinstance(raw, dict):
         raise ConfigurationError("Excel-report configuration root must be a YAML mapping")
-    _reject_unknown_keys(raw, {"version", "report", "channels", "statistics", "layout", "plots", "output"}, "root")
+    _reject_unknown_keys(
+        raw,
+        {"version", "report", "channels", "channel_metadata", "statistics", "layout", "plots", "output"},
+        "root",
+    )
 
     version = raw.get("version")
     if version != 1:
@@ -119,6 +142,7 @@ def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
     duplicates = _duplicates(channel_ids)
     if duplicates:
         raise ConfigurationError("channels contains duplicate channel IDs: " + ", ".join(duplicates))
+    channel_metadata = _load_channel_metadata(raw.get("channel_metadata", {}), channel_ids)
 
     statistics_raw = raw.get("statistics", {})
     if not isinstance(statistics_raw, dict):
@@ -153,6 +177,7 @@ def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
             "channel_width",
             "header_row_height",
             "unit_row_height",
+            "rms_merges",
         },
         "layout",
     )
@@ -186,12 +211,15 @@ def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
         minimum=12,
         maximum=60,
     )
+    rms_merges = _load_string_mapping(layout_raw.get("rms_merges", {}), "layout.rms_merges")
 
     plots_raw = raw.get("plots", {})
     if not isinstance(plots_raw, dict):
         raise ConfigurationError("plots must be a YAML mapping")
-    _reject_unknown_keys(plots_raw, {"include", "columns", "width_px", "height_px"}, "plots")
+    _reject_unknown_keys(plots_raw, {"include", "native_charts", "chart_layout", "columns", "width_px", "height_px"}, "plots")
     plot_ids = _string_list(plots_raw.get("include", []), "plots.include")
+    native_chart_ids = _string_list(plots_raw.get("native_charts", []), "plots.native_charts")
+    chart_layout = _load_chart_layout(plots_raw.get("chart_layout", {}))
     plot_columns = _positive_int(plots_raw.get("columns", 2), "plots.columns", maximum=4)
     plot_width_px = _positive_int(plots_raw.get("width_px", 720), "plots.width_px", minimum=240, maximum=1600)
     plot_height_px = _positive_int(plots_raw.get("height_px", 360), "plots.height_px", minimum=160, maximum=1000)
@@ -212,6 +240,7 @@ def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
         report_sheet=report_sheet,
         metadata_sheet=metadata_sheet,
         channel_ids=channel_ids,
+        channel_metadata=channel_metadata,
         top_rms_statistic_ids=top_rms,
         kpi_statistic_ids=kpis,
         bottom_operations=bottom_operations,
@@ -226,6 +255,9 @@ def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
         plot_columns=plot_columns,
         plot_width_px=plot_width_px,
         plot_height_px=plot_height_px,
+        native_chart_ids=native_chart_ids,
+        chart_layout=chart_layout,
+        rms_merges=rms_merges,
         output_filename=output_filename,
         keep_plot_assets=keep_plot_assets,
     )
@@ -283,7 +315,7 @@ def generate_excel_report(
     missing_channels = [channel_id for channel_id in config.channel_ids if channel_id not in channels_by_id]
     if missing_channels:
         raise ExcelReportError("Configured report channel IDs were not found: " + ", ".join(missing_channels))
-    report_channels = [channels_by_id[channel_id] for channel_id in config.channel_ids]
+    report_channels = [_apply_channel_metadata(channels_by_id[channel_id], config.channel_metadata.get(channel_id)) for channel_id in config.channel_ids]
 
     statistics_by_id = {item.statistic_id: item for item in statistics_result.statistics}
     missing_statistics = sorted(
@@ -295,7 +327,7 @@ def generate_excel_report(
             + ", ".join(missing_statistics)
         )
 
-    if config.layout_profile == "sergio_reference":
+    if config.layout_profile == "sergio_reference" and config.native_chart_ids:
         invisible_rms = [
             statistic_id
             for statistic_id in config.top_rms_statistic_ids
@@ -323,6 +355,18 @@ def generate_excel_report(
         raise ExcelReportError(
             "Configured report plot IDs were not found in the plotting result: " + ", ".join(missing_plots)
         )
+    plotting_config = load_plotting_config(plotting_config_file)
+    native_chart_definitions = {
+        definition.plot_id: definition
+        for definition in plotting_config.plots
+        if definition.plot_id in config.native_chart_ids
+    }
+    missing_native_charts = sorted(set(config.native_chart_ids) - set(native_chart_definitions))
+    if missing_native_charts:
+        raise ExcelReportError(
+            "Configured native Excel chart IDs were not found in the plotting configuration: "
+            + ", ".join(missing_native_charts)
+        )
 
     report_path = destination / config.output_filename
     manifest_path = destination / "excel_report_manifest.json"
@@ -341,6 +385,7 @@ def generate_excel_report(
         values_by_id=values_by_id,
         statistics_by_id=statistics_by_id,
         plots_by_id=plots_by_id,
+        native_chart_definitions=native_chart_definitions,
     )
 
     result = ExcelReportResult(
@@ -377,6 +422,7 @@ def _write_workbook(
     values_by_id: Mapping[str, Any],
     statistics_by_id: Mapping[str, StatisticResult],
     plots_by_id: Mapping[str, Any],
+    native_chart_definitions: Mapping[str, Any],
 ) -> None:
     if config.layout_profile == "sergio_reference":
         _write_sergio_reference_workbook(
@@ -392,6 +438,7 @@ def _write_workbook(
             values_by_id=values_by_id,
             statistics_by_id=statistics_by_id,
             plots_by_id=plots_by_id,
+            native_chart_definitions=native_chart_definitions,
         )
         return
 
@@ -554,6 +601,7 @@ def _write_sergio_reference_workbook(
     values_by_id: Mapping[str, Any],
     statistics_by_id: Mapping[str, StatisticResult],
     plots_by_id: Mapping[str, Any],
+    native_chart_definitions: Mapping[str, Any],
 ) -> None:
     """Write the compact client-style layout reverse-engineered from Sergio's workbook.
 
@@ -588,6 +636,9 @@ def _write_sergio_reference_workbook(
     for statistic_id in config.top_rms_statistic_ids:
         item = statistics_by_id[statistic_id]
         col = channel_column_by_id[item.channel_id]
+        if statistic_id in config.rms_merges:
+            report.merge_cells(config.rms_merges[statistic_id])
+            col = report[config.rms_merges[statistic_id].split(":")[0]].column
         label = report.cell(1, col, item.display_name)
         value = report.cell(2, col, item.value)
         for cell in (label, value):
@@ -633,6 +684,8 @@ def _write_sergio_reference_workbook(
     bottom_offsets: dict[str, int] = {}
     for statistic_id in config.bottom_summary_statistic_ids:
         item = statistics_by_id[statistic_id]
+        if item.channel_id not in channel_column_by_id:
+            continue
         col = channel_column_by_id[item.channel_id]
         offset = bottom_offsets.get(item.channel_id, 0)
         row = data_end_row + 1 + offset
@@ -658,8 +711,9 @@ def _write_sergio_reference_workbook(
         value.number_format = _number_format(item.channel_unit)
         report.column_dimensions[get_column_letter(col)].width = max(12, config.channel_width)
 
-    # Plots sit directly below the KPI/secondary-selection strip, as in the
-    # supplied report. The assets remain deterministic PNGs from the plotting engine.
+    # Native Excel charts sit directly below the KPI/secondary-selection strip,
+    # as in the supplied report. The PNG path is retained for PowerPoint and for
+    # legacy Excel configs that do not request native charts.
     if config.plot_placement == "kpi_panel":
         chart_start_row = 6
         chart_start_col = kpi_start_col
@@ -672,10 +726,31 @@ def _write_sergio_reference_workbook(
     approx_row_px = 20
     horizontal_span = max(8, math.ceil(config.plot_width_px / approx_col_px) + 1)
     vertical_span = max(16, math.ceil(config.plot_height_px / approx_row_px) + 2)
-    for plot_index, plot_id in enumerate(config.plot_ids):
-        item = plots_by_id[plot_id]
+    native_chart_ids = [plot_id for plot_id in config.native_chart_ids if plot_id in native_chart_definitions]
+    for plot_index, plot_id in enumerate(native_chart_ids):
+        definition = native_chart_definitions[plot_id]
         grid_row = plot_index // config.plot_columns
         grid_col = plot_index % config.plot_columns
+        anchor_row = chart_start_row + grid_row * vertical_span
+        anchor_col = chart_start_col + grid_col * horizontal_span
+        layout = config.chart_layout.get(plot_id)
+        anchor = layout["anchor"] if layout else f"{get_column_letter(anchor_col)}{anchor_row}"
+        chart = _build_native_scatter_chart(
+            definition,
+            report_sheet=report,
+            channel_column_by_id=channel_column_by_id,
+            data_start_row=data_start_row,
+            data_end_row=data_end_row,
+            chart_index=plot_index + 1,
+        )
+        chart.width = layout["width"] if layout else config.plot_width_px / 96
+        chart.height = layout["height"] if layout else config.plot_height_px / 96
+        report.add_chart(chart, anchor)
+
+    for plot_index, plot_id in enumerate(config.plot_ids):
+        item = plots_by_id[plot_id]
+        grid_row = (plot_index + len(native_chart_ids)) // config.plot_columns
+        grid_col = (plot_index + len(native_chart_ids)) % config.plot_columns
         anchor_row = chart_start_row + grid_row * vertical_span
         anchor_col = chart_start_col + grid_col * horizontal_span
         image = XLImage(item.output_file)
@@ -684,22 +759,20 @@ def _write_sergio_reference_workbook(
         report.add_image(image, f"{get_column_letter(anchor_col)}{anchor_row}")
 
     # Match the visible mechanics of the supplied workbook.
-    report.freeze_panes = "B5"
+    report.freeze_panes = "B6"
     report.row_dimensions[2].height = 16
     report.row_dimensions[3].height = config.header_row_height
     report.row_dimensions[4].height = config.unit_row_height
     for col_index in range(1, channel_count + 1):
-        report.column_dimensions[get_column_letter(col_index)].width = config.channel_width
+        report.column_dimensions[get_column_letter(col_index)].width = max(13, config.channel_width)
     for gap in range(channel_count + 1, kpi_start_col):
         report.column_dimensions[get_column_letter(gap)].width = 2.5
 
     # Give the plot/KPI panel stable widths so embedded images do not crowd the data area.
-    if config.plot_ids:
-        panel_end = chart_start_col + config.plot_columns * horizontal_span
+    if config.plot_ids or config.native_chart_ids:
+        panel_end = 118 if config.native_chart_ids else chart_start_col + config.plot_columns * horizontal_span
         for col_index in range(chart_start_col, panel_end + 1):
-            letter = get_column_letter(col_index)
-            if report.column_dimensions[letter].width is None:
-                report.column_dimensions[letter].width = 9.0
+            report.column_dimensions[get_column_letter(col_index)].width = 13
 
     _write_metadata_sheet(
         metadata,
@@ -719,6 +792,90 @@ def _write_sergio_reference_workbook(
     )
 
     workbook.save(output_path)
+
+
+def _build_native_scatter_chart(
+    definition: Any,
+    *,
+    report_sheet: Any,
+    channel_column_by_id: Mapping[str, int],
+    data_start_row: int,
+    data_end_row: int,
+    chart_index: int,
+) -> ScatterChart:
+    base_axis_id = 100000 + chart_index * 10
+    chart = _make_scatter_shell(
+        definition.title,
+        x_title=definition.x_label or definition.x_channel_id,
+        y_title=definition.primary_y_label or "Value",
+        x_axis_id=base_axis_id + 1,
+        y_axis_id=base_axis_id + 2,
+        y_position="l",
+    )
+    x_col = channel_column_by_id[definition.x_channel_id]
+    x_values = Reference(
+        report_sheet,
+        min_col=x_col,
+        min_row=data_start_row,
+        max_row=data_end_row,
+    )
+    secondary_chart = _make_scatter_shell(
+        definition.title,
+        x_title="",
+        y_title=definition.secondary_y_label or "Value",
+        x_axis_id=base_axis_id + 3,
+        y_axis_id=base_axis_id + 4,
+        y_position="r",
+    )
+    has_secondary = False
+    for item in definition.series:
+        y_col = channel_column_by_id[item.channel_id]
+        y_values = Reference(
+            report_sheet,
+            min_col=y_col,
+            min_row=data_start_row,
+            max_row=data_end_row,
+        )
+        series = Series(y_values, x_values, title=item.label or item.channel_id)
+        series.graphicalProperties.line.width = 12700
+        if item.axis == "secondary":
+            has_secondary = True
+            series.graphicalProperties.line.dashStyle = "dash"
+            secondary_chart.series.append(series)
+        else:
+            chart.series.append(series)
+    if has_secondary:
+        secondary_chart.y_axis.crosses = "max"
+        secondary_chart.x_axis.delete = True
+        chart += secondary_chart
+    return chart
+
+
+def _make_scatter_shell(
+    title: str,
+    *,
+    x_title: str,
+    y_title: str,
+    x_axis_id: int,
+    y_axis_id: int,
+    y_position: str,
+) -> ScatterChart:
+    chart = ScatterChart()
+    chart.title = title
+    chart.style = 13
+    chart.scatterStyle = "line"
+    chart.legend.position = "b"
+    chart.x_axis.axId = x_axis_id
+    chart.y_axis.axId = y_axis_id
+    chart.x_axis.crossAx = y_axis_id
+    chart.y_axis.crossAx = x_axis_id
+    chart.x_axis.axPos = "b"
+    chart.y_axis.axPos = y_position
+    chart.x_axis.crosses = "autoZero"
+    chart.y_axis.crosses = "autoZero"
+    chart.x_axis.title = x_title
+    chart.y_axis.title = y_title
+    return chart
 
 
 def _write_metadata_sheet(
@@ -744,6 +901,7 @@ def _write_metadata_sheet(
     metadata_rows = [
         ("Source file", client_display_filename(input_file)),
         ("Source SHA-256", source_hash),
+        *_client_safe_pipeline_provenance(input_file),
         ("Samples", statistics_result.sample_count),
         ("Time channel", statistics_result.dataset.quality.time_channel_id or ""),
         ("Time start", statistics_result.dataset.quality.time_start),
@@ -825,6 +983,46 @@ def _write_metadata_sheet(
             cell.alignment = Alignment(vertical="top", wrap_text=True)
 
 
+def _client_safe_pipeline_provenance(input_file: Path) -> list[tuple[str, object]]:
+    if input_file.name != "duty_cycle_dataset.csv":
+        return []
+    root = input_file.parent.parent
+    rows: list[tuple[str, object]] = [("Internal pipeline artifact", input_file.name)]
+    inspection_path = root / "01_inspection" / "inspection_result.json"
+    if inspection_path.exists():
+        try:
+            inspection = json.loads(inspection_path.read_text(encoding="utf-8"))
+            source_path = Path(str(inspection.get("source_path", "")))
+            quality = inspection.get("quality", {}) if isinstance(inspection.get("quality"), dict) else {}
+            if source_path.name:
+                rows.append(("Original VSM source workbook", source_path.name))
+            if quality.get("source_sha256"):
+                rows.append(("Original VSM source SHA-256", quality["source_sha256"]))
+        except (OSError, json.JSONDecodeError):
+            pass
+    summary_path = input_file.parent / "duty_cycle_summary.txt"
+    if summary_path.exists():
+        try:
+            for line in summary_path.read_text(encoding="utf-8").splitlines():
+                if line.startswith("Scenario: "):
+                    rows.append(("Duty-cycle scenario ID", line.split(": ", 1)[1]))
+                    break
+        except OSError:
+            pass
+    profile_path = input_file.parent / "profile_provenance.csv"
+    if profile_path.exists():
+        try:
+            with profile_path.open(encoding="utf-8-sig", newline="") as handle:
+                first = next(csv.DictReader(handle), None)
+            if first:
+                rows.append(("External profile provider ID", first.get("provider_id", "")))
+                rows.append(("External profile/reference workbook", first.get("source_file", "")))
+                rows.append(("External profile/reference SHA-256", first.get("source_sha256", "")))
+        except (OSError, csv.Error, StopIteration):
+            pass
+    return [(label, value) for label, value in rows if value not in (None, "")]
+
+
 def _manifest(
     result: ExcelReportResult,
     statistics_config_file: str | Path,
@@ -845,7 +1043,11 @@ def _manifest(
         "sample_count": result.sample_count,
         "report_channel_count": result.channel_count,
         "statistic_count": result.statistic_count,
-        "plot_count": result.plot_count,
+        "configured_plot_count": result.configured_plot_count,
+        "plot_count": result.configured_plot_count,
+        "plot_series_count": result.plotting_result.series_count,
+        "native_excel_chart_count": result.native_excel_chart_count,
+        "embedded_plot_image_count": result.embedded_plot_image_count,
         "report_channel_ids": [channel.channel_id for channel in result.report_channels],
         "top_rms_statistic_ids": list(result.config.top_rms_statistic_ids),
         "kpi_statistic_ids": list(result.config.kpi_statistic_ids),
@@ -875,7 +1077,10 @@ def _summary(result: ExcelReportResult) -> str:
         f"Samples: {result.sample_count}",
         f"Report channels: {result.channel_count}",
         f"Statistics available: {result.statistic_count}",
-        f"Plots embedded: {result.plot_count}",
+        f"Native Excel charts embedded: {result.native_excel_chart_count}",
+        f"Plot images embedded: {result.embedded_plot_image_count}",
+        f"Configured plots rendered: {result.configured_plot_count}",
+        f"Plot series rendered: {result.plotting_result.series_count}",
         f"Layout profile: {result.config.layout_profile}",
         f"Plot placement: {result.config.plot_placement}",
         f"Workbook: {result.report_path}",
@@ -903,6 +1108,75 @@ def _number_format(unit: str | None) -> str:
     if normalized in {"s", "min", "m", "km", "kph", "rpm", "nm", "kw", "kwh", "kg"}:
         return "0.000000"
     return "0.000000"
+
+
+def _load_channel_metadata(raw: object, channel_ids: tuple[str, ...]) -> dict[str, dict[str, str]]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ConfigurationError("channel_metadata must be a YAML mapping")
+    allowed = {"display_name", "unit", "kind"}
+    metadata: dict[str, dict[str, str]] = {}
+    for channel_id, item in raw.items():
+        if not isinstance(channel_id, str) or not channel_id.strip():
+            raise ConfigurationError("channel_metadata keys must be non-empty channel IDs")
+        if channel_id not in channel_ids:
+            raise ConfigurationError(f"channel_metadata contains channel not listed in channels: {channel_id}")
+        if not isinstance(item, dict):
+            raise ConfigurationError(f"channel_metadata.{channel_id} must be a YAML mapping")
+        _reject_unknown_keys(item, allowed, f"channel_metadata.{channel_id}")
+        override: dict[str, str] = {}
+        for key in allowed:
+            value = item.get(key)
+            if value is None:
+                continue
+            override[key] = _nonempty_string(value, f"channel_metadata.{channel_id}.{key}")
+        if "kind" in override and override["kind"] not in {"raw", "math"}:
+            raise ConfigurationError(f"channel_metadata.{channel_id}.kind must be raw or math")
+        metadata[channel_id] = override
+    return metadata
+
+
+def _load_chart_layout(raw: object) -> dict[str, dict[str, Any]]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ConfigurationError("plots.chart_layout must be a YAML mapping")
+    layouts: dict[str, dict[str, Any]] = {}
+    for plot_id, item in raw.items():
+        if not isinstance(plot_id, str) or not plot_id.strip():
+            raise ConfigurationError("plots.chart_layout keys must be non-empty plot IDs")
+        if not isinstance(item, dict):
+            raise ConfigurationError(f"plots.chart_layout.{plot_id} must be a YAML mapping")
+        _reject_unknown_keys(item, {"anchor", "width", "height"}, f"plots.chart_layout.{plot_id}")
+        layouts[plot_id] = {
+            "anchor": _nonempty_string(item.get("anchor"), f"plots.chart_layout.{plot_id}.anchor").upper(),
+            "width": _positive_number(item.get("width", 15.0), f"plots.chart_layout.{plot_id}.width", minimum=6.0, maximum=30.0),
+            "height": _positive_number(item.get("height", 7.5), f"plots.chart_layout.{plot_id}.height", minimum=4.0, maximum=16.0),
+        }
+    return layouts
+
+
+def _load_string_mapping(raw: object, context: str) -> dict[str, str]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ConfigurationError(f"{context} must be a YAML mapping")
+    return {
+        _nonempty_string(key, f"{context} key"): _nonempty_string(value, f"{context}.{key}")
+        for key, value in raw.items()
+    }
+
+
+def _apply_channel_metadata(channel: ChannelInfo, metadata: Mapping[str, str] | None) -> ChannelInfo:
+    if not metadata:
+        return channel
+    return replace(
+        channel,
+        display_name=metadata.get("display_name", channel.display_name),
+        unit=metadata.get("unit", channel.unit or None),
+        kind=metadata.get("kind", channel.kind),
+    )
 
 
 def _plain_xlsx_filename(value: object, context: str) -> str:
@@ -955,6 +1229,17 @@ def _positive_int(value: object, context: str, minimum: int = 1, maximum: int | 
     if maximum is not None and value > maximum:
         raise ConfigurationError(f"{context} must be <= {maximum}")
     return value
+
+
+def _positive_number(value: object, context: str, minimum: float = 0.0, maximum: float | None = None) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ConfigurationError(f"{context} must be a positive finite number")
+    result = float(value)
+    if not math.isfinite(result) or result < minimum:
+        raise ConfigurationError(f"{context} must be >= {minimum}")
+    if maximum is not None and result > maximum:
+        raise ConfigurationError(f"{context} must be <= {maximum}")
+    return result
 
 
 def _reject_unknown_keys(mapping: Mapping[str, object], allowed: set[str], context: str) -> None:

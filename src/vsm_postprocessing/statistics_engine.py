@@ -21,7 +21,7 @@ from .models import ChannelInfo, ImportedDataset
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _CELL_REFERENCE = re.compile(r"^[A-Za-z]{1,3}[1-9][0-9]*$")
-_ALLOWED_OPERATIONS = {"rms", "time_weighted_rms", "max", "min", "last", "sum"}
+_ALLOWED_OPERATIONS = {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum"}
 _ALLOWED_NAN_POLICIES = {"error", "omit", "propagate"}
 _ALLOWED_PLACEMENT_GROUPS = {"top_rms", "bottom_channel", "kpi_block"}
 
@@ -544,6 +544,8 @@ def compute_statistic(
         value = float(np.max(working))
     elif operation == "min":
         value = float(np.min(working))
+    elif operation == "first":
+        value = float(working[0])
     elif operation == "last":
         value = float(working[-1])
     elif operation == "sum":
@@ -690,7 +692,7 @@ def _write_wide_results(result: StatisticsResult, path: Path) -> None:
             ordered_channels.append(item.channel_id)
         grouped[item.channel_id][item.operation] = item
 
-    operations = [operation for operation in ("rms", "time_weighted_rms", "max", "min", "last", "sum") if any(operation in grouped[c] for c in ordered_channels)]
+    operations = [operation for operation in ("rms", "time_weighted_rms", "max", "min", "first", "last", "sum") if any(operation in grouped[c] for c in ordered_channels)]
     fieldnames = ["channel_id", "channel_display_name", "channel_unit", "channel_kind", *operations]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)

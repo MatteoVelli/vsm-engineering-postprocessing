@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from openpyxl import load_workbook
 
 from vsm_postprocessing.duty_cycle import (
     WorkbookRowProfileProvider,
@@ -158,6 +159,11 @@ def test_full_duty_cycle_runs_through_normal_reporting_pipeline(tmp_path: Path) 
 
     for stage in result.stages[2:]:
         assert stage.metrics["samples"] == 17418
+    assert result.stages[3].metrics["source_channels"] == 70
+    assert result.stages[3].metrics["math_channels"] == 13
+    assert result.stages[4].metrics["statistics"] == 53
+    assert result.stages[5].metrics["plots"] == 24
+    assert result.stages[6].metrics["report_channels"] == 70
     assert result.report_path is not None and result.report_path.exists()
     assert result.powerpoint_path is not None and result.powerpoint_path.exists()
     assert result.processing_input_file.name == "duty_cycle_dataset.csv"
@@ -167,3 +173,28 @@ def test_full_duty_cycle_runs_through_normal_reporting_pipeline(tmp_path: Path) 
     assert manifest["duty_cycle"] is not None
     assert manifest["processing_input_file"] == str(result.processing_input_file)
     assert manifest["stage_count"] == 8
+
+    workbook = load_workbook(result.report_path, data_only=True)
+    try:
+        report = workbook["Report"]
+        metadata = workbook["Metadata"]
+        assert report.max_column >= 98
+        assert report.max_row == 17424
+        assert report["A3"].value == "Track_Time"
+        assert report["BR3"].value == "Total Generator Power"
+        assert report["B17422"].value == pytest.approx(290.28333333333336)
+        assert report["G17422"].value == pytest.approx(114.0011, abs=1e-4)
+        assert report["R17422"].value == pytest.approx(23.9383, abs=1e-4)
+        assert report["AD17422"].value == pytest.approx(39.84212, abs=1e-5)
+        assert report["BT3"].value == "Time [min]"
+        assert len(report._charts) == 18
+        assert len(report._images) == 0
+        metadata_values = [
+            str(cell.value)
+            for row in metadata.iter_rows()
+            for cell in row
+            if cell.value is not None
+        ]
+        assert not any("C:\\Users" in value or "Desktop\\Agro" in value for value in metadata_values)
+    finally:
+        workbook.close()
