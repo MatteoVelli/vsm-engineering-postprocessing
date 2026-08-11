@@ -52,3 +52,18 @@ def make_channel_id(source_name: str, source_column_index: int) -> str:
 
 def normalized_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+
+_UI_UPLOAD_PREFIX_RE = re.compile(r"^[0-9a-fA-F]{12}_(.+)$")
+
+
+def client_display_filename(path: str | Path) -> str:
+    """Return a client-facing filename without the UI workspace hash prefix.
+
+    Streamlit stores uploads as ``<12-hex-sha>_<original-name>`` so repeated
+    uploads are content-addressed. That internal prefix is useful for the
+    workspace but should not leak into client-facing Excel/PowerPoint reports.
+    """
+    name = re.split(r"[\\\\/]", str(path))[-1]
+    match = _UI_UPLOAD_PREFIX_RE.match(name)
+    return match.group(1) if match else name

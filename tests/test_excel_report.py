@@ -158,8 +158,8 @@ def test_supplied_source_workbook_excel_report_acceptance(tmp_path: Path) -> Non
     )
 
     assert result.sample_count == 1866
-    assert result.channel_count == 19
-    assert result.statistic_count == 17
+    assert result.channel_count == 21
+    assert result.statistic_count == 18
     assert result.plot_count == 6
     assert result.report_path.exists()
     assert result.manifest_path.exists()
@@ -178,14 +178,15 @@ def test_supplied_source_workbook_excel_report_acceptance(tmp_path: Path) -> Non
         assert report["A1870"].value == pytest.approx(1865.0)
         assert report["F1"].value == "Battery Power RMS"
         assert report["F2"].value == pytest.approx(64.9480711679)
-        assert report["O1"].value == "Auxiliary Power RMS"
-        assert report["O2"].value == pytest.approx(28.7527)
+        assert report["H1"].value == "Battery Heatflow RMS"
+        assert report["H2"].value == pytest.approx(6.4230535881)
         assert report["C1871"].value == pytest.approx(30.0717)
         assert report["F1871"].value == pytest.approx(23.5799)
         assert report["F1872"].value == pytest.approx(-149.18)
-        assert report["H1871"].value == pytest.approx(23.9383)
-        assert report["U3"].value == "Time [min]"
-        assert report["U4"].value == pytest.approx(1865.0 / 60.0)
+        assert report["H1871"].value == pytest.approx(14.7541)
+        assert report["J1871"].value == pytest.approx(23.9383)
+        assert report["W3"].value == "Time [min]"
+        assert report["W4"].value == pytest.approx(1865.0 / 60.0)
         assert len(report._images) == 6
         assert metadata["A1"].value == "VSM REPORT METADATA"
     finally:

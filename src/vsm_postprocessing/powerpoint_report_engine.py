@@ -17,7 +17,7 @@ from .errors import ConfigurationError, PowerPointReportError
 from .importer import ImportOptions
 from .plotting_engine import PlottingResult, render_plots
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
-from .utils import sha256_file
+from .utils import client_display_filename, sha256_file
 
 
 @dataclass(frozen=True)
@@ -244,7 +244,7 @@ def _render_summary_slide(
     statistics_result: StatisticsResult,
     theme: PowerPointTheme,
 ) -> None:
-    source_name = statistics_result.dataset.source_path.name
+    source_name = client_display_filename(statistics_result.dataset.source_path)
     source_box = slide.shapes.add_textbox(Inches(0.7), Inches(1.55), Inches(11.9), Inches(0.42))
     p = source_box.text_frame.paragraphs[0]
     p.text = f"Source: {source_name}  |  Samples: {statistics_result.sample_count}"

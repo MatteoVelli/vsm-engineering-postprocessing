@@ -244,13 +244,13 @@ def test_supplied_workbook_math_channels_acceptance() -> None:
     result = calculate_math_channels(SOURCE_WORKBOOK, EXAMPLE_CONFIG, ImportOptions(strict=True))
 
     assert result.sample_count == 1866
-    assert result.source_channel_count == 12
-    assert result.math_channel_count == 11
-    assert result.output_channel_count == 23
-    assert len(result.comparisons) == 10
+    assert result.source_channel_count == 13
+    assert result.math_channel_count == 12
+    assert result.output_channel_count == 25
+    assert len(result.comparisons) == 11
     assert all(comparison.passed for comparison in result.comparisons)
     assert result.output_channels[0].channel_id == "track_time__col_001"
     assert result.calculated_channels[-1].channel_id == "calc_total_generator_power"
     assert result.calculated_values[0, 0] == pytest.approx(0.0)
     assert result.calculated_values[-1, 0] == pytest.approx(1865 / 60)
-    assert result.calculated_values[-1, 7] > result.calculated_values[0, 7]
+    assert result.calculated_values[-1, 8] > result.calculated_values[0, 8]

@@ -12,6 +12,7 @@ selection:
     - electricsystem_battery_em3_power__col_010
     - electricsystem_battery_em4_power__col_011
     - electricsystem_battery_power__col_013
+    - electricsystem_battery_heatflow__col_015
     - engine_speed__col_033
     - engine_torque__col_034
     - electricsystem_auxiliary_lowvoltagepowerconsumption__col_061
@@ -61,6 +62,17 @@ math_channels:
     expression: square(electricsystem_battery_power__col_013)
     compare_to:
       channel_id: battery_power_rms__col_014
+      absolute_tolerance: 1.0e-9
+      relative_tolerance: 1.0e-10
+
+
+  - channel_id: calc_battery_heatflow_squared
+    display_name: Battery Heatflow Squared
+    unit: kW^2
+    description: Squared battery heatflow; helper channel matching Sergio's RMS construction.
+    expression: square(electricsystem_battery_heatflow__col_015)
+    compare_to:
+      channel_id: battery_heatflow_rms__col_016
       absolute_tolerance: 1.0e-9
       relative_tolerance: 1.0e-10
 

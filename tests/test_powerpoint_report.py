@@ -92,4 +92,4 @@ def test_supplied_source_workbook_powerpoint_acceptance(tmp_path: Path) -> None:
         texts = [getattr(shape, "text", "") for shape in slide.shapes]
         titles.append(next(text for text in texts if text.strip()))
     assert titles[0] == "Hybrid SP Caiman – Engineering Summary"
-    assert titles[1] == "Caiman SP Hybrid – Duty Cycle"
+    assert titles[1] == "Caiman SP Hybrid – Source 74 ha Field Cycle"

@@ -142,3 +142,15 @@ def test_doctor_validates_default_pipeline_bundle_when_reference_present(monkeyp
     config_checks = [check for check in report.checks if "configuration" in check.name.lower()]
     assert config_checks
     assert all(check.status == "PASS" for check in config_checks)
+
+
+def test_client_display_filename_strips_ui_hash_prefix() -> None:
+    from vsm_postprocessing.utils import client_display_filename
+
+    assert (
+        client_display_filename(
+            r"C:\project\outputs\ui_workspace\176a68563304_Sprayer_Caiman_SP.xlsx"
+        )
+        == "Sprayer_Caiman_SP.xlsx"
+    )
+    assert client_display_filename("Sprayer_Caiman_SP.xlsx") == "Sprayer_Caiman_SP.xlsx"

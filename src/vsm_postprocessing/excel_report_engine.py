@@ -18,7 +18,7 @@ from .importer import ImportOptions
 from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
-from .utils import sha256_file
+from .utils import client_display_filename, sha256_file
 
 _ALLOWED_BOTTOM_OPERATIONS = ("max", "min", "last", "sum", "rms", "time_weighted_rms")
 
@@ -316,6 +316,7 @@ def generate_excel_report(
         report_path,
         config,
         input_file=Path(input_file).expanduser().resolve(),
+        report_config_file=config_path,
         math_config_file=Path(math_config_file).expanduser().resolve() if math_config_file else None,
         statistics_config_file=Path(statistics_config_file).expanduser().resolve(),
         plotting_config_file=Path(plotting_config_file).expanduser().resolve(),
@@ -351,6 +352,7 @@ def _write_workbook(
     config: ExcelReportConfig,
     *,
     input_file: Path,
+    report_config_file: Path,
     math_config_file: Path | None,
     statistics_config_file: Path,
     plotting_config_file: Path,
@@ -365,6 +367,7 @@ def _write_workbook(
             output_path,
             config,
             input_file=input_file,
+            report_config_file=report_config_file,
             math_config_file=math_config_file,
             statistics_config_file=statistics_config_file,
             plotting_config_file=plotting_config_file,
@@ -504,6 +507,7 @@ def _write_workbook(
     _write_metadata_sheet(
         metadata,
         input_file=input_file,
+        report_config_file=report_config_file,
         config=config,
         math_config_file=math_config_file,
         statistics_config_file=statistics_config_file,
@@ -525,6 +529,7 @@ def _write_sergio_reference_workbook(
     config: ExcelReportConfig,
     *,
     input_file: Path,
+    report_config_file: Path,
     math_config_file: Path | None,
     statistics_config_file: Path,
     plotting_config_file: Path,
@@ -683,6 +688,7 @@ def _write_sergio_reference_workbook(
     _write_metadata_sheet(
         metadata,
         input_file=input_file,
+        report_config_file=report_config_file,
         config=config,
         math_config_file=math_config_file,
         statistics_config_file=statistics_config_file,
@@ -703,6 +709,7 @@ def _write_metadata_sheet(
     sheet: Any,
     *,
     input_file: Path,
+    report_config_file: Path,
     config: ExcelReportConfig,
     math_config_file: Path | None,
     statistics_config_file: Path,
@@ -719,17 +726,17 @@ def _write_metadata_sheet(
     sheet.append(["VSM REPORT METADATA", "Value"])
     source_hash = statistics_result.dataset.quality.source_sha256
     metadata_rows = [
-        ("Source file", str(input_file)),
+        ("Source file", client_display_filename(input_file)),
         ("Source SHA-256", source_hash),
         ("Samples", statistics_result.sample_count),
         ("Time channel", statistics_result.dataset.quality.time_channel_id or ""),
         ("Time start", statistics_result.dataset.quality.time_start),
         ("Time end", statistics_result.dataset.quality.time_end),
         ("Nominal time step", statistics_result.dataset.quality.nominal_time_step),
-        ("Report configuration", str(config)),
-        ("Math configuration", str(math_config_file) if math_config_file else ""),
-        ("Statistics configuration", str(statistics_config_file)),
-        ("Plotting configuration", str(plotting_config_file)),
+        ("Report configuration", Path(report_config_file).name),
+        ("Math configuration", Path(math_config_file).name if math_config_file else ""),
+        ("Statistics configuration", Path(statistics_config_file).name),
+        ("Plotting configuration", Path(plotting_config_file).name),
     ]
     for row in metadata_rows:
         sheet.append(list(row))
@@ -746,7 +753,7 @@ def _write_metadata_sheet(
             channel.display_name,
             channel.unit or "",
             channel.kind,
-            channel.provenance,
+            channel.provenance.replace(input_file.name, client_display_filename(input_file)),
             ";".join(channel.dependencies),
         ]
         for col, value in enumerate(values, start=1):
@@ -774,7 +781,7 @@ def _write_metadata_sheet(
             item.x_channel_id,
             ";".join(item.primary_series_ids),
             ";".join(item.secondary_series_ids),
-            item.output_file,
+            Path(item.output_file).name,
         ]
         for col, value in enumerate(values, start=1):
             sheet.cell(row + 1 + index, col, value)
@@ -810,7 +817,7 @@ def _manifest(
 ) -> dict[str, Any]:
     payload = {
         "configuration_version": result.config.version,
-        "software_version": "0.7.0",
+        "software_version": "1.2.1",
         "source_file": str(result.statistics_result.dataset.source_path),
         "source_sha256": result.statistics_result.dataset.quality.source_sha256,
         "report_configuration_file": str(result.config_path),

@@ -5,6 +5,7 @@ export_channels:
   - driver_acceleratorpedal__col_008
   - total_edu_elect_power__col_012
   - electricsystem_battery_power__col_013
+  - electricsystem_battery_heatflow__col_015
   - electricsystem_battery_soc__col_018
   - engine_fuelconsumption_absolut__col_030
   - engine_speed__col_033
@@ -16,6 +17,7 @@ math_channels:
   - calc_distance_km
   - calc_total_edu_elect_power
   - calc_battery_power_squared
+  - calc_battery_heatflow_squared
   - calc_engine_power_required
   - calc_total_auxiliary_power
   - calc_auxiliary_energy_per_sample
@@ -31,6 +33,8 @@ report_channels:
   - calc_distance_km
   - electricsystem_battery_power__col_013
   - calc_battery_power_squared
+  - electricsystem_battery_heatflow__col_015
+  - calc_battery_heatflow_squared
   - electricsystem_battery_soc__col_018
   - engine_fuelconsumption_absolut__col_030
   - engine_speed__col_033
@@ -45,13 +49,14 @@ report_channels:
   - calc_total_generator_power
 statistics:
   - report_battery_power_rms
-  - report_auxiliary_power_rms
+  - report_battery_heatflow_rms
   - report_time_last
   - report_speed_max
   - report_distance_last
   - report_total_edu_power_max
   - report_battery_power_max
   - report_battery_power_min
+  - report_battery_heatflow_max
   - report_battery_soc_last
   - report_fuel_last
   - report_engine_speed_max

@@ -206,7 +206,7 @@ def test_supplied_source_workbook_statistics_acceptance() -> None:
 
     assert result.sample_count == 1866
     assert result.statistic_count == 14
-    assert len(result.channels_by_id) == 81
+    assert len(result.channels_by_id) == 82
     values = {item.statistic_id: item.value for item in result.statistics}
     assert values["chassis_speed_max"] == pytest.approx(30.0717)
     assert values["battery_power_min"] == pytest.approx(-149.18)

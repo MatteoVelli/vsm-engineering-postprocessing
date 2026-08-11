@@ -1,34 +1,10 @@
-# Python virtual environment
 .venv/
-
-# Python cache / build files
 __pycache__/
 *.py[cod]
 .pytest_cache/
-*.egg-info/
-
-# Generated outputs
 outputs/*
 !outputs/.gitkeep
-
-# Client / confidential reference files
 reference_files/*
 !reference_files/README.md
-
-# Release builds
 dist/
-
-# Streamlit secrets
 .streamlit/secrets.toml
-
-# Local working images
-Immagine*.png
-
-# Temporary files
-*.tmp
-~$*
-
-# IDE / OS
-.vscode/
-.DS_Store
-Thumbs.db

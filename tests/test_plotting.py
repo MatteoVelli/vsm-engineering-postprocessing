@@ -245,7 +245,7 @@ def test_supplied_source_workbook_plotting_acceptance(tmp_path: Path) -> None:
     )
 
     assert result.sample_count == 1866
-    assert len(result.channels_by_id) == 81
+    assert len(result.channels_by_id) == 82
     assert result.plot_count == 6
     assert result.series_count == 11
     assert all(Path(item.output_file).exists() for item in result.rendered_plots)

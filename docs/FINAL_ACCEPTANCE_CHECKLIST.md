@@ -1,4 +1,4 @@
-# Final Acceptance Checklist - v1.2.0
+# Final Acceptance Checklist - v1.2.1
 
 ## Engineering
 
@@ -8,6 +8,8 @@
 - [ ] Key Excel RMS/MAX/MIN/LAST/SUM values are spot-checked against validated reference values.
 - [ ] Excel report opens without repair warnings.
 - [ ] Optional PowerPoint opens without repair warnings and contains the intended plots/KPIs.
+- [ ] Source-only PowerPoint identifies the 1,866-row input as a `Source 74 ha Field Cycle`, not the complete Sergio duty cycle.
+- [ ] Excel top RMS pair is Battery Power RMS + Battery Heatflow RMS.
 
 ## Client workflow
 
@@ -27,7 +29,7 @@
 
 ## Release package
 
-- [ ] version is `1.2.0` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
+- [ ] version is `1.2.1` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
 - [ ] an environment package snapshot is retained for the validated release machine.
 - [ ] client ZIP contains no reference/client workbooks.
 - [ ] client ZIP contains no generated report/run outputs.

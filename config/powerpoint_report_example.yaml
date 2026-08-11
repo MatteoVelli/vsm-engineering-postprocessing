@@ -35,8 +35,8 @@ slides:
 
   - slide_id: duty_cycle_motion
     type: plot_pair
-    title: Caiman SP Hybrid – Duty Cycle
-    subtitle: Vehicle speed, distance and battery state of charge
+    title: Caiman SP Hybrid – Source 74 ha Field Cycle
+    subtitle: Source field-cycle speed, distance and battery state of charge
     statistics:
       - report_time_last
       - report_distance_last
@@ -52,8 +52,8 @@ slides:
     subtitle: Battery, generator and auxiliary demand
     statistics:
       - report_battery_power_rms
-      - report_battery_power_max
-      - report_battery_power_min
+      - report_battery_heatflow_rms
+      - report_battery_heatflow_max
       - report_auxiliary_energy_sum
       - report_total_generator_power_max
     plots:

@@ -1,8 +1,23 @@
+Metadata-Version: 2.4
+Name: vsm-postprocessing
+Version: 1.2.0
+Summary: Deterministic end-to-end VSM post-processing and engineering reporting
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: numpy<3,>=1.26
+Requires-Dist: openpyxl<4,>=3.1
+Requires-Dist: PyYAML<7,>=6.0
+Requires-Dist: matplotlib<4,>=3.9
+Requires-Dist: streamlit<2,>=1.37
+Requires-Dist: python-pptx<2,>=1.0
+Provides-Extra: dev
+Requires-Dist: pytest<9,>=8; extra == "dev"
+
 # VSM Engineering Data Post-Processing
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.2.1 - Sergio Fidelity Preparation Patch
+## Current release: 1.2.0 - Final Deterministic Release
 
 The validated workflow is:
 
@@ -175,13 +190,12 @@ This creates a clean client ZIP plus a SHA-256 checksum in `dist/`. The ZIP cont
 - Milestone 11 - hardening/client readiness: complete
 - Milestone 12 - final release/package: complete
 - Milestone 13A - Sergio reference duty-cycle reverse engineering: complete
-- Milestone 13A.1 - reference conflict resolution & formal KPI specification: complete
 - Milestone 13B - configurable duty-cycle composer: not started
 - Milestone 13C - full Sergio report fidelity: not started
 
 ## Milestone 13A - Sergio reference duty-cycle reconstruction
 
-The repository now includes the reverse-engineering evidence required before implementing the optional duty-cycle composer. The analysis is intentionally separated from the validated deterministic core. Milestone 13A.1 adds specification clarifications and safe source-report fidelity fixes without implementing the mission composer.
+The repository now includes the reverse-engineering evidence required before implementing the optional duty-cycle composer. The analysis is intentionally separated from the validated v1.2.0 deterministic core.
 
 Files are in `docs/milestone_13A/`:
 
@@ -193,23 +207,6 @@ Files are in `docs/milestone_13A/`:
 - `proposed_duty_cycle_spec.yaml`
 
 The analysis accounts for all 17,418 Sergio reference samples as a 12-phase mission with six field-work sections, one separate road-travel section, and five 900 s agrochemical-loading/opportunity-charging sections. The future composer must remain optional and must not modify or replace the existing validated deterministic calculations.
-
-
-## Milestone 13A.1 - reference conflict resolution
-
-`docs/milestone_13A_1/` freezes the reference hierarchy and definitions required before implementation:
-
-- Sergio Excel is the primary full-mission numerical reference;
-- Sergio PowerPoint is presentation/scenario-intent evidence where it does not conflict with Excel;
-- source-only reports are explicitly labelled as a 74 ha field cycle rather than the complete duty cycle;
-- the top RMS pair is Battery Power RMS + Battery Heatflow RMS;
-- Sergio's `Max Battery Power` is defined as discharge magnitude `-MIN(Battery Power)`;
-- default drive range-extender control is 40–80% SOC, with a 5–80% final-cycle override;
-- 100.0 kWh mission scaling is separated from the 100.77 kWh physical pack reference;
-- sample count, timestamp span, event duration and integration semantics are distinct;
-- unexplained legacy formulas such as `Fuel Energy = 80 * 12` remain compatibility-only.
-
-The missing road and generator-on field profile provenance remains an explicit input dependency for exact 70-channel reconstruction.
 
 ## Scope boundary
 

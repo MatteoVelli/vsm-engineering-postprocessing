@@ -1,0 +1,269 @@
+specification_version: 2
+
+reference_hierarchy:
+  full_mission_numerical_primary:
+    file: Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx
+    role: authoritative_target_for_17418_row_mission_and_kpis
+  source_profile_primary:
+    file: Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx
+    role: authoritative_for_supplied_1866_row_field_cycle_only
+  presentation_reference:
+    file: Sprayer Caiman SP_Hybrid-Electric_02.pptx
+    role: scenario_intent_layout_and_nominal_values
+    numerical_precedence: lower_than_excel
+  current_tool_output:
+    role: regression_reference_only
+    note: source-only output must not be labelled as the complete duty cycle
+
+scenario:
+  id: sergio_reference_hybrid_1c2g_30_60kph
+  sample_rate_hz: 1
+  expected_sample_count: 17418
+
+timeline:
+  first_timestamp_s: 0
+  last_timestamp_s: 17417
+  timestamp_span_s: 17417
+  displayed_time_minutes_from_last_timestamp: 290.28333333333336
+  phase_row_generation_rule: profile_or_config_sample_count
+  powerpoint_phase_durations_are_authoritative: false
+  integration_modes:
+    reference_per_sample_rectangle:
+      description: Each output row contributes power_kw * 1s / 3600.
+      use_for: exact_legacy_excel_energy_compatibility
+    timestamp_interval:
+      description: Integrate only over actual timestamp intervals.
+      use_for: explicitly_requested_physical_interval_analysis
+  default_reference_compatibility_integration: reference_per_sample_rectangle
+
+battery:
+  mission_nominal_capacity_kwh: 100.0
+  physical_pack_reference_energy_kwh: 100.77
+  initial_soc_pct: 95.0
+  metadata:
+    chemistry: unresolved
+    conflicting_evidence:
+      - "PPT duty-cycle table: NMC 1C+2G"
+      - "PPT cover/battery slide: CALB LFP 163 Ah"
+  sign_convention:
+    battery_power_negative: discharge
+    battery_power_positive: charge
+  kpi_semantics:
+    max_charge_power_kw: max_battery_power
+    max_discharge_power_magnitude_kw: negative_min_battery_power
+    sergio_label_max_battery_power_maps_to: max_discharge_power_magnitude_kw
+  rms:
+    canonical_definition: sqrt(mean(x_squared))
+    legacy_reference_denominator: 17417
+    legacy_reference_sample_count: 17418
+
+source_field_cycle:
+  workbook: Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx
+  data_rows: [5, 1870]
+  samples: 1866
+  nominal_area_ha: 74
+  nominal_distance_km: 12.0
+  start_soc_pct: 57.4
+  end_soc_pct: 23.9383
+  filename_control_hint: "5-80"
+  interpretation: final_cycle_profile_is_consistent_with_5_to_80_percent_range_extender_override
+
+controls:
+  drive_range_extender:
+    default:
+      start_when_soc_below_pct: 40.0
+      stop_when_soc_at_or_above_pct: 80.0
+      start_state_at_new_field_cycle: off
+    final_cycle_override:
+      phase_id: P12
+      start_when_soc_below_pct: 5.0
+      stop_when_soc_at_or_above_pct: 80.0
+      evidence:
+        - "PPT duty-cycle table: Last Cycle 5% Min / 80% Max"
+        - "supplied source filename contains 57-4pcSOC_5-80"
+        - "P12 reaches 23.9383% while total generator power remains zero"
+    state_transfer:
+      P05_to_P06: inherited_on
+      loading_to_next_drive_phase: reset_drive_controller_off
+  opportunity_charge:
+    duration_s: 900
+    output_rows_at_1hz: 900
+    battery_power_kw: 60.0
+    nominal_soc_gain_pct: 15.0
+    nominal_energy_gain_kwh: 15.0
+    generator_speed_rpm: 1700.0
+    generator_1_torque_nm: 449.379
+    generator_2_torque_nm: 0.0
+    auxiliary_power_kw_nominal: 10.0
+    fuel_flow_lph_nominal: 17.4
+    fuel_density_kg_per_l: 0.84
+    tank_load_rate_kg_s: 4.4429266055
+    target_tank_mass_kg: 4000.0
+    mode: dedicated_opportunity_charge_not_drive_range_extender_control
+
+phases:
+  - id: P01
+    type: field_work
+    report_rows: [5, 1766]
+    output_samples: 1762
+    source_rows_aligned: [5, 1766]
+    initial_soc_pct: 95.0
+    profile_source: raw_vsm_source
+    drive_controller_initial_state: off
+
+  - id: P02
+    type: loading_opportunity_charge
+    report_rows: [1767, 2666]
+    output_samples: 900
+    configured_event_duration_s: 900
+    profile_source: synthetic_scenario_action
+
+  - id: P03
+    type: field_work
+    report_rows: [2667, 4463]
+    output_samples: 1797
+    source_rows_aligned: [5, 1801]
+    initial_soc_pct: 77.0
+    profile_source: raw_vsm_source_with_mission_offsets
+    drive_controller_initial_state: off
+
+  - id: P04
+    type: loading_opportunity_charge
+    report_rows: [4464, 5363]
+    output_samples: 900
+    configured_event_duration_s: 900
+    profile_source: synthetic_scenario_action
+
+  - id: P05
+    type: field_work
+    report_rows: [5364, 7081]
+    output_samples: 1718
+    source_rows_aligned: [5, 1722]
+    initial_soc_pct: 59.0
+    profile_source: sergio_reference_profile_after_generator_activation
+    drive_controller_initial_state: off
+    generator_start_threshold_pct: 40.0
+
+  - id: P06
+    type: road_travel
+    report_rows: [7082, 9617]
+    output_samples: 2536
+    initial_soc_pct: 42.0
+    reference_distance_km: 42.0087
+    nominal_presentation_distance_km: 40.0
+    nominal_target_speed_kph: 60.0
+    observed_max_speed_kph: 62.6233
+    profile_source: unresolved_sergio_reference_profile
+    drive_controller_initial_state: inherited_on_from_P05
+
+  - id: P07
+    type: loading_opportunity_charge
+    report_rows: [9618, 10517]
+    output_samples: 900
+    configured_event_duration_s: 900
+    profile_source: synthetic_scenario_action
+
+  - id: P08
+    type: field_work
+    report_rows: [10518, 12080]
+    output_samples: 1563
+    source_rows_aligned: [5, 1567]
+    initial_soc_pct: 41.0
+    profile_source: sergio_reference_profile_after_generator_activation
+    drive_controller_initial_state: off
+    generator_start_threshold_pct: 40.0
+
+  - id: P09
+    type: loading_opportunity_charge
+    report_rows: [12081, 12980]
+    output_samples: 900
+    configured_event_duration_s: 900
+    profile_source: synthetic_scenario_action
+
+  - id: P10
+    type: field_work
+    report_rows: [12981, 14656]
+    output_samples: 1676
+    source_rows_aligned: [5, 1680]
+    initial_soc_pct: 58.0
+    profile_source: sergio_reference_profile_after_generator_activation
+    drive_controller_initial_state: off
+    generator_start_threshold_pct: 40.0
+
+  - id: P11
+    type: loading_opportunity_charge
+    report_rows: [14657, 15556]
+    output_samples: 900
+    configured_event_duration_s: 900
+    profile_source: synthetic_scenario_action
+
+  - id: P12
+    type: field_work
+    report_rows: [15557, 17422]
+    output_samples: 1866
+    source_rows_aligned: [5, 1870]
+    initial_soc_pct: 57.4
+    profile_source: full_raw_vsm_source_replay_with_mission_offsets
+    drive_controller_initial_state: off
+    generator_start_threshold_pct: 5.0
+    generator_stop_threshold_pct: 80.0
+
+kpi_semantics:
+  battery_capacity_used:
+    definition: initial_battery_energy_kwh_minus_final_battery_energy_kwh
+    reference_value_kwh: 71.0617
+    note: net_depletion_not_discharge_throughput
+  generator_cont_power:
+    definition: scenario_parameter
+    reference_value_kw: 80.0
+  fuel_energy_consumed:
+    reference_formula: generator_cont_power_kw_times_12
+    reference_value_kwh: 960.0
+    physics_status: unresolved_reference_compatibility_only
+  engine_efficiency:
+    reference_formula: engine_energy_delivered_kwh_divided_by_reference_fuel_energy_kwh
+    reference_value_fraction: 0.22843867818045552
+    physics_status: unresolved_reference_compatibility_only
+
+target_reference_kpis:
+  data_samples: 17418
+  final_track_time_s: 17417
+  final_time_min: 290.28333333333336
+  final_distance_km: 114.0011
+  final_soc_pct: 23.9383
+  final_fuel_consumption_kg: 39.8380600000014
+  max_speed_kph: 62.6233
+  max_generator_power_kw: 80.02669061662199
+  max_battery_discharge_power_magnitude_kw: 149.18
+  max_battery_charge_power_kw: 99.9503
+  battery_power_rms_legacy_kw: 55.132631118828165
+  battery_heatflow_rms_legacy_kw: 4.554083085618828
+  battery_max_heatflow_kw: 14.7541
+  recuperated_energy_kwh: 1.760681
+  released_energy_kwh: 161.0646
+  auxiliary_energy_kwh: 109.35260816664805
+  tyre_rr_energy_kwh: 77.67730124737605
+  engine_energy_kwh: 219.3011310532373
+
+reference_quirks_to_not_encode_as_physics:
+  - RMS formulas divide by 17417 although 17418 data samples are present.
+  - Small distance jumps occur at some phase boundaries.
+  - SOC is manually rounded/reset at several phase starts after charging.
+  - Some loading boundary cells inherit inconsistent auxiliary/generator states.
+  - Some AL formulas are misaligned near field 5 boundaries.
+  - AX cumulative formulas contain inconsistent absolute start rows.
+  - Some loading-start BR cells are forced to zero while BO is already near 80 kW.
+  - PPT phase durations and intermediate SOC values are not numerically authoritative.
+  - Fuel Energy Consumed = 80*12 is compatibility-only until the factor 12 is explained.
+
+implementation_gate_for_13B:
+  composer_may_start: true
+  exact_70_channel_equivalence_possible_with_current_inputs: false
+  blockers:
+    - missing road source/profile provenance
+    - missing generator-on field profile provenance
+  policy:
+    - do_not_guess_missing_reference_profiles
+    - allow explicit external profile inputs
+    - preserve row-level provenance
+    - keep composer optional so v1.2.x source-only workflow remains available

@@ -10,11 +10,12 @@ statistics:
     display_name: Battery Power RMS
     description: Ordinary sample RMS, sqrt(mean(x^2)).
 
-  - statistic_id: report_auxiliary_power_rms
-    channel_id: calc_total_auxiliary_power
+  - statistic_id: report_battery_heatflow_rms
+    channel_id: electricsystem_battery_heatflow__col_015
     operation: rms
     placement_group: top_rms
-    display_name: Auxiliary Power RMS
+    display_name: Battery Heatflow RMS
+    description: Ordinary sample RMS, sqrt(mean(x^2)); selected to match Sergio's top RMS pair.
 
   - statistic_id: report_time_last
     channel_id: calc_time_minutes
@@ -51,6 +52,12 @@ statistics:
     operation: min
     placement_group: bottom_channel
     display_name: Min Battery Power [kW]
+
+  - statistic_id: report_battery_heatflow_max
+    channel_id: electricsystem_battery_heatflow__col_015
+    operation: max
+    placement_group: bottom_channel
+    display_name: Max Battery Heatflow [kW]
 
   - statistic_id: report_battery_soc_last
     channel_id: electricsystem_battery_soc__col_018

@@ -2,7 +2,7 @@ version: 1
 
 report:
   title: VSM Engineering Post-Processing Report
-  subtitle: Hybrid Caiman SP - Sergio reference-style layout
+  subtitle: Hybrid Caiman SP - source 74 ha field-cycle report
   report_sheet: Report
   metadata_sheet: Metadata
 
@@ -16,6 +16,8 @@ channels:
   - calc_distance_km
   - electricsystem_battery_power__col_013
   - calc_battery_power_squared
+  - electricsystem_battery_heatflow__col_015
+  - calc_battery_heatflow_squared
   - electricsystem_battery_soc__col_018
   - engine_fuelconsumption_absolut__col_030
   - engine_speed__col_033
@@ -33,7 +35,7 @@ statistics:
   # Displayed on rows 1-2 above their corresponding channel columns.
   top_rms:
     - report_battery_power_rms
-    - report_auxiliary_power_rms
+    - report_battery_heatflow_rms
 
   # Secondary selection: labels on row 3, values on row 4 to the right of the
   # channel table, followed by plots underneath.
@@ -65,6 +67,7 @@ statistics:
     - report_total_edu_power_max
     - report_battery_power_max
     - report_battery_power_min
+    - report_battery_heatflow_max
     - report_battery_soc_last
     - report_fuel_last
     - report_engine_speed_max
