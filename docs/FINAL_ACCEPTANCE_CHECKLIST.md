@@ -1,4 +1,4 @@
-# Final Acceptance Checklist - v1.2.1
+# Final Acceptance Checklist - v1.2.5
 
 ## Engineering
 
@@ -10,6 +10,12 @@
 - [ ] Optional PowerPoint opens without repair warnings and contains the intended plots/KPIs.
 - [ ] Source-only PowerPoint identifies the 1,866-row input as a `Source 74 ha Field Cycle`, not the complete Sergio duty cycle.
 - [ ] Excel top RMS pair is Battery Power RMS + Battery Heatflow RMS.
+- [ ] Duty-cycle profile-provider validation passes when both Sergio workbooks are present.
+- [ ] Full duty-cycle CLI materialises exactly 17,418 samples and all 12 phases.
+- [ ] `config/end_to_end_sergio_duty_cycle.yaml` completes all 8 stages with 17,418 samples downstream of composition.
+- [ ] Full-duty-cycle Excel and PowerPoint open correctly and show full-mission wording/KPIs.
+- [ ] External profile provenance identifies P05/P06/P08/P10 and the reference workbook hash.
+- [ ] Without a provider, supported-prefix mode still stops before P05 rather than guessing missing dynamics.
 
 ## Client workflow
 
@@ -25,11 +31,12 @@
 - [ ] `pipeline_summary.txt` is present.
 - [ ] `pipeline.log` is present.
 - [ ] source/config hashes are recorded.
+- [ ] pipeline manifest records both the raw source and effective composed processing-input hashes.
 - [ ] software/Python/platform metadata are recorded.
 
 ## Release package
 
-- [ ] version is `1.2.1` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
+- [ ] version is `1.2.5` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
 - [ ] an environment package snapshot is retained for the validated release machine.
 - [ ] client ZIP contains no reference/client workbooks.
 - [ ] client ZIP contains no generated report/run outputs.

@@ -9,6 +9,7 @@ from typing import Any
 from vsm_postprocessing.errors import VSMPostProcessingError
 from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 from vsm_postprocessing.pipeline_engine import run_pipeline
+from vsm_postprocessing.version import __version__
 from vsm_postprocessing.ui_config import (
     available_math_channel_ids,
     build_runtime_bundle,
@@ -29,7 +30,7 @@ def main() -> None:
 
     st.set_page_config(page_title="VSM Post-Processing", page_icon="📊", layout="wide")
     st.title("VSM Engineering Post-Processing")
-    st.caption("v1.1.0 | Deterministic processing: source → channels → math → statistics → plots → Excel + optional PowerPoint reports")
+    st.caption(f"v{__version__} | Deterministic processing: source → channels → math → statistics → plots → Excel + optional PowerPoint reports")
 
     templates = load_ui_templates(PROJECT_ROOT)
     defaults = default_ui_profile(templates)

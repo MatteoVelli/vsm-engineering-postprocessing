@@ -1,5 +1,7 @@
 """VSM engineering data post-processing package."""
 
+from .version import __version__
+
 from .channel_manager import (
     ChannelSelectionConfig,
     ChannelSelectionResult,
@@ -10,6 +12,31 @@ from .channel_manager import (
 )
 from .importer import ImportOptions, inspect_data_file, load_data_file
 from .excel_report_engine import ExcelReportConfig, ExcelReportResult, generate_excel_report, load_excel_report_config
+from .duty_cycle import (
+    DutyCycleComposition,
+    DutyCycleCompositionPlan,
+    DutyCyclePartialComposition,
+    DutyCyclePhase,
+    DutyCycleRowProvenance,
+    DutyCycleScenario,
+    OpportunityChargeConfig,
+    DutyCycleSourceValidation,
+    ReportRowRange,
+    SourceRowRange,
+    WorkbookProfileProviderConfig,
+    WorkbookRowProfileProvider,
+    ProfileProviderValidation,
+    PhaseProfileProvenance,
+    build_composition_plan,
+    compose_duty_cycle,
+    compose_supported_prefix,
+    export_composition_plan,
+    export_duty_cycle_composition,
+    export_partial_composition,
+    load_duty_cycle_config,
+    load_profile_provider_config,
+    validate_source_dataset,
+)
 from .math_engine import (
     MathChannelDefinition,
     MathChannelsConfig,
@@ -62,6 +89,20 @@ __all__ = [
     "ChannelSelectionResult",
     "DataInspectionResult",
     "DataQualityReport",
+    "DutyCycleComposition",
+    "DutyCycleCompositionPlan",
+    "DutyCyclePartialComposition",
+    "DutyCyclePhase",
+    "DutyCycleRowProvenance",
+    "DutyCycleScenario",
+    "OpportunityChargeConfig",
+    "DutyCycleSourceValidation",
+    "ReportRowRange",
+    "SourceRowRange",
+    "WorkbookProfileProviderConfig",
+    "WorkbookRowProfileProvider",
+    "ProfileProviderValidation",
+    "PhaseProfileProvenance",
     "ImportedDataset",
     "ImportOptions",
     "ExcelReportConfig",
@@ -104,6 +145,15 @@ __all__ = [
     "export_statistics",
     "inspect_data_file",
     "load_data_file",
+    "build_composition_plan",
+    "compose_duty_cycle",
+    "compose_supported_prefix",
+    "export_composition_plan",
+    "export_duty_cycle_composition",
+    "export_partial_composition",
+    "load_duty_cycle_config",
+    "load_profile_provider_config",
+    "validate_source_dataset",
     "load_excel_report_config",
     "load_pipeline_config",
     "load_powerpoint_report_config",
@@ -116,4 +166,3 @@ __all__ = [
     "select_channels",
 ]
 
-__version__ = "1.2.1"

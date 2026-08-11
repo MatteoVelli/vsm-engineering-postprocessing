@@ -19,6 +19,7 @@ from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
 from .utils import client_display_filename, sha256_file
+from .version import __version__
 
 _ALLOWED_BOTTOM_OPERATIONS = ("max", "min", "last", "sum", "rms", "time_weighted_rms")
 
@@ -238,6 +239,9 @@ def generate_excel_report(
     output_dir: str | Path,
     import_options: ImportOptions | None = None,
     math_config_file: str | Path | None = None,
+    *,
+    precomputed_statistics_result: StatisticsResult | None = None,
+    precomputed_plotting_result: PlottingResult | None = None,
 ) -> ExcelReportResult:
     """Generate a deterministic Excel engineering report from the validated processing layers."""
 
@@ -245,22 +249,34 @@ def generate_excel_report(
     config = load_excel_report_config(config_path)
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
+    generated_plot_assets = precomputed_plotting_result is None
     plot_assets_dir = destination / "plot_assets"
-    plot_assets_dir.mkdir(parents=True, exist_ok=True)
 
-    statistics_result = calculate_statistics(
-        input_file,
-        statistics_config_file,
-        import_options,
-        math_config_file=math_config_file,
-    )
-    plotting_result = render_plots(
-        input_file,
-        plotting_config_file,
-        plot_assets_dir,
-        import_options,
-        math_config_file=math_config_file,
-    )
+    if precomputed_statistics_result is None:
+        statistics_result = calculate_statistics(
+            input_file,
+            statistics_config_file,
+            import_options,
+            math_config_file=math_config_file,
+        )
+    else:
+        statistics_result = precomputed_statistics_result
+
+    if precomputed_plotting_result is None:
+        plot_assets_dir.mkdir(parents=True, exist_ok=True)
+        plotting_result = render_plots(
+            input_file,
+            plotting_config_file,
+            plot_assets_dir,
+            import_options,
+            math_config_file=math_config_file,
+        )
+    else:
+        plotting_result = precomputed_plotting_result
+        if plotting_result.rendered_plots:
+            plot_assets_dir = Path(plotting_result.rendered_plots[0].output_file).expanduser().resolve().parent
+        else:
+            plot_assets_dir.mkdir(parents=True, exist_ok=True)
 
     channels_by_id = statistics_result.channels_by_id
     values_by_id = statistics_result.values_by_id
@@ -341,7 +357,7 @@ def generate_excel_report(
     manifest_path.write_text(json.dumps(_manifest(result, statistics_config_file, plotting_config_file, math_config_file), indent=2), encoding="utf-8")
     summary_path.write_text(_summary(result), encoding="utf-8")
 
-    if not config.keep_plot_assets:
+    if not config.keep_plot_assets and generated_plot_assets:
         shutil.rmtree(plot_assets_dir, ignore_errors=True)
 
     return result
@@ -817,7 +833,7 @@ def _manifest(
 ) -> dict[str, Any]:
     payload = {
         "configuration_version": result.config.version,
-        "software_version": "1.2.1",
+        "software_version": __version__,
         "source_file": str(result.statistics_result.dataset.source_path),
         "source_sha256": result.statistics_result.dataset.quality.source_sha256,
         "report_configuration_file": str(result.config_path),

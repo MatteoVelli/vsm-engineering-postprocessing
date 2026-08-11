@@ -1,0 +1,26 @@
+version: 1
+
+input:
+  # Raw 1,866-sample field-cycle source. Paths resolve relative to this YAML.
+  file: ../reference_files/Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx
+  strict: true
+
+duty_cycle:
+  # Optional composition stage. If this block is omitted, the original v1.2.x
+  # source-cycle pipeline behavior is unchanged.
+  scenario: duty_cycle_sergio_reference.yaml
+  profile_provider: duty_cycle_profiles_sergio_reference.yaml
+  profile_workbook: ../reference_files/Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx
+
+configs:
+  channel_selection: channel_selection_example.yaml
+  math_channels: math_channels_example.yaml
+  statistics: statistics_excel_report.yaml
+  plotting: plotting_example.yaml
+  excel_statistics: statistics_excel_report.yaml
+  excel_report: excel_report_duty_cycle.yaml
+  powerpoint_report: powerpoint_report_duty_cycle.yaml
+
+output:
+  root_dir: ../outputs/end_to_end_sergio_duty_cycle
+  clean_before_run: true

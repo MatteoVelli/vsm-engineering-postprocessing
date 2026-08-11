@@ -1,0 +1,103 @@
+version: 1
+
+report:
+  title: VSM Engineering Post-Processing Report – Full Duty Cycle
+  subtitle: Hybrid Caiman SP - reconstructed 17,418-sample Sergio duty cycle
+  report_sheet: Report
+  metadata_sheet: Metadata
+
+# Selected export channels. Math channels remain visibly distinct using the
+# pale-yellow header convention found in Sergio's supplied workbook.
+channels:
+  - track_time__col_001
+  - calc_time_minutes
+  - chassis_speed__col_005
+  - vehicle_distance__col_006
+  - calc_distance_km
+  - electricsystem_battery_power__col_013
+  - calc_battery_power_squared
+  - electricsystem_battery_heatflow__col_015
+  - calc_battery_heatflow_squared
+  - electricsystem_battery_soc__col_018
+  - engine_fuelconsumption_absolut__col_030
+  - engine_speed__col_033
+  - engine_torque__col_034
+  - calc_engine_power_required
+  - calc_total_edu_elect_power
+  - wheel_power_rl__col_058
+  - calc_total_auxiliary_power
+  - calc_auxiliary_energy_per_sample
+  - calc_auxiliary_energy_accumulated
+  - calc_generator_power_1
+  - calc_total_generator_power
+
+statistics:
+  # Displayed on rows 1-2 above their corresponding channel columns.
+  top_rms:
+    - report_battery_power_rms
+    - report_battery_heatflow_rms
+
+  # Secondary selection: labels on row 3, values on row 4 to the right of the
+  # channel table, followed by plots underneath.
+  kpis:
+    - report_time_last
+    - report_distance_last
+    - report_speed_max
+    - report_engine_speed_max
+    - report_engine_power_max
+    - report_fuel_last
+    - report_auxiliary_energy_sum
+    - report_total_generator_power_max
+
+  # Legacy engineering-layout option retained for backwards compatibility.
+  bottom_operations:
+    - max
+    - min
+    - last
+    - sum
+    - rms
+    - time_weighted_rms
+
+  # Client-style per-channel summary. The first value for a channel is placed
+  # immediately below its last sample; additional values use the next row.
+  bottom_summary:
+    - report_time_last
+    - report_speed_max
+    - report_distance_last
+    - report_total_edu_power_max
+    - report_battery_power_max
+    - report_battery_power_min
+    - report_battery_heatflow_max
+    - report_battery_soc_last
+    - report_fuel_last
+    - report_engine_speed_max
+    - report_engine_power_max
+    - report_wheel_power_rl_max
+    - report_auxiliary_power_max
+    - report_auxiliary_energy_sum
+    - report_auxiliary_energy_last
+    - report_total_generator_power_max
+
+layout:
+  profile: sergio_reference
+  plot_placement: kpi_panel
+  blank_separator_columns: 1
+  channel_width: 12
+  header_row_height: 106
+  unit_row_height: 16
+
+plots:
+  include:
+    - speed_vs_time
+    - battery_soc_vs_distance
+    - battery_and_generator_power_vs_time
+    - engine_power_and_fuel_vs_distance
+    - auxiliaries_energy_consumption
+    - power_at_wheels_and_edu
+  columns: 2
+  width_px: 720
+  height_px: 360
+
+output:
+  filename: vsm_engineering_report.xlsx
+  keep_plot_assets: true

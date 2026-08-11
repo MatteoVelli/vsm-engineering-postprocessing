@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.2.5 - Full Duty-Cycle Pipeline Integration
+
+- Added optional `duty_cycle:` stage to the standard end-to-end pipeline configuration.
+- Added pipeline-safe 70-channel duty-cycle CSV export that preserves stable source channel IDs and units.
+- Routed the complete 17,418-sample mission through the existing channel-selection, math, statistics, plotting, Excel and PowerPoint engines.
+- Added row-level duty-cycle provenance, external-profile provenance and mission summary outputs to normal pipeline runs.
+- Added raw-source vs processing-input traceability and duty-cycle config/workbook hashes to the pipeline manifest.
+- Added dedicated full-mission Excel/PowerPoint presentation configs with correct full-duty-cycle wording.
+- Added reuse of already-calculated statistics and plots during Excel generation to avoid expensive duplicate full-mission processing.
+- Added full 8-stage 17,418-sample regression acceptance coverage while preserving the original 7-stage source-cycle pipeline.
+- No AI functionality added; full Sergio 70-channel/report-layout fidelity remains Milestone 13C.
+
+## 1.2.4 - Duty-Cycle External Profile Provider
+
+- Added a modular `PhaseProfileProvider` contract separate from the duty-cycle composer.
+- Added SHA-256-validated workbook phase-profile provider with explicit per-phase row mappings.
+- Added strict positional-channel alignment mode for the fixed Sergio 70-column reference layout; positional alignment requires the exact configured workbook hash.
+- Added row-level external-provider provenance and phase-level `PhaseProfileProvenance`.
+- Added complete `compose_duty_cycle(...)` materialisation for all 12 phases / 17,418 samples when the missing four profiles are explicitly provided.
+- Added complete duty-cycle CSV export with generation/provider provenance columns.
+- Added CLI support for `--profile-config`, `--profile-workbook` and `--materialize-full`.
+- Added Sergio reference-provider config for P05/P06/P08/P10 without embedding client workbooks in the repository.
+- Preserved canonical deterministic differences instead of copying known spreadsheet boundary artefacts.
+- Added per-channel full-mission reference-difference inventory and provider-phase inventory.
+- No AI functionality added; the Streamlit/end-to-end report pipeline is not yet switched to the composed full mission.
+
+## 1.2.3 - Duty-Cycle Supported Numerical Prefix
+
+- Added deterministic numerical materialisation for P01-P04 using source-backed field phases and synthetic loading/opportunity charging.
+- Added source-phase mission offsets, cumulative-channel continuity and deterministic derived-channel recomputation.
+- Proved generator-active P05/P08/P10 and road P06 cannot be recreated by a simple generator overlay on the supplied field trace.
+- Preserved a hard stop before unresolved P05 rather than filling missing phases with guessed values.
+
+## 1.2.2 - Duty-Cycle Composer Foundation
+
+- Added modular `duty_cycle/` models, configuration loader and composition-plan foundation.
+- Reconstructed the exact 17,418-row structural phase/timestamp/report-row provenance plan from YAML.
+- Added source-workbook compatibility validation and deterministic provenance export.
+
 ## 1.2.1 - Sergio Fidelity Preparation Patch
 
 - Formalized reference precedence: Sergio Excel for full-mission numerics, raw VSM for supplied source profile, PowerPoint for scenario/presentation intent.

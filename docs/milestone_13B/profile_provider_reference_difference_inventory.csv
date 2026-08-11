@@ -1,0 +1,71 @@
+column_index,channel_id,source_name,max_abs_error,different_sample_count_gt_1e-9,first_different_output_index,last_different_output_index,final_error,interpretation
+1,track_time__col_001,Track_Time,0,0,,,0,exact full-mission equivalence
+2,time__col_002,Time,0,0,,,0,exact full-mission equivalence
+3,chassis_acceleration_longitudinal__col_003,Chassis_Acceleration_Longitudinal,0,0,,,0,exact full-mission equivalence
+4,chassis_acceleration_vertical__col_004,Chassis_Acceleration_Vertical,0,0,,,0,exact full-mission equivalence
+5,chassis_speed__col_005,Chassis_Speed,0,0,,,0,exact full-mission equivalence
+6,vehicle_distance__col_006,Vehicle_Distance,1,3597,1762,5358,0,canonical continuity removes Sergio +1 m boundary artefact in early resolved phases
+7,distance__col_007,Distance,0.00100000000000122,3597,1762,5358,0,canonical continuity removes Sergio +1 m boundary artefact in early resolved phases
+8,driver_acceleratorpedal__col_008,Driver_AcceleratorPedal,0,0,,,0,exact full-mission equivalence
+9,driver_brakepedal__col_009,Driver_BrakePedal,0,0,,,0,exact full-mission equivalence
+10,electricsystem_battery_em3_power__col_010,ElectricSystem_Battery_EM3_Power,0,0,,,0,exact full-mission equivalence
+11,electricsystem_battery_em4_power__col_011,ElectricSystem_Battery_EM4_Power,0,0,,,0,exact full-mission equivalence
+12,total_edu_elect_power__col_012,Total EDU Elect Power,0,0,,,0,exact full-mission equivalence
+13,electricsystem_battery_power__col_013,ElectricSystem_Battery_Power,0,0,,,0,exact full-mission equivalence
+14,battery_power_rms__col_014,Battery Power RMS,9.09494701772928e-13,0,,,0,exact full-mission equivalence
+15,electricsystem_battery_heatflow__col_015,ElectricSystem_Battery_Heatflow,0,0,,,0,exact full-mission equivalence
+16,battery_heatflow_rms__col_016,Battery Heatflow RMS,7.105427357601e-15,0,,,0,exact full-mission equivalence
+17,electricsystem_battery_energy__col_017,ElectricSystem_Battery_Energy,8.5265128291212e-13,0,,,0,exact full-mission equivalence
+18,electricsystem_battery_soc__col_018,ElectricSystem_Battery_SOC,8.59756710269721e-13,0,,,0,exact full-mission equivalence
+19,electricsystem_em_energy_recuperated__col_019,ElectricSystem_EM_Energy_Recuperated,0,0,,,0,exact full-mission equivalence
+20,electricsystem_em_energy_released__col_020,ElectricSystem_EM_Energy_Released,0.000500000000002387,900,4459,5358,0,canonical synthetic loading calculation differs from legacy reference formula/boundary handling
+21,electricsystem_em3_heatflow__col_021,ElectricSystem_EM3_Heatflow,0,0,,,0,exact full-mission equivalence
+22,electricsystem_em3_speed__col_022,ElectricSystem_EM3_Speed,0,0,,,0,exact full-mission equivalence
+23,electricsystem_em3_torque__col_023,ElectricSystem_EM3_Torque,0,0,,,0,exact full-mission equivalence
+24,edu_mech_power_rl__col_024,EDU Mech Power RL,0,0,,,0,exact full-mission equivalence
+25,electricsystem_em4_heatflow__col_025,ElectricSystem_EM4_Heatflow,0,0,,,0,exact full-mission equivalence
+26,electricsystem_em4_speed__col_026,ElectricSystem_EM4_Speed,0,0,,,0,exact full-mission equivalence
+27,electricsystem_em4_torque__col_027,ElectricSystem_EM4_Torque,0,0,,,0,exact full-mission equivalence
+28,edu_mech_power_rr__col_028,EDU Mech Power RR,0,0,,,0,exact full-mission equivalence
+29,total_edu_mech_power__col_029,Total EDU Mech Power,0,0,,,0,exact full-mission equivalence
+30,engine_fuelconsumption_absolut__col_030,Engine_FuelConsumption_absolut,0.00406000000007101,3666,4459,17417,0.00405999999764362,canonical loading integrates all 900 one-second fuel increments; reference omits one 0.00406 kg step
+31,engine_fuelconsumption_specific__col_031,Engine_FuelConsumption_specific,53.988,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+32,engine_fuelconsumption_volumeflow__col_032,Engine_FuelConsumption_volumeflow,17.4,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+33,engine_speed__col_033,Engine_Speed,0,0,,,0,exact full-mission equivalence
+34,engine_torque__col_034,Engine_Torque,7.9541254,2708,4459,15558,0,canonical synthetic loading calculation differs from legacy reference formula/boundary handling
+35,engine_power_required__col_035,Engine Power Required,81.784370810992,2708,4459,15558,0,canonical synthetic loading calculation differs from legacy reference formula/boundary handling
+36,engine_energy_delivered_kwh__col_036,Engine Energy Delivered [kWh],0.0227178807808311,2708,4459,15558,0,canonical synthetic loading calculation differs from legacy reference formula/boundary handling
+37,hitchrear_force_z_vehiclecoordinates__col_037,HitchRear_Force_Z_VehicleCoordinates,4.04907041229308e-08,4390,1784,15551,0,canonical synthetic loading calculation differs from legacy reference formula/boundary handling
+38,agrochemical_discharge__col_038,Agrochemical Discharge,4.12774170399643e-09,3410,1980,15551,0,canonical synthetic loading calculation differs from legacy reference formula/boundary handling
+39,tyre_rollingresistanceforce_fl__col_039,Tyre_RollingResistanceForce_FL,9.42385,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+40,tyre_rollingresistanceforce_fr__col_040,Tyre_RollingResistanceForce_FR,9.42385,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+41,tyre_rollingresistanceforce_rl__col_041,Tyre_RollingResistanceForce_RL,19.5981,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+42,tyre_rollingresistanceforce_rr__col_042,Tyre_RollingResistanceForce_RR,19.5981,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+43,tyre_rollingresistancepower_fl__col_043,Tyre_RollingResistancePower_FL,0.000174964,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+44,tyre_rollingresistancepower_fr__col_044,Tyre_RollingResistancePower_FR,0.000174964,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+45,tyre_rollingresistancepower_rl__col_045,Tyre_RollingResistancePower_RL,0.000363861,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+46,tyre_rollingresistancepower_rr__col_046,Tyre_RollingResistancePower_RR,0.000363861,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+47,total_rolling_resistance_power__col_047,Total Rolling Resistance Power,0.00107765,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+48,tyre_rolling_resistance_energy__col_048,Tyre Rolling Resistance Energy,2.99347222222222e-07,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+49,tyre_rolling_resistance_energy__col_049,Tyre Rolling Resistance Energy,0.000299347222222222,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+50,tyre_rolling_resistance_energy_accomulated__col_050,Tyre Rolling Resistance Energy Accomulated,0.000909160222263949,7264,0,17417,-2.99347448162735e-07,tiny cumulative propagation from canonical loading-boundary differences
+51,wheel_rotationalspeed_fl__col_051,Wheel_RotationalSpeed_FL,0.196556,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+52,wheel_rotationalspeed_fr__col_052,Wheel_RotationalSpeed_FR,0.196556,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+53,wheel_rotationalspeed_rl__col_053,Wheel_RotationalSpeed_RL,0.197234,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+54,wheel_rotationalspeed_rr__col_054,Wheel_RotationalSpeed_RR,0.197234,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+55,driveshaft_torque_rl__col_055,DriveShaft_Torque_RL,21.5214,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+56,driveshaft_torque_rr__col_056,DriveShaft_Torque_RR,21.5214,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+57,wheel_total_torque__col_057,Wheel Total Torque,43.0428,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+58,wheel_power_rl__col_058,Wheel Power RL,0.000444532486553284,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+59,wheel_power_rr__col_059,Wheel Power RR,0.000444532486553284,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+60,wheel_power_total__col_060,Wheel Power Total,0.000889064973106568,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+61,electricsystem_auxiliary_lowvoltagepowerconsumption__col_061,ElectricSystem_Auxiliary_LowVoltagePowerConsumption,0.752700000000001,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+62,auxiliary_haigh_voltage_power_consumption__col_062,Auxiliary Haigh Voltage Power Consumption,18,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+63,total_auxiliary_power__col_063,Total Auxiliary Power,18.7527,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+64,auxiliary_energy_consumption__col_064,Auxiliary Energy Consumption,0.00520908333333333,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+65,auxiliary_energy_consumption_accumulated__col_065,Auxiliary Energy Consumption Accumulated,0.00520908333533043,5466,4459,17417,-0.00520908332781289,tiny cumulative propagation from canonical loading-boundary differences
+66,engine_auxiliarytorque_1__col_066,Engine_AuxiliaryTorque_1,449.379,1,4459,4459,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+67,generator_power_1__col_067,Generator Power_1,80.0042204256032,1,4459,4459,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action
+68,engine_auxiliarytorque_2__col_068,Engine_AuxiliaryTorque_2,0,0,,,0,exact full-mission equivalence
+69,generator_power_2__col_069,Generator Power_2,0,0,,,0,exact full-mission equivalence
+70,total_generator_power__col_070,Total Generator Power,80.0042204256032,4,4459,14652,0,known first-row loading/reference boundary artefact(s) removed by canonical synthetic action

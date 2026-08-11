@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vsm-postprocessing
-Version: 1.2.0
+Version: 1.2.4
 Summary: Deterministic end-to-end VSM post-processing and engineering reporting
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
@@ -17,7 +17,7 @@ Requires-Dist: pytest<9,>=8; extra == "dev"
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.2.0 - Final Deterministic Release
+## Current release: 1.2.4 - Duty-Cycle External Profile Provider
 
 The validated workflow is:
 
@@ -190,12 +190,16 @@ This creates a clean client ZIP plus a SHA-256 checksum in `dist/`. The ZIP cont
 - Milestone 11 - hardening/client readiness: complete
 - Milestone 12 - final release/package: complete
 - Milestone 13A - Sergio reference duty-cycle reverse engineering: complete
-- Milestone 13B - configurable duty-cycle composer: not started
+- Milestone 13A.1 - reference conflict resolution & formal KPI specification: complete
+- Milestone 13B.0 - duty-cycle composition/provenance foundation: complete
+- Milestone 13B.1 - deterministic native/synthetic prefix P01-P04: complete
+- Milestone 13B.2 - external phase Profile Provider + complete 17,418-row fidelity composition: complete
+- Milestone 13B - full composer integration/independent-profile acceptance: in progress
 - Milestone 13C - full Sergio report fidelity: not started
 
 ## Milestone 13A - Sergio reference duty-cycle reconstruction
 
-The repository now includes the reverse-engineering evidence required before implementing the optional duty-cycle composer. The analysis is intentionally separated from the validated v1.2.0 deterministic core.
+The repository now includes the reverse-engineering evidence required before implementing the optional duty-cycle composer. The analysis is intentionally separated from the validated deterministic core. Milestone 13A.1 adds specification clarifications and safe source-report fidelity fixes without implementing the mission composer.
 
 Files are in `docs/milestone_13A/`:
 
@@ -207,6 +211,50 @@ Files are in `docs/milestone_13A/`:
 - `proposed_duty_cycle_spec.yaml`
 
 The analysis accounts for all 17,418 Sergio reference samples as a 12-phase mission with six field-work sections, one separate road-travel section, and five 900 s agrochemical-loading/opportunity-charging sections. The future composer must remain optional and must not modify or replace the existing validated deterministic calculations.
+
+
+## Milestone 13A.1 - reference conflict resolution
+
+`docs/milestone_13A_1/` freezes the reference hierarchy and definitions required before implementation:
+
+- Sergio Excel is the primary full-mission numerical reference;
+- Sergio PowerPoint is presentation/scenario-intent evidence where it does not conflict with Excel;
+- source-only reports are explicitly labelled as a 74 ha field cycle rather than the complete duty cycle;
+- the top RMS pair is Battery Power RMS + Battery Heatflow RMS;
+- Sergio's `Max Battery Power` is defined as discharge magnitude `-MIN(Battery Power)`;
+- default drive range-extender control is 40–80% SOC, with a 5–80% final-cycle override;
+- 100.0 kWh mission scaling is separated from the 100.77 kWh physical pack reference;
+- sample count, timestamp span, event duration and integration semantics are distinct;
+- unexplained legacy formulas such as `Fuel Energy = 80 * 12` remain compatibility-only.
+
+The missing road and generator-on field profile provenance remains an explicit input dependency for exact 70-channel reconstruction.
+
+
+## Milestone 13B.2 - external phase Profile Provider
+
+The duty-cycle subsystem can now materialise the complete 17,418-sample Sergio mission **when an explicit validated provider is supplied for the four phases whose dynamics are absent from the source field workbook**.
+
+Native/synthetic composition remains responsible for P01-P04, P07, P09, P11 and P12. The external provider supplies P05, P06, P08 and P10. The Sergio fidelity provider is configured in:
+
+```text
+config/duty_cycle_profiles_sergio_reference.yaml
+```
+
+The current Sergio provider is deliberately a **reference-fidelity bridge**: it replays only the missing phase rows from the authoritative Sergio Excel workbook, with filename and SHA-256 validation. It is not a guessed generator overlay or a replacement for independent VSM road/range-extender simulations.
+
+The provider interface is separate from the composer so independent phase workbooks can replace the reference provider later. Full row- and phase-level provenance records which samples came from the external provider.
+
+Example developer command:
+
+```powershell
+python -m vsm_postprocessing.duty_cycle_cli config/duty_cycle_sergio_reference.yaml `
+  --source reference_files/Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx `
+  --profile-config config/duty_cycle_profiles_sergio_reference.yaml `
+  --profile-workbook reference_files/Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx `
+  --materialize-full
+```
+
+This produces a complete 17,418-row numerical CSV plus the row-level composition/provenance plan. The main Streamlit/end-to-end report pipeline is not yet switched to the composed mission; that integration is the next duty-cycle step before 13C report fidelity.
 
 ## Scope boundary
 

@@ -2,7 +2,7 @@
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.2.1 - Sergio Fidelity Preparation Patch
+## Current release: 1.2.5 - Full Duty-Cycle Pipeline Integration
 
 The validated workflow is:
 
@@ -176,7 +176,11 @@ This creates a clean client ZIP plus a SHA-256 checksum in `dist/`. The ZIP cont
 - Milestone 12 - final release/package: complete
 - Milestone 13A - Sergio reference duty-cycle reverse engineering: complete
 - Milestone 13A.1 - reference conflict resolution & formal KPI specification: complete
-- Milestone 13B - configurable duty-cycle composer: not started
+- Milestone 13B.0 - duty-cycle composition/provenance foundation: complete
+- Milestone 13B.1 - deterministic native/synthetic prefix P01-P04: complete
+- Milestone 13B.2 - external phase Profile Provider + complete 17,418-row fidelity composition: complete
+- Milestone 13B.3 - full duty-cycle integration into the normal reporting pipeline: complete
+- Milestone 13B - independent-profile replacement of the Sergio fidelity bridge: future optional refinement
 - Milestone 13C - full Sergio report fidelity: not started
 
 ## Milestone 13A - Sergio reference duty-cycle reconstruction
@@ -210,6 +214,53 @@ The analysis accounts for all 17,418 Sergio reference samples as a 12-phase miss
 - unexplained legacy formulas such as `Fuel Energy = 80 * 12` remain compatibility-only.
 
 The missing road and generator-on field profile provenance remains an explicit input dependency for exact 70-channel reconstruction.
+
+
+## Milestone 13B.2 - external phase Profile Provider
+
+The duty-cycle subsystem can now materialise the complete 17,418-sample Sergio mission **when an explicit validated provider is supplied for the four phases whose dynamics are absent from the source field workbook**.
+
+Native/synthetic composition remains responsible for P01-P04, P07, P09, P11 and P12. The external provider supplies P05, P06, P08 and P10. The Sergio fidelity provider is configured in:
+
+```text
+config/duty_cycle_profiles_sergio_reference.yaml
+```
+
+The current Sergio provider is deliberately a **reference-fidelity bridge**: it replays only the missing phase rows from the authoritative Sergio Excel workbook, with filename and SHA-256 validation. It is not a guessed generator overlay or a replacement for independent VSM road/range-extender simulations.
+
+The provider interface is separate from the composer so independent phase workbooks can replace the reference provider later. Full row- and phase-level provenance records which samples came from the external provider.
+
+Example developer command:
+
+```powershell
+python -m vsm_postprocessing.duty_cycle_cli config/duty_cycle_sergio_reference.yaml `
+  --source reference_files/Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx `
+  --profile-config config/duty_cycle_profiles_sergio_reference.yaml `
+  --profile-workbook reference_files/Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx `
+  --materialize-full
+```
+
+This produces a complete 17,418-row numerical CSV plus the row-level composition/provenance plan.
+
+## Milestone 13B.3 - full duty-cycle pipeline integration
+
+The normal end-to-end pipeline now accepts an optional `duty_cycle:` block. When present, the raw source workbook is inspected first, the 12-phase mission is composed with explicit profile provenance, and a clean 70-channel numeric CSV is generated as the downstream processing input. The existing deterministic channel-selection, math, statistics, plotting, Excel and PowerPoint engines then process that 17,418-sample mission without special-case calculation logic.
+
+Reference integration config:
+
+```text
+config/end_to_end_sergio_duty_cycle.yaml
+```
+
+Direct PowerShell command (no `.ps1` execution-policy dependency):
+
+```powershell
+python -m vsm_postprocessing.pipeline_cli config/end_to_end_sergio_duty_cycle.yaml
+```
+
+The pipeline output includes `02_duty_cycle/duty_cycle_dataset.csv`, row-level provenance, external-profile provenance, a duty-cycle summary, and the normal Excel/PowerPoint deliverables. The original source-cycle pipeline remains unchanged when the `duty_cycle:` block is omitted.
+
+The resulting Excel/PowerPoint are still the compact v1.x engineering-report layouts; reproducing Sergio's full 70-channel/KPI/chart workbook presentation is Milestone 13C.
 
 ## Scope boundary
 

@@ -1,0 +1,25 @@
+provider:
+  id: sergio_reference_missing_phase_profiles
+  type: workbook_phase_rows
+  value_policy: absolute_reference
+  channel_alignment: column_position
+  expected_filename: Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx
+  expected_sha256: 1ac1fd0cc4b73a584410e78edbbd65d966077e15499da89ec004070c8130cd80
+
+  # These are the phases proven in 13B.1 not to be reproducible from the
+  # supplied 30 kph field source alone.  This reference provider is a fidelity
+  # bridge, not a predictive model.  Independent VSM profiles can replace it
+  # later through the same provider interface.
+  phase_ids: [P05, P06, P08, P10]
+  phase_rows:
+    P05: [5364, 7081]
+    P06: [7082, 9617]
+    P08: [10518, 12080]
+    P10: [12981, 14656]
+
+  import:
+    header_row: 3
+    unit_row: 4
+    data_start_row: 5
+    data_end_row: 17422
+    last_channel_column: 70

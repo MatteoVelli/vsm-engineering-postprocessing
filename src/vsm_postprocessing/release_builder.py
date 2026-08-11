@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
-from . import __version__
+from .version import __version__
 
 
 _FIXED_ZIP_TIMESTAMP = (2026, 1, 1, 0, 0, 0)

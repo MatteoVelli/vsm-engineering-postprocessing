@@ -1,0 +1,13 @@
+phase_id,phase_type,output_samples,provider_required,provider_id,provider_source_rows,value_policy,reason
+P01,field_work,1762,no,,,native_source_with_scenario_offsets,Supplied 30 kph VSM field trace is sufficient
+P02,loading_opportunity_charge,900,no,,,synthetic_scenario_action,Deterministic 900 s loading/opportunity-charge action
+P03,field_work,1797,no,,,native_source_with_scenario_offsets,Supplied 30 kph VSM field trace is sufficient
+P04,loading_opportunity_charge,900,no,,,synthetic_scenario_action,Deterministic 900 s loading/opportunity-charge action
+P05,field_work,1718,yes,sergio_reference_missing_phase_profiles,5364:7081,absolute_reference,Vehicle response diverges after generator activation and cannot be recreated from supplied field trace alone
+P06,road_travel,2536,yes,sergio_reference_missing_phase_profiles,7082:9617,absolute_reference,Separate >60 kph road trace is absent from supplied field workbook
+P07,loading_opportunity_charge,900,no,,,synthetic_scenario_action,Deterministic 900 s loading/opportunity-charge action
+P08,field_work,1563,yes,sergio_reference_missing_phase_profiles,10518:12080,absolute_reference,Generator-active vehicle response is not represented by supplied field trace
+P09,loading_opportunity_charge,900,no,,,synthetic_scenario_action,Deterministic 900 s loading/opportunity-charge action
+P10,field_work,1676,yes,sergio_reference_missing_phase_profiles,12981:14656,absolute_reference,Generator-active vehicle response is not represented by supplied field trace
+P11,loading_opportunity_charge,900,no,,,synthetic_scenario_action,Deterministic 900 s loading/opportunity-charge action
+P12,field_work,1866,no,,,full_native_source_replay_with_mission_offsets,Final 5-80 control cycle is the supplied source profile

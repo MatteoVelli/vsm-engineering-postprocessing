@@ -1,5 +1,7 @@
 [console_scripts]
 vsm-doctor = vsm_postprocessing.doctor_cli:main
+vsm-duty-cycle = vsm_postprocessing.duty_cycle_cli:main
+vsm-duty-cycle-plan = vsm_postprocessing.duty_cycle_cli:main
 vsm-excel = vsm_postprocessing.excel_report_cli:main
 vsm-inspect = vsm_postprocessing.cli:main
 vsm-math = vsm_postprocessing.math_cli:main
