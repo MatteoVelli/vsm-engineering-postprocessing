@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.9 - Professional Matplotlib Engineering Plotting
+
+- Added a config-driven engineering plotting style layer for publication-quality Matplotlib figures.
+- Added high-resolution PNG output under `png/` plus optional SVG output under `svg/`.
+- Added true Matplotlib secondary-axis rendering with combined legends and human-readable labels.
+- Added engineering tick formatting, zero-line behavior and consistent typography/grid styling.
+- Added optional duty-cycle phase-boundary overlays from row-level provenance.
+- Added plotting metadata for dimensions, DPI, axes, SVG paths and phase-aware plot counts.
+- Preserved the native Excel chart renderer as the Excel-only interactive chart path.
+- Added focused plotting tests for style loading, output dimensions, SVG generation, labels, phase mode and figure cleanup.
+
 ## 1.2.5 - Full Duty-Cycle Pipeline Integration
 
 - Added optional `duty_cycle:` stage to the standard end-to-end pipeline configuration.

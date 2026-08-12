@@ -13,6 +13,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator, StrMethodFormatter
 import numpy as np
 import yaml
 
@@ -24,6 +25,28 @@ from .utils import sha256_file
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _ALLOWED_AXES = {"primary", "secondary"}
+_ALLOWED_OUTPUT_FORMATS = {"png", "svg"}
+_RAW_ID_PATTERN = re.compile(r"__[A-Za-z]+_\d{3}\b")
+
+
+@dataclass(frozen=True)
+class PlotStyle:
+    title_fontsize: float = 15.0
+    axis_label_fontsize: float = 11.0
+    tick_fontsize: float = 9.0
+    legend_fontsize: float = 9.0
+    legend_location: str = "best"
+    legend_columns: int = 1
+    grid_alpha: float = 0.28
+    grid_linewidth: float = 0.6
+    primary_line_style: str = "-"
+    secondary_line_style: str = "--"
+    background: str = "white"
+    transparent: bool = False
+    constrained_layout: bool = False
+    tight_layout: bool = True
+    zero_line: bool = True
+    output_formats: tuple[str, ...] = ("png",)
 
 
 @dataclass(frozen=True)
@@ -34,6 +57,7 @@ class PlotDefaults:
     grid: bool = True
     legend: bool = True
     line_width: float = 1.2
+    style: PlotStyle = PlotStyle()
 
 
 @dataclass(frozen=True)
@@ -54,6 +78,8 @@ class PlotDefinition:
     primary_y_label: str | None = None
     secondary_y_label: str | None = None
     reference_chart_number: int | None = None
+    show_phase_boundaries: bool = False
+    show_phase_labels: bool = False
 
 
 @dataclass(frozen=True)
@@ -73,8 +99,16 @@ class RenderedPlot:
     x_unit: str | None
     primary_series_ids: tuple[str, ...]
     secondary_series_ids: tuple[str, ...]
+    legend_labels: tuple[str, ...]
     reference_chart_number: int | None
     sample_count: int
+    figure_width_inches: float
+    figure_height_inches: float
+    dpi: int
+    axes_count: int
+    png_file: str
+    svg_file: str | None = None
+    phase_boundary_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -86,9 +120,25 @@ class RenderedPlot:
             "x_unit": self.x_unit,
             "primary_series_ids": list(self.primary_series_ids),
             "secondary_series_ids": list(self.secondary_series_ids),
+            "legend_labels": list(self.legend_labels),
             "reference_chart_number": self.reference_chart_number,
             "sample_count": self.sample_count,
+            "figure_width_inches": self.figure_width_inches,
+            "figure_height_inches": self.figure_height_inches,
+            "dpi": self.dpi,
+            "axes_count": self.axes_count,
+            "png_file": self.png_file,
+            "svg_file": self.svg_file,
+            "phase_boundary_count": self.phase_boundary_count,
         }
+
+
+@dataclass(frozen=True)
+class PhaseBoundary:
+    phase_id: str
+    phase_type: str
+    start_index: int
+    end_index: int
 
 
 @dataclass
@@ -100,6 +150,7 @@ class PlottingResult:
     values_by_id: dict[str, np.ndarray]
     rendered_plots: list[RenderedPlot]
     math_result: MathChannelsResult | None = None
+    phase_boundaries: tuple[PhaseBoundary, ...] = ()
 
     @property
     def sample_count(self) -> int:
@@ -115,6 +166,18 @@ class PlottingResult:
             len(item.primary_series_ids) + len(item.secondary_series_ids)
             for item in self.rendered_plots
         )
+
+    @property
+    def secondary_axis_plot_count(self) -> int:
+        return sum(1 for item in self.rendered_plots if item.secondary_series_ids)
+
+    @property
+    def svg_count(self) -> int:
+        return sum(1 for item in self.rendered_plots if item.svg_file is not None)
+
+    @property
+    def phase_aware_plot_count(self) -> int:
+        return sum(1 for item in self.rendered_plots if item.phase_boundary_count)
 
 
 def load_plotting_config(path: str | Path) -> PlottingConfig:
@@ -133,13 +196,13 @@ def load_plotting_config(path: str | Path) -> PlottingConfig:
 
     if not isinstance(raw, dict):
         raise ConfigurationError("Plotting configuration root must be a YAML mapping")
-    _reject_unknown_keys(raw, {"version", "defaults", "plots"}, "root")
+    _reject_unknown_keys(raw, {"version", "defaults", "style", "plots"}, "root")
 
     version = raw.get("version")
     if version != 1:
         raise ConfigurationError("Plotting configuration 'version' must be 1")
 
-    defaults = _load_defaults(raw.get("defaults", {}))
+    defaults = _load_defaults(raw.get("defaults", {}), raw.get("style", {}))
     plots_raw = raw.get("plots")
     if not isinstance(plots_raw, list) or not plots_raw:
         raise ConfigurationError("plots must be a non-empty YAML list")
@@ -162,7 +225,7 @@ def load_plotting_config(path: str | Path) -> PlottingConfig:
     return PlottingConfig(version=version, defaults=defaults, plots=plots)
 
 
-def _load_defaults(raw: object) -> PlotDefaults:
+def _load_defaults(raw: object, style_raw: object | None = None) -> PlotDefaults:
     if raw is None:
         raw = {}
     if not isinstance(raw, dict):
@@ -185,7 +248,69 @@ def _load_defaults(raw: object) -> PlotDefaults:
     if not isinstance(legend, bool):
         raise ConfigurationError("defaults.legend must be true or false")
     line_width = _positive_number(raw.get("line_width", 1.2), "defaults.line_width")
-    return PlotDefaults(width, height, dpi, grid, legend, line_width)
+    return PlotDefaults(width, height, dpi, grid, legend, line_width, _load_style(style_raw))
+
+
+def _load_style(raw: object | None) -> PlotStyle:
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise ConfigurationError("style must be a YAML mapping")
+    _reject_unknown_keys(
+        raw,
+        {
+            "title_fontsize",
+            "axis_label_fontsize",
+            "tick_fontsize",
+            "legend_fontsize",
+            "legend_location",
+            "legend_columns",
+            "grid_alpha",
+            "grid_linewidth",
+            "primary_line_style",
+            "secondary_line_style",
+            "background",
+            "transparent",
+            "constrained_layout",
+            "tight_layout",
+            "zero_line",
+            "output_formats",
+        },
+        "style",
+    )
+    legend_columns = raw.get("legend_columns", 1)
+    if isinstance(legend_columns, bool) or not isinstance(legend_columns, int) or not 1 <= legend_columns <= 6:
+        raise ConfigurationError("style.legend_columns must be an integer from 1 to 6")
+    output_formats_raw = raw.get("output_formats", ["png"])
+    if not isinstance(output_formats_raw, list) or not output_formats_raw:
+        raise ConfigurationError("style.output_formats must be a non-empty list")
+    output_formats = tuple(str(item).strip().lower() for item in output_formats_raw)
+    invalid_formats = sorted(set(output_formats) - _ALLOWED_OUTPUT_FORMATS)
+    if invalid_formats:
+        raise ConfigurationError("style.output_formats contains unsupported format(s): " + ", ".join(invalid_formats))
+    if "png" not in output_formats:
+        raise ConfigurationError("style.output_formats must include png")
+    for key in ("transparent", "constrained_layout", "tight_layout", "zero_line"):
+        if not isinstance(raw.get(key, getattr(PlotStyle(), key)), bool):
+            raise ConfigurationError(f"style.{key} must be true or false")
+    return PlotStyle(
+        title_fontsize=_positive_number(raw.get("title_fontsize", 15.0), "style.title_fontsize"),
+        axis_label_fontsize=_positive_number(raw.get("axis_label_fontsize", 11.0), "style.axis_label_fontsize"),
+        tick_fontsize=_positive_number(raw.get("tick_fontsize", 9.0), "style.tick_fontsize"),
+        legend_fontsize=_positive_number(raw.get("legend_fontsize", 9.0), "style.legend_fontsize"),
+        legend_location=_nonempty_string(raw.get("legend_location", "best"), "style.legend_location"),
+        legend_columns=legend_columns,
+        grid_alpha=_ratio(raw.get("grid_alpha", 0.28), "style.grid_alpha"),
+        grid_linewidth=_positive_number(raw.get("grid_linewidth", 0.6), "style.grid_linewidth"),
+        primary_line_style=_nonempty_string(raw.get("primary_line_style", "-"), "style.primary_line_style"),
+        secondary_line_style=_nonempty_string(raw.get("secondary_line_style", "--"), "style.secondary_line_style"),
+        background=_nonempty_string(raw.get("background", "white"), "style.background"),
+        transparent=raw.get("transparent", False),
+        constrained_layout=raw.get("constrained_layout", False),
+        tight_layout=raw.get("tight_layout", True),
+        zero_line=raw.get("zero_line", True),
+        output_formats=output_formats,
+    )
 
 
 def _load_plot(raw: object, index: int) -> PlotDefinition:
@@ -203,6 +328,8 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
             "secondary_y_label",
             "output_filename",
             "reference_chart_number",
+            "show_phase_boundaries",
+            "show_phase_labels",
             "series",
         },
         context,
@@ -227,6 +354,14 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
         or reference_chart_number < 1
     ):
         raise ConfigurationError(f"{context}.reference_chart_number must be null or a positive integer")
+    show_phase_boundaries = raw.get("show_phase_boundaries", False)
+    show_phase_labels = raw.get("show_phase_labels", False)
+    if not isinstance(show_phase_boundaries, bool):
+        raise ConfigurationError(f"{context}.show_phase_boundaries must be true or false")
+    if not isinstance(show_phase_labels, bool):
+        raise ConfigurationError(f"{context}.show_phase_labels must be true or false")
+    if show_phase_labels and not show_phase_boundaries:
+        raise ConfigurationError(f"{context}.show_phase_labels requires show_phase_boundaries")
 
     series_raw = raw.get("series")
     if not isinstance(series_raw, list) or not series_raw:
@@ -243,6 +378,8 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
         primary_y_label=primary_y_label,
         secondary_y_label=secondary_y_label,
         reference_chart_number=reference_chart_number,
+        show_phase_boundaries=show_phase_boundaries,
+        show_phase_labels=show_phase_labels,
     )
 
 
@@ -265,6 +402,7 @@ def render_plots(
     output_dir: str | Path,
     import_options: ImportOptions | None = None,
     math_config_file: str | Path | None = None,
+    phase_provenance_file: str | Path | None = None,
 ) -> PlottingResult:
     config_path = Path(config_file).expanduser().resolve()
     config = load_plotting_config(config_path)
@@ -296,6 +434,7 @@ def render_plots(
 
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
+    phase_boundaries = _load_phase_boundaries(phase_provenance_file, dataset.quality.sample_count)
 
     rendered: list[RenderedPlot] = []
     for definition in config.plots:
@@ -307,6 +446,7 @@ def render_plots(
                 channels_by_id,
                 values_by_id,
                 dataset.quality.sample_count,
+                phase_boundaries,
             )
         )
 
@@ -318,6 +458,7 @@ def render_plots(
         values_by_id=values_by_id,
         rendered_plots=rendered,
         math_result=math_result,
+        phase_boundaries=phase_boundaries,
     )
     _write_metadata(result, destination)
     return result
@@ -330,15 +471,24 @@ def _render_one_plot(
     channels_by_id: Mapping[str, ChannelInfo],
     values_by_id: Mapping[str, np.ndarray],
     sample_count: int,
+    phase_boundaries: Sequence[PhaseBoundary],
 ) -> RenderedPlot:
     x_channel = channels_by_id[definition.x_channel_id]
     x_values = np.asarray(values_by_id[definition.x_channel_id], dtype=np.float64)
     _validate_series_values(x_values, definition.x_channel_id, "x-axis")
 
-    figure, primary_axis = plt.subplots(figsize=(defaults.width_inches, defaults.height_inches))
+    style = defaults.style
+    figure, primary_axis = plt.subplots(
+        figsize=(defaults.width_inches, defaults.height_inches),
+        constrained_layout=style.constrained_layout,
+        facecolor=style.background,
+    )
+    figure.patch.set_alpha(0.0 if style.transparent else 1.0)
+    primary_axis.set_facecolor(style.background)
     secondary_axis = None
     primary_ids: list[str] = []
     secondary_ids: list[str] = []
+    legend_labels: list[str] = []
 
     try:
         for item in definition.series:
@@ -353,27 +503,70 @@ def _render_one_plot(
                 secondary_ids.append(item.channel_id)
             else:
                 primary_ids.append(item.channel_id)
+            label = _clean_visible_text(item.label or channel.display_name)
+            legend_labels.append(label)
             axis.plot(
                 x_values,
                 values,
-                label=item.label or channel.display_name,
+                label=label,
                 linewidth=defaults.line_width,
-                linestyle="--" if item.axis == "secondary" else "-",
+                linestyle=style.secondary_line_style if item.axis == "secondary" else style.primary_line_style,
+                antialiased=True,
             )
 
-        primary_axis.set_title(definition.title)
-        primary_axis.set_xlabel(definition.x_label or _axis_label(x_channel))
+        primary_axis.set_title(
+            _clean_visible_text(definition.title),
+            fontsize=style.title_fontsize,
+            pad=12,
+        )
+        primary_axis.set_xlabel(
+            _clean_visible_text(definition.x_label or _axis_label(x_channel)),
+            fontsize=style.axis_label_fontsize,
+        )
         primary_axis.set_ylabel(
-            definition.primary_y_label
-            or _automatic_y_label(primary_ids, channels_by_id, fallback="Value")
+            _clean_visible_text(
+                definition.primary_y_label
+                or _automatic_y_label(primary_ids, channels_by_id, fallback="Value")
+            ),
+            fontsize=style.axis_label_fontsize,
         )
         if secondary_axis is not None:
+            secondary_axis.set_facecolor("none")
             secondary_axis.set_ylabel(
-                definition.secondary_y_label
-                or _automatic_y_label(secondary_ids, channels_by_id, fallback="Value")
+                _clean_visible_text(
+                    definition.secondary_y_label
+                    or _automatic_y_label(secondary_ids, channels_by_id, fallback="Value")
+                ),
+                fontsize=style.axis_label_fontsize,
+            )
+        _apply_axis_format(primary_axis, definition.x_label or _axis_label(x_channel), axis_name="x")
+        _apply_axis_format(
+            primary_axis,
+            definition.primary_y_label or _automatic_y_label(primary_ids, channels_by_id, fallback="Value"),
+            axis_name="y",
+        )
+        if secondary_axis is not None:
+            _apply_axis_format(
+                secondary_axis,
+                definition.secondary_y_label or _automatic_y_label(secondary_ids, channels_by_id, fallback="Value"),
+                axis_name="y",
             )
         if defaults.grid:
-            primary_axis.grid(True)
+            primary_axis.grid(True, color="#B8C2CC", alpha=style.grid_alpha, linewidth=style.grid_linewidth)
+            primary_axis.set_axisbelow(True)
+        if style.zero_line:
+            _draw_zero_line(primary_axis)
+            if secondary_axis is not None:
+                _draw_zero_line(secondary_axis)
+        phase_boundary_count = 0
+        if definition.show_phase_boundaries:
+            phase_boundary_count = _draw_phase_boundaries(
+                primary_axis,
+                x_values,
+                phase_boundaries,
+                show_labels=definition.show_phase_labels,
+                fontsize=style.tick_fontsize,
+            )
         if defaults.legend:
             handles, labels = primary_axis.get_legend_handles_labels()
             if secondary_axis is not None:
@@ -381,25 +574,64 @@ def _render_one_plot(
                 handles += second_handles
                 labels += second_labels
             if handles:
-                primary_axis.legend(handles, labels, loc="best")
+                primary_axis.legend(
+                    handles,
+                    labels,
+                    loc=style.legend_location,
+                    ncols=style.legend_columns,
+                    fontsize=style.legend_fontsize,
+                    frameon=True,
+                    framealpha=0.92,
+                    facecolor="white",
+                    edgecolor="#B8C2CC",
+                )
 
-        figure.tight_layout()
-        output_path = output_dir / definition.output_filename
-        figure.savefig(output_path, dpi=defaults.dpi, format="png")
+        for axis in (primary_axis, secondary_axis):
+            if axis is not None:
+                axis.tick_params(labelsize=style.tick_fontsize)
+                for spine in axis.spines.values():
+                    spine.set_color("#7A8691")
+                    spine.set_linewidth(0.8)
+        if style.tight_layout and not style.constrained_layout:
+            figure.tight_layout()
+        png_dir = output_dir / "png"
+        png_dir.mkdir(parents=True, exist_ok=True)
+        output_path = png_dir / definition.output_filename
+        figure.savefig(
+            output_path,
+            dpi=defaults.dpi,
+            format="png",
+            transparent=style.transparent,
+            facecolor=figure.get_facecolor(),
+        )
+        svg_path: Path | None = None
+        if "svg" in style.output_formats:
+            svg_dir = output_dir / "svg"
+            svg_dir.mkdir(parents=True, exist_ok=True)
+            svg_path = svg_dir / f"{Path(definition.output_filename).stem}.svg"
+            figure.savefig(svg_path, format="svg", transparent=style.transparent, facecolor=figure.get_facecolor())
     finally:
         plt.close(figure)
 
     return RenderedPlot(
         plot_id=definition.plot_id,
-        title=definition.title,
-        output_file=str((output_dir / definition.output_filename).resolve()),
+        title=_clean_visible_text(definition.title),
+        output_file=str(output_path.resolve()),
         x_channel_id=definition.x_channel_id,
         x_display_name=x_channel.display_name,
         x_unit=x_channel.unit,
         primary_series_ids=tuple(primary_ids),
         secondary_series_ids=tuple(secondary_ids),
+        legend_labels=tuple(legend_labels),
         reference_chart_number=definition.reference_chart_number,
         sample_count=sample_count,
+        figure_width_inches=defaults.width_inches,
+        figure_height_inches=defaults.height_inches,
+        dpi=defaults.dpi,
+        axes_count=2 if secondary_axis is not None else 1,
+        png_file=str(output_path.resolve()),
+        svg_file=str(svg_path.resolve()) if svg_path is not None else None,
+        phase_boundary_count=phase_boundary_count,
     )
 
 
@@ -420,7 +652,12 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
             "x_unit",
             "primary_series_ids",
             "secondary_series_ids",
+            "legend_labels",
             "sample_count",
+            "axes_count",
+            "png_file",
+            "svg_file",
+            "phase_boundary_count",
         ]
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -437,7 +674,12 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
                     "x_unit": item.x_unit or "",
                     "primary_series_ids": ";".join(item.primary_series_ids),
                     "secondary_series_ids": ";".join(item.secondary_series_ids),
+                    "legend_labels": ";".join(item.legend_labels),
                     "sample_count": item.sample_count,
+                    "axes_count": item.axes_count,
+                    "png_file": item.png_file,
+                    "svg_file": item.svg_file or "",
+                    "phase_boundary_count": item.phase_boundary_count,
                 }
             )
 
@@ -458,7 +700,26 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
             "grid": result.config.defaults.grid,
             "legend": result.config.defaults.legend,
             "line_width": result.config.defaults.line_width,
+            "style": {
+                "title_fontsize": result.config.defaults.style.title_fontsize,
+                "axis_label_fontsize": result.config.defaults.style.axis_label_fontsize,
+                "tick_fontsize": result.config.defaults.style.tick_fontsize,
+                "legend_fontsize": result.config.defaults.style.legend_fontsize,
+                "legend_location": result.config.defaults.style.legend_location,
+                "legend_columns": result.config.defaults.style.legend_columns,
+                "grid_alpha": result.config.defaults.style.grid_alpha,
+                "grid_linewidth": result.config.defaults.style.grid_linewidth,
+                "transparent": result.config.defaults.style.transparent,
+                "constrained_layout": result.config.defaults.style.constrained_layout,
+                "tight_layout": result.config.defaults.style.tight_layout,
+                "zero_line": result.config.defaults.style.zero_line,
+                "output_formats": list(result.config.defaults.style.output_formats),
+            },
         },
+        "secondary_axis_plot_count": result.secondary_axis_plot_count,
+        "svg_count": result.svg_count,
+        "phase_aware_plot_count": result.phase_aware_plot_count,
+        "phase_boundary_count": len(result.phase_boundaries),
         "plots": [item.to_dict() for item in result.rendered_plots],
     }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -474,6 +735,9 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
         f"Available channels: {len(result.channels_by_id)}",
         f"Plots rendered: {result.plot_count}",
         f"Series rendered: {result.series_count}",
+        f"Secondary-axis plots: {result.secondary_axis_plot_count}",
+        f"SVG plots: {result.svg_count}",
+        f"Phase-aware plots: {result.phase_aware_plot_count}",
         "",
         "Plots:",
     ]
@@ -485,6 +749,122 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
             f"secondary={','.join(item.secondary_series_ids) or '-'}{reference}"
         )
     summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _load_phase_boundaries(path: str | Path | None, sample_count: int) -> tuple[PhaseBoundary, ...]:
+    if path is None:
+        return ()
+    provenance_path = Path(path).expanduser().resolve()
+    if not provenance_path.exists():
+        raise PlottingError(f"Phase provenance file does not exist: {provenance_path}")
+    with provenance_path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    if not rows:
+        return ()
+    required = {"output_sample_index", "phase_id", "phase_type"}
+    missing = required - set(rows[0])
+    if missing:
+        raise PlottingError("Phase provenance is missing required column(s): " + ", ".join(sorted(missing)))
+    phases: list[PhaseBoundary] = []
+    current_id = ""
+    current_type = ""
+    start_index = 0
+    previous_index = -1
+    for row in rows:
+        try:
+            sample_index = int(row["output_sample_index"])
+        except ValueError as exc:
+            raise PlottingError("Phase provenance contains a non-integer output_sample_index") from exc
+        if sample_index != previous_index + 1:
+            raise PlottingError("Phase provenance output_sample_index values must be contiguous")
+        phase_id = row["phase_id"]
+        phase_type = row["phase_type"]
+        if sample_index == 0:
+            current_id = phase_id
+            current_type = phase_type
+            start_index = sample_index
+        elif phase_id != current_id:
+            phases.append(PhaseBoundary(current_id, current_type, start_index, sample_index - 1))
+            current_id = phase_id
+            current_type = phase_type
+            start_index = sample_index
+        previous_index = sample_index
+    if previous_index + 1 != sample_count:
+        raise PlottingError(
+            f"Phase provenance contains {previous_index + 1} samples but plotted data contains {sample_count}"
+        )
+    phases.append(PhaseBoundary(current_id, current_type, start_index, previous_index))
+    return tuple(phases)
+
+
+def _apply_axis_format(plot_axis, label: str, *, axis_name: str) -> None:
+    label_lower = label.casefold()
+    axis_obj = getattr(plot_axis, f"{axis_name}axis")
+    axis_obj.set_major_locator(MaxNLocator(nbins=8, min_n_ticks=4))
+    if "%" in label or "soc" in label_lower:
+        axis_obj.set_major_formatter(StrMethodFormatter("{x:.0f}"))
+    elif any(unit in label_lower for unit in ("km", "kph", "kw", "kwh", "kg", "l/h", "litre", "rpm", "nm")):
+        axis_obj.set_major_formatter(StrMethodFormatter("{x:.1f}"))
+    elif "time" in label_lower or "min" in label_lower or "s]" in label_lower:
+        axis_obj.set_major_formatter(StrMethodFormatter("{x:.1f}"))
+    else:
+        axis_obj.set_major_formatter(StrMethodFormatter("{x:g}"))
+
+
+def _draw_zero_line(axis) -> None:
+    ymin, ymax = axis.get_ylim()
+    if ymin < 0.0 < ymax:
+        axis.axhline(0.0, color="#4D5963", linewidth=0.75, alpha=0.55, zorder=0)
+
+
+def _draw_phase_boundaries(
+    axis,
+    x_values: np.ndarray,
+    phase_boundaries: Sequence[PhaseBoundary],
+    *,
+    show_labels: bool,
+    fontsize: float,
+) -> int:
+    if not phase_boundaries:
+        return 0
+    drawn = 0
+    y_top = axis.get_ylim()[1]
+    for phase in phase_boundaries[1:]:
+        if phase.start_index >= x_values.size:
+            continue
+        axis.axvline(
+            float(x_values[phase.start_index]),
+            color="#6E7781",
+            linewidth=0.65,
+            linestyle=":",
+            alpha=0.45,
+            zorder=0,
+        )
+        drawn += 1
+    if show_labels:
+        for phase in phase_boundaries:
+            midpoint = int((phase.start_index + phase.end_index) / 2)
+            if midpoint >= x_values.size:
+                continue
+            axis.text(
+                float(x_values[midpoint]),
+                y_top,
+                phase.phase_id,
+                ha="center",
+                va="bottom",
+                fontsize=fontsize,
+                color="#4D5963",
+                clip_on=True,
+            )
+    return drawn
+
+
+def _clean_visible_text(value: str) -> str:
+    text = value.strip()
+    if _RAW_ID_PATTERN.search(text):
+        text = _RAW_ID_PATTERN.sub("", text)
+    text = text.replace("_", " ")
+    return " ".join(text.split())
 
 
 def _validate_series_values(values: np.ndarray, channel_id: str, role: str) -> None:
@@ -534,6 +914,15 @@ def _positive_number(value: object, context: str) -> float:
     result = float(value)
     if not math.isfinite(result) or result <= 0.0:
         raise ConfigurationError(f"{context} must be a positive finite number")
+    return result
+
+
+def _ratio(value: object, context: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ConfigurationError(f"{context} must be from 0.0 to 1.0")
+    result = float(value)
+    if not math.isfinite(result) or not 0.0 <= result <= 1.0:
+        raise ConfigurationError(f"{context} must be from 0.0 to 1.0")
     return result
 
 

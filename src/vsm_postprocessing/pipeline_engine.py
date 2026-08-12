@@ -261,6 +261,7 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
     stages: list[PipelineStage] = []
     report_path: Path | None = None
     powerpoint_path: Path | None = None
+    plotting_phase_provenance_path: Path | None = None
     current_stage_name = "initialization"
     current_stage_started_at: str | None = None
     current_stage_started_perf: float | None = None
@@ -359,6 +360,7 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
             provenance_path = export_composition_plan(
                 plan, duty_dir / "duty_cycle_provenance.csv"
             )
+            plotting_phase_provenance_path = provenance_path
             profile_provenance_path = _export_profile_provenance(
                 composition, duty_dir / "profile_provenance.csv"
             )
@@ -497,6 +499,7 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
             stage_dirs["plotting"],
             processing_import_options,
             math_config_file=config.math_config,
+            phase_provenance_file=plotting_phase_provenance_path,
         )
         plot_outputs = _plot_outputs(plotting, stage_dirs["plotting"])
         pass_stage(
@@ -507,6 +510,9 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
                 "samples": plotting.sample_count,
                 "plots": plotting.plot_count,
                 "series": plotting.series_count,
+                "secondary_axis_plots": plotting.secondary_axis_plot_count,
+                "svg_plots": plotting.svg_count,
+                "phase_aware_plots": plotting.phase_aware_plot_count,
             },
             started_at,
             started_perf,
@@ -860,6 +866,8 @@ def _plot_outputs(result: PlottingResult, output_dir: Path) -> dict[str, Path]:
     }
     for item in result.rendered_plots:
         outputs[f"plot:{item.plot_id}"] = Path(item.output_file)
+        if item.svg_file is not None:
+            outputs[f"plot_svg:{item.plot_id}"] = Path(item.svg_file)
     return outputs
 
 

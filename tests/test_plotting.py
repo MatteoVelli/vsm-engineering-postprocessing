@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import csv
+import json
+import struct
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pytest
 
 from vsm_postprocessing.errors import ConfigurationError, PlottingError
@@ -60,12 +63,155 @@ def test_basic_plot_is_rendered_with_metadata(tmp_path: Path) -> None:
     assert result.sample_count == 3
     assert result.plot_count == 1
     assert result.series_count == 1
-    image_path = output_dir / "speed.png"
+    image_path = Path(result.rendered_plots[0].output_file)
     assert image_path.exists()
+    assert image_path.parent == output_dir / "png"
     assert image_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     assert (output_dir / "plot_catalogue.csv").exists()
     assert (output_dir / "plot_manifest.json").exists()
     assert (output_dir / "plotting_summary.txt").exists()
+
+
+def _png_size(path: Path) -> tuple[int, int]:
+    with path.open("rb") as handle:
+        header = handle.read(24)
+    return struct.unpack(">II", header[16:24])
+
+
+def test_engineering_style_generates_expected_dimensions_svg_and_clean_labels(tmp_path: Path) -> None:
+    data_path = tmp_path / "data.csv"
+    config_path = tmp_path / "plots.yaml"
+    _write_csv(data_path)
+    config_path.write_text(
+        """version: 1
+defaults:
+  width_inches: 7
+  height_inches: 4
+  dpi: 100
+  grid: true
+  legend: true
+  line_width: 1.4
+style:
+  title_fontsize: 14
+  axis_label_fontsize: 10
+  tick_fontsize: 8
+  legend_fontsize: 8
+  output_formats: [png, svg]
+plots:
+  - plot_id: clean
+    title: Vehicle Speed vs Time
+    x_channel_id: time__col_001
+    x_label: Time [s]
+    primary_y_label: Speed [kph]
+    secondary_y_label: Power [kW]
+    output_filename: clean.png
+    series:
+      - channel_id: speed__col_002
+        axis: primary
+        label: Speed
+      - channel_id: power__col_003
+        axis: secondary
+        label: power__col_003
+""",
+        encoding="utf-8",
+    )
+
+    before = set(plt.get_fignums())
+    result = render_plots(data_path, config_path, tmp_path / "out")
+    after = set(plt.get_fignums())
+    item = result.rendered_plots[0]
+
+    assert before == after
+    assert item.figure_width_inches == 7
+    assert item.figure_height_inches == 4
+    assert item.dpi == 100
+    assert item.axes_count == 2
+    assert _png_size(Path(item.png_file)) == (700, 400)
+    assert item.svg_file is not None
+    assert Path(item.svg_file).exists()
+    assert item.legend_labels == ("Speed", "power")
+    assert "__col_" not in item.title
+    assert all("__col_" not in label for label in item.legend_labels)
+
+
+def test_optional_phase_boundaries_are_rendered_from_provenance(tmp_path: Path) -> None:
+    data_path = tmp_path / "data.csv"
+    config_path = tmp_path / "plots.yaml"
+    provenance_path = tmp_path / "duty_cycle_provenance.csv"
+    _write_csv(data_path)
+    provenance_path.write_text(
+        "output_sample_index,phase_id,phase_type\n"
+        "0,P01,field\n"
+        "1,P01,field\n"
+        "2,P02,road\n",
+        encoding="utf-8",
+    )
+    _write_plot_config(
+        config_path,
+        """  - plot_id: phase_plot
+    title: Speed
+    x_channel_id: time__col_001
+    output_filename: speed.png
+    show_phase_boundaries: true
+    show_phase_labels: true
+    series:
+      - channel_id: speed__col_002
+        axis: primary
+""",
+    )
+
+    result = render_plots(data_path, config_path, tmp_path / "out", phase_provenance_file=provenance_path)
+
+    assert len(result.phase_boundaries) == 2
+    assert result.phase_aware_plot_count == 1
+    assert result.rendered_plots[0].phase_boundary_count == 1
+
+
+def test_repeated_generation_does_not_accumulate_open_figures(tmp_path: Path) -> None:
+    data_path = tmp_path / "data.csv"
+    config_path = tmp_path / "plots.yaml"
+    _write_csv(data_path)
+    _write_plot_config(
+        config_path,
+        """  - plot_id: speed_plot
+    title: Speed
+    x_channel_id: time__col_001
+    output_filename: speed.png
+    series:
+      - channel_id: speed__col_002
+        axis: primary
+""",
+    )
+
+    before = set(plt.get_fignums())
+    render_plots(data_path, config_path, tmp_path / "out1")
+    render_plots(data_path, config_path, tmp_path / "out2")
+    assert set(plt.get_fignums()) == before
+
+
+def test_plot_manifest_records_engineering_quality_metadata(tmp_path: Path) -> None:
+    data_path = tmp_path / "data.csv"
+    config_path = tmp_path / "plots.yaml"
+    output_dir = tmp_path / "out"
+    _write_csv(data_path)
+    _write_plot_config(
+        config_path,
+        """  - plot_id: speed_plot
+    title: Speed
+    x_channel_id: time__col_001
+    output_filename: speed.png
+    series:
+      - channel_id: speed__col_002
+        axis: primary
+""",
+    )
+
+    render_plots(data_path, config_path, output_dir)
+    manifest = json.loads((output_dir / "plot_manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["defaults"]["style"]["title_fontsize"] == 15.0
+    assert manifest["plots"][0]["png_file"].endswith("speed.png")
+    assert manifest["plots"][0]["axes_count"] == 1
 
 
 def test_secondary_axis_series_is_recorded(tmp_path: Path) -> None:

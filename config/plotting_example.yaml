@@ -1,16 +1,34 @@
 version: 1
 
 defaults:
-  width_inches: 12
-  height_inches: 6
-  dpi: 150
+  width_inches: 11.5
+  height_inches: 6.2
+  dpi: 180
   grid: true
   legend: true
-  line_width: 1.2
+  line_width: 1.35
+
+style:
+  title_fontsize: 15
+  axis_label_fontsize: 11
+  tick_fontsize: 9
+  legend_fontsize: 9
+  legend_location: best
+  legend_columns: 1
+  grid_alpha: 0.28
+  grid_linewidth: 0.6
+  primary_line_style: "-"
+  secondary_line_style: "--"
+  background: white
+  transparent: false
+  constrained_layout: false
+  tight_layout: true
+  zero_line: true
+  output_formats: [png, svg]
 
 plots:
   - plot_id: speed_vs_time
-    title: Speed Vs Time
+    title: Vehicle Speed vs Time
     x_channel_id: calc_time_minutes
     x_label: Time [min]
     primary_y_label: Speed [kph]
@@ -21,7 +39,7 @@ plots:
         label: Speed
 
   - plot_id: battery_soc_vs_distance
-    title: Battery SOC Vs Distance
+    title: Battery State of Charge vs Distance
     x_channel_id: calc_distance_km
     x_label: Distance [km]
     primary_y_label: Speed [kph]
@@ -36,7 +54,7 @@ plots:
         label: Battery SOC
 
   - plot_id: battery_and_generator_power_vs_time
-    title: Battery Power Charge-Discharge
+    title: Battery Power Charge and Discharge
     x_channel_id: calc_time_minutes
     x_label: Time [min]
     primary_y_label: Power [kW]
@@ -50,7 +68,7 @@ plots:
         label: Total Generator Power
 
   - plot_id: engine_power_and_fuel_vs_distance
-    title: Engine Power Required & Fuel Consumption Vs Distance
+    title: Engine Power and Fuel Consumption vs Distance
     x_channel_id: calc_distance_km
     x_label: Distance [km]
     primary_y_label: Engine Power [kW]
@@ -80,7 +98,7 @@ plots:
         label: Auxiliary Energy Accumulated
 
   - plot_id: power_at_wheels_and_edu
-    title: Power at Wheels and EDU
+    title: Wheel and EDU Power
     x_channel_id: calc_distance_km
     x_label: Distance [km]
     primary_y_label: Power [kW]
@@ -127,11 +145,12 @@ plots:
 
   - plot_id: report_speed_vs_distance
     reference_chart_number: 3
-    title: Speed Vs Distance
+    title: Vehicle Speed vs Distance
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Speed [kph]
     output_filename: report_03_speed_vs_distance.png
+    show_phase_boundaries: true
     series:
       - channel_id: chassis_speed__col_005
         axis: primary
@@ -139,7 +158,7 @@ plots:
 
   - plot_id: report_power_at_wheels_and_edu
     reference_chart_number: 4
-    title: Power at Wheels and EDU
+    title: Wheel and EDU Power
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Power [kW]
@@ -154,18 +173,19 @@ plots:
 
   - plot_id: report_generator_power
     reference_chart_number: 5
-    title: Generator Power
+    title: Generator Power and Fuel Consumption
     x_channel_id: time__col_002
     x_label: Time [min]
-    primary_y_label: Power [kW] & Fuel Consumption [kg]
-    secondary_y_label: Energy [kWh]
+    primary_y_label: Generator Power [kW]
+    secondary_y_label: Fuel / Energy [kg, kWh]
     output_filename: report_05_generator_power.png
+    show_phase_boundaries: true
     series:
       - channel_id: total_generator_power__col_070
         axis: primary
         label: Total Generator Power
       - channel_id: engine_fuelconsumption_absolut__col_030
-        axis: primary
+        axis: secondary
         label: Engine Fuel Consumption
       - channel_id: electricsystem_em_energy_released__col_020
         axis: secondary
@@ -173,7 +193,7 @@ plots:
 
   - plot_id: report_battery_power_charge_discharge
     reference_chart_number: 6
-    title: Battery Power Charge-Discharge
+    title: Battery Power Charge and Discharge
     x_channel_id: time__col_002
     x_label: Time [min]
     primary_y_label: Power [kW]
@@ -188,7 +208,7 @@ plots:
 
   - plot_id: report_battery_energy_distance_based
     reference_chart_number: 7
-    title: Batterey Energy - Distance Based
+    title: Battery Energy vs Distance
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Speed [kph]
@@ -204,7 +224,7 @@ plots:
 
   - plot_id: report_energy_released
     reference_chart_number: 8
-    title: Energy Released
+    title: Released and Recuperated Energy
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Energy [kWh]
@@ -219,7 +239,7 @@ plots:
 
   - plot_id: report_speed_vs_time
     reference_chart_number: 9
-    title: Speed Vs Time
+    title: Vehicle Speed vs Time
     x_channel_id: time__col_002
     x_label: Time [min]
     primary_y_label: Speed [kph]
@@ -231,12 +251,13 @@ plots:
 
   - plot_id: report_battery_soc
     reference_chart_number: 10
-    title: Battery SOC
+    title: Battery State of Charge and Vehicle Speed
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Speed [kph]
     secondary_y_label: Battery SOC [%]
     output_filename: report_10_battery_soc.png
+    show_phase_boundaries: true
     series:
       - channel_id: chassis_speed__col_005
         axis: primary
@@ -247,7 +268,7 @@ plots:
 
   - plot_id: report_agrochemical_discharge_vs_distance
     reference_chart_number: 11
-    title: Agrochemical Discharge Vs Distance
+    title: Agrochemical Discharge vs Distance
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Agrochemical Discharge [kg]
@@ -259,7 +280,7 @@ plots:
 
   - plot_id: report_battery_energy_time_based
     reference_chart_number: 12
-    title: Batterey Energy - Time Based
+    title: Battery Energy vs Time
     x_channel_id: time__col_002
     x_label: Time [min]
     primary_y_label: Battery Energy [kWh]
@@ -275,7 +296,7 @@ plots:
 
   - plot_id: report_tyres_energy_consumption
     reference_chart_number: 13
-    title: Tyres Energy Consumption
+    title: Tyre Rolling Resistance Energy
     x_channel_id: time__col_002
     x_label: Time [min]
     primary_y_label: Rolling Resistance Power [kW]
@@ -287,11 +308,11 @@ plots:
         label: Total Rolling Resistance Power
       - channel_id: tyre_rolling_resistance_energy_accomulated__col_050
         axis: secondary
-        label: Tyre Rolling Resistance Energy Accomulated
+        label: Tyre Rolling Resistance Energy Accumulated
 
   - plot_id: report_battery_energy_and_fuel_vs_time
     reference_chart_number: 16
-    title: Battery Energy & Fuel Consumption Vs Time
+    title: Battery Energy and Fuel Consumption vs Time
     x_channel_id: time__col_002
     x_label: Time [min]
     primary_y_label: Battery Energy [kWh]
@@ -307,7 +328,7 @@ plots:
 
   - plot_id: report_engine_power_and_fuel_vs_distance
     reference_chart_number: 17
-    title: Engine Power Required & Fuel Consumption Vs Distance
+    title: Engine Power and Fuel Consumption vs Distance
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Fuel Consumption [kg]
@@ -323,7 +344,7 @@ plots:
 
   - plot_id: report_battery_energy_and_fuel_vs_distance
     reference_chart_number: 18
-    title: Battery Energy & Fuel Consumption Vs Distance
+    title: Battery Energy and Fuel Consumption vs Distance
     x_channel_id: distance__col_007
     x_label: Distance [km]
     primary_y_label: Battery Energy [kWh]
@@ -339,7 +360,7 @@ plots:
 
   - plot_id: report_engine_power_and_fuel_vs_time
     reference_chart_number: 19
-    title: Engine Power Required & Fuel Consumption Vs Time
+    title: Engine Power and Fuel Consumption vs Time
     x_channel_id: time__col_002
     x_label: Time [min]
     primary_y_label: Fuel Consumption [kg]
@@ -355,7 +376,7 @@ plots:
 
   - plot_id: report_agrochemical_discharge_and_charge_vs_time
     reference_chart_number: 20
-    title: Agrochemical Discharge & Charge Vs Time
+    title: Agrochemical Discharge and Battery SOC vs Time
     x_channel_id: time__col_002
     x_label: Time [min]
     primary_y_label: Agrochemical Discharge [kg]

@@ -12,11 +12,12 @@ from .plotting_engine import render_plots
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="vsm-plot",
-        description="Render deterministic configured PNG plots from raw and math VSM channels.",
+        description="Render deterministic configured engineering PNG/SVG plots from raw and math VSM channels.",
     )
     parser.add_argument("input_file", help="Path to the source .xlsx or .csv file")
     parser.add_argument("--config", required=True, help="Path to the versioned YAML plotting file")
     parser.add_argument("--math-config", help="Optional math-channel YAML file used before plotting")
+    parser.add_argument("--phase-provenance", help="Optional duty-cycle provenance CSV for phase boundary overlays")
     parser.add_argument("--output-dir", default="outputs/plots", help="Output directory")
     parser.add_argument("--sheet", dest="sheet_name", help="Excel sheet name override")
     parser.add_argument("--header-row", type=int, help="1-based header row override")
@@ -48,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output_dir,
             options,
             math_config_file=args.math_config,
+            phase_provenance_file=args.phase_provenance,
         )
     except VSMPostProcessingError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -59,6 +61,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  available channels: {len(result.channels_by_id)}")
     print(f"  plots rendered: {result.plot_count}")
     print(f"  series rendered: {result.series_count}")
+    print(f"  secondary-axis plots: {result.secondary_axis_plot_count}")
+    print(f"  svg plots: {result.svg_count}")
+    print(f"  phase-aware plots: {result.phase_aware_plot_count}")
     print("  plots:")
     for index, item in enumerate(result.rendered_plots, start=1):
         reference = f" | reference chart {item.reference_chart_number}" if item.reference_chart_number else ""
