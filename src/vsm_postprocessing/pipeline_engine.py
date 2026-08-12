@@ -39,6 +39,8 @@ class PipelineDutyCycleConfig:
     scenario_config: Path
     profile_provider_config: Path
     profile_workbook: Path
+    profile_validation_mode: str = "strict"
+    profile_original_filename: str | None = None
 
 
 @dataclass(frozen=True)
@@ -127,7 +129,13 @@ _ALLOWED_CONFIG_KEYS = {
     "powerpoint_report",
 }
 _ALLOWED_OUTPUT_KEYS = {"root_dir", "clean_before_run"}
-_ALLOWED_DUTY_CYCLE_KEYS = {"scenario", "profile_provider", "profile_workbook"}
+_ALLOWED_DUTY_CYCLE_KEYS = {
+    "scenario",
+    "profile_provider",
+    "profile_workbook",
+    "profile_validation_mode",
+    "profile_original_filename",
+}
 
 
 def load_pipeline_config(path: str | Path) -> PipelineConfig:
@@ -178,6 +186,9 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
         if not isinstance(duty_cycle_raw, dict):
             raise ConfigurationError("duty_cycle must be a YAML mapping")
         _reject_unknown_keys(duty_cycle_raw, _ALLOWED_DUTY_CYCLE_KEYS, "duty_cycle")
+        profile_validation_mode = str(duty_cycle_raw.get("profile_validation_mode", "strict")).strip()
+        if profile_validation_mode not in {"strict", "compatible"}:
+            raise ConfigurationError("duty_cycle.profile_validation_mode must be 'strict' or 'compatible'")
         duty_cycle = PipelineDutyCycleConfig(
             scenario_config=_resolve_required_path(
                 config_path, duty_cycle_raw.get("scenario"), "duty_cycle.scenario"
@@ -187,6 +198,11 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
             ),
             profile_workbook=_resolve_required_path(
                 config_path, duty_cycle_raw.get("profile_workbook"), "duty_cycle.profile_workbook"
+            ),
+            profile_validation_mode=profile_validation_mode,
+            profile_original_filename=_optional_string(
+                duty_cycle_raw.get("profile_original_filename"),
+                "duty_cycle.profile_original_filename",
             ),
         )
 
@@ -349,7 +365,12 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
             source_dataset = load_data_file(config.input_file, config.import_options)
             scenario = load_duty_cycle_config(config.duty_cycle.scenario_config)
             provider_config = load_profile_provider_config(config.duty_cycle.profile_provider_config)
-            provider = WorkbookRowProfileProvider(provider_config, config.duty_cycle.profile_workbook)
+            provider = WorkbookRowProfileProvider(
+                provider_config,
+                config.duty_cycle.profile_workbook,
+                validation_mode=config.duty_cycle.profile_validation_mode,
+                original_filename=config.duty_cycle.profile_original_filename,
+            )
             composition = compose_duty_cycle(scenario, source_dataset, provider)
             plan = build_composition_plan(scenario, profile_provider=provider)
 
@@ -704,6 +725,9 @@ def _write_pipeline_metadata(result: PipelineResult) -> None:
         configs["powerpoint_report"] = config.powerpoint_report_config
     duty_cycle_manifest = None
     if config.duty_cycle is not None:
+        provider_config = load_profile_provider_config(config.duty_cycle.profile_provider_config)
+        profile_workbook_sha256 = sha256_file(config.duty_cycle.profile_workbook)
+        profile_original_filename = config.duty_cycle.profile_original_filename or config.duty_cycle.profile_workbook.name
         duty_cycle_manifest = {
             "scenario_config": {
                 "path": str(config.duty_cycle.scenario_config),
@@ -715,7 +739,24 @@ def _write_pipeline_metadata(result: PipelineResult) -> None:
             },
             "profile_workbook": {
                 "path": str(config.duty_cycle.profile_workbook),
-                "sha256": sha256_file(config.duty_cycle.profile_workbook),
+                "sha256": profile_workbook_sha256,
+                "original_filename": profile_original_filename,
+                "persisted_filename": config.duty_cycle.profile_workbook.name,
+                "expected_sha256": provider_config.expected_sha256,
+                "reference_sha256_matches": (
+                    None
+                    if provider_config.expected_sha256 is None
+                    else profile_workbook_sha256.lower() == provider_config.expected_sha256.lower()
+                ),
+                "expected_filename": provider_config.expected_filename,
+                "reference_filename_matches": (
+                    None
+                    if provider_config.expected_filename is None
+                    else profile_original_filename == provider_config.expected_filename
+                ),
+                "validation_mode": config.duty_cycle.profile_validation_mode,
+                "profile_provider_id": provider_config.provider_id,
+                "phase_ids": list(provider_config.phase_ids),
             },
         }
     manifest = {

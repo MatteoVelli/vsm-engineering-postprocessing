@@ -1,0 +1,52 @@
+{
+  "asset_file": "missing_phase_profiles.csv",
+  "asset_sha256": "09055d335815ea1e97d249819a10d9bd6d0d0054ee7612bc8af5ebf6b18351d5",
+  "extraction": "Rows for configured external profile phases P05/P06/P08/P10 only; 70 columns; formula values exported as quoted CSV with IEEE-754 round-trip precision.",
+  "original_reference_sha256": "1ac1fd0cc4b73a584410e78edbbd65d966077e15499da89ec004070c8130cd80",
+  "original_reference_source": "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx",
+  "phase_rows_asset": {
+    "P05": [
+      3,
+      1720
+    ],
+    "P06": [
+      1721,
+      4256
+    ],
+    "P08": [
+      4257,
+      5819
+    ],
+    "P10": [
+      5820,
+      7495
+    ]
+  },
+  "phase_rows_original": {
+    "P05": [
+      5364,
+      7081
+    ],
+    "P06": [
+      7082,
+      9617
+    ],
+    "P08": [
+      10518,
+      12080
+    ],
+    "P10": [
+      12981,
+      14656
+    ]
+  },
+  "profile_asset_version": 1,
+  "sample_counts": {
+    "P05": 1718,
+    "P06": 2536,
+    "P08": 1563,
+    "P10": 1676
+  },
+  "scenario_id": "caiman_sp_hybrid_field_road_duty_cycle",
+  "total_samples": 7493
+}

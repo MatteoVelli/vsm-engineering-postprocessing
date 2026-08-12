@@ -1,0 +1,22 @@
+reference_slide,reference_title,classification,automated_deck_treatment,intentional_difference
+1,Hybrid SP Caiman Sprayer - Feasibility Study,dynamic,Recreated as cover slide with canonical KPIs,Uses deterministic pipeline KPI values and tool metadata instead of static Sergio artwork.
+2,Caiman SP Hybrid - System Schematic,static engineering reference,Represented by mission/system overview text,No copied screenshot; structured schematic data is not available in pipeline config.
+3,Caiman SP Diesel - Gradient and Speed - High,optional appendix/reference,Excluded from automated mission-results deck,Diesel comparison is outside the canonical hybrid duty-cycle result.
+4,Caiman SP Hybrid - Gradient and Speed,optional appendix/reference,Excluded from automated mission-results deck,Gradient source images are static reference content, not generated pipeline data.
+5,Caiman SP Hybrid Vs Diesel - Gradient and Speed,optional appendix/reference,Excluded from automated mission-results deck,Diesel/hybrid comparison would require explicit comparison inputs.
+6,Range Extender Control Logic,static engineering reference,Represented by generator/range-extender results slide,Control-logic screenshot is not copied; generated deck reports deterministic operation.
+7,Hybrid SP Caiman - Duty Cycle,dynamic,Expanded into vehicle-operation and mission-overview slides,Uses professional Matplotlib speed/distance figure and canonical mission KPIs.
+8,Caiman SP Hybrid - Duty Cycle / Opportunity Charging,dynamic,Represented by opportunity-charging slide,Uses Matplotlib SOC/agrochemical figures and avoids manual connector annotations.
+9,Caiman SP Hybrid - Duty Cycle / Opportunity Charging,dynamic/repeated,Consolidated into opportunity-charging slide,Repeated Sergio slide content is not duplicated.
+10,Caiman SP Hybrid - Duty Cycle / Opportunity Charging,dynamic/repeated,Consolidated into battery/generator/opportunity slides,Generated report avoids repeated near-duplicate duty-cycle views.
+11,Caiman SP Hybrid - Duty Cycle / Opportunity Charging,dynamic/repeated,Consolidated into battery/generator/opportunity slides,Generated report keeps narrative concise.
+12,Caiman SP Hybrid - Duty Cycle / Opportunity Charging,dynamic/repeated,Consolidated into battery/generator/opportunity slides,Generated report uses existing validated plot library.
+13,Caiman Diesel - Duty Cycle,optional appendix/reference,Excluded from automated mission-results deck,Diesel-only duty-cycle content is out of scope for hybrid result report.
+14,Caiman Diesel - Duty Cycle / Agrochemical Loading,optional appendix/reference,Excluded from automated mission-results deck,Diesel comparison is not generated without a diesel pipeline scenario.
+15,Caiman Diesel - Duty Cycle / Agrochemical Loading,optional appendix/reference,Excluded from automated mission-results deck,Duplicate/reference diesel content is not automated.
+16,Batteries - CALB LFP 163 Ah,static engineering reference,Represented by battery KPI and battery-energy slides,Static battery spec appendix is not generated until structured spec data is configured.
+17,Caiman Hybrid - Motors Required,dynamic/reference,Represented by traction/EDU demand slide,Uses canonical EDU/wheel KPIs and Matplotlib figures.
+18,Caiman Hybrid - Duty Cycle Torque @ Wheels,dynamic/reference,Represented by traction/EDU demand slide,Torque-specific static image replaced by available wheel/EDU demand plots and KPIs.
+19,ETM 25 Motors,static engineering reference,Not included in automated mission-results deck,Motor datasheet appendix requires configured structured reference data.
+20,Motor Cummins 6BTA5.9-C174,static engineering reference,Represented by range-extender/generator slide,Engine datasheet screenshots are not copied; canonical engine KPIs are shown.
+21,Energy Consumption of Auxiliaries,dynamic/reference,Represented by traction/auxiliaries energy slide,Uses generated auxiliary and tyre-energy plots instead of Sergio static images.

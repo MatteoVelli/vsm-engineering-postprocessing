@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import shutil
+import zipfile
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -14,8 +17,9 @@ from vsm_postprocessing.duty_cycle import (
     load_duty_cycle_config,
     load_profile_provider_config,
 )
-from vsm_postprocessing.errors import ConfigurationError, DataValidationError
+from vsm_postprocessing.errors import ConfigurationError, DataValidationError, VSMPostProcessingError
 from vsm_postprocessing.importer import load_data_file
+from vsm_postprocessing.utils import sha256_file
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +29,14 @@ SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / (
     "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
 )
 REFERENCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
+
+
+def _copy_with_different_package_fingerprint(source: Path, destination: Path) -> Path:
+    shutil.copyfile(source, destination)
+    with zipfile.ZipFile(destination, mode="a") as workbook:
+        workbook.comment = b"client-compatible-package-fingerprint"
+    assert sha256_file(destination) != sha256_file(source)
+    return destination
 
 
 @pytest.fixture(scope="module")
@@ -97,6 +109,99 @@ def test_sergio_reference_provider_validates_provenance_and_positional_channel_l
     assert not validation.channel_ids_match
     assert validation.channel_layout_compatible
     assert validation.nominal_time_step_s == 1.0
+
+
+def test_profile_provider_compatible_mode_accepts_different_file_fingerprint(
+    tmp_path: Path,
+    reference_assets,
+) -> None:
+    scenario, source, _provider = reference_assets
+    config = load_profile_provider_config(PROFILE_CONFIG)
+    workbook = _copy_with_different_package_fingerprint(
+        REFERENCE_WORKBOOK,
+        tmp_path / REFERENCE_WORKBOOK.name,
+    )
+
+    provider = WorkbookRowProfileProvider(config, workbook, validation_mode="compatible")
+    validation = provider.validate(scenario, source)
+
+    assert validation.source_sha256 == sha256_file(workbook)
+    assert validation.expected_sha256 == config.expected_sha256
+    assert validation.reference_sha256_matches is False
+    assert validation.validation_mode == "compatible"
+    assert validation.channel_layout_compatible
+    assert validation.supported_phase_ids == ("P05", "P06", "P08", "P10")
+
+
+def test_profile_provider_accepts_prefixed_persisted_path_when_original_filename_matches(
+    tmp_path: Path,
+    reference_assets,
+) -> None:
+    scenario, source, _provider = reference_assets
+    config = load_profile_provider_config(PROFILE_CONFIG)
+    persisted = tmp_path / f"1ac1fd0cc4b7_{REFERENCE_WORKBOOK.name}"
+    shutil.copyfile(REFERENCE_WORKBOOK, persisted)
+
+    provider = WorkbookRowProfileProvider(
+        config,
+        persisted,
+        validation_mode="compatible",
+        original_filename=REFERENCE_WORKBOOK.name,
+    )
+    validation = provider.validate(scenario, source)
+
+    assert provider.workbook_path == persisted.resolve()
+    assert validation.source_file == REFERENCE_WORKBOOK.name
+    assert validation.expected_filename == REFERENCE_WORKBOOK.name
+    assert validation.reference_filename_matches is True
+    assert validation.reference_sha256_matches is True
+    assert validation.sample_count == 17418
+
+
+def test_profile_provider_strict_mode_rejects_different_file_fingerprint(
+    tmp_path: Path,
+    reference_assets,
+) -> None:
+    _scenario, _source, _provider = reference_assets
+    config = load_profile_provider_config(PROFILE_CONFIG)
+    workbook = _copy_with_different_package_fingerprint(
+        REFERENCE_WORKBOOK,
+        tmp_path / REFERENCE_WORKBOOK.name,
+    )
+
+    with pytest.raises(DataValidationError, match="SHA-256 does not match"):
+        WorkbookRowProfileProvider(config, workbook)
+
+
+def test_profile_provider_compatible_mode_still_rejects_malformed_workbook(tmp_path: Path) -> None:
+    config = load_profile_provider_config(PROFILE_CONFIG)
+    workbook = tmp_path / REFERENCE_WORKBOOK.name
+    workbook.write_text("not an Excel workbook", encoding="utf-8")
+
+    with pytest.raises(VSMPostProcessingError):
+        WorkbookRowProfileProvider(config, workbook, validation_mode="compatible")
+
+
+def test_profile_provider_compatible_mode_still_rejects_missing_channel(reference_assets) -> None:
+    scenario, source, _provider = reference_assets
+    config = load_profile_provider_config(PROFILE_CONFIG)
+    config = replace(config, last_channel_column=69)
+    provider = WorkbookRowProfileProvider(config, REFERENCE_WORKBOOK, validation_mode="compatible")
+
+    with pytest.raises(DataValidationError, match="channel layout"):
+        provider.validate(scenario, source)
+
+
+def test_profile_provider_compatible_mode_still_rejects_insufficient_phase_rows(reference_assets) -> None:
+    scenario, source, _provider = reference_assets
+    config = load_profile_provider_config(PROFILE_CONFIG)
+    phase_rows = dict(config.phase_rows or {})
+    phase_rows["P05"] = (5364, 5365)
+    config = replace(config, phase_rows=phase_rows)
+    provider = WorkbookRowProfileProvider(config, REFERENCE_WORKBOOK, validation_mode="compatible")
+
+    with pytest.raises(DataValidationError, match="provider row count"):
+        provider.validate(scenario, source)
 
 
 def test_provider_resolves_exactly_the_four_missing_phases_in_the_plan(reference_assets) -> None:

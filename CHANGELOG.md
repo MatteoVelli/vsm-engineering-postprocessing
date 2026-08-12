@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.10 - Sergio PowerPoint Fidelity
+
+- Upgraded the duty-cycle PowerPoint configuration from 4 compact slides to a 10-slide engineering feasibility-study deck.
+- Added configurable cover, overview, KPI-grid, full-chart, plot-pair and conclusion slide layouts.
+- Routed PowerPoint charts through the validated professional Matplotlib PNG outputs.
+- Added professional document properties, footer versioning and `current/total` slide numbering.
+- Added client-safe visible text handling with no local path display on generated slides.
+- Added PowerPoint manifest metadata for slide titles, displayed KPI count, plot files, image placements, appendix count and document properties.
+- Added Sergio PowerPoint reference-difference documentation and structural PPTX regression checks.
+
 ## 1.2.9 - Professional Matplotlib Engineering Plotting
 
 - Added a config-driven engineering plotting style layer for publication-quality Matplotlib figures.

@@ -5,12 +5,19 @@
 1. Extract the complete project folder to a writable local location.
 2. Double-click `START_VSM_TOOL.bat`.
 3. On first launch, the tool creates/updates its local `.venv`, performs a health check, and opens the UI in the default browser.
-4. Upload a VSM `.xlsx` or `.csv` file.
-5. Choose export channels, math channels, statistics, plots, Excel channels and optional PowerPoint.
-6. Click **Run complete pipeline**.
-7. Download or open the final Excel/PowerPoint reports from the UI.
+4. Leave the default workflow set to **Engineering Report**.
+5. Confirm the selected scenario is **Caiman SP Hybrid - 6 Field Cycles + Road Transfer**.
+6. Upload the source VSM `.xlsx` or `.csv` results file.
+7. Click **Generate Engineering Report**.
+8. Download or open the final Excel/PowerPoint reports from the UI.
 
 No Python or YAML editing is required for normal use. The first setup/update may require internet access so `uv` can obtain missing Python packages.
+
+## Workflows
+
+**Engineering Report** generates the configured complete Caiman SP Hybrid mission report. It uses the uploaded VSM source results plus packaged scenario assets; no reference workbook upload is required.
+
+**Custom Analysis** analyzes the uploaded file exactly as supplied and keeps the manual channel/math/statistics/plot/report controls for engineering investigation.
 
 ## Where runs are stored
 

@@ -32,6 +32,7 @@ _CLIENT_ROOT_FILES = (
 
 _CLIENT_DIRECTORIES = (
     ".streamlit",
+    "assets",
     "config",
     "scripts",
     "src",

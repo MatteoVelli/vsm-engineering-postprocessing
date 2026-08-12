@@ -22,7 +22,7 @@ def test_release_version_metadata_is_consistent() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as handle:
         pyproject = tomllib.load(handle)
     assert pyproject["project"]["version"] == vsm_postprocessing.__version__
-    assert vsm_postprocessing.__version__ == "1.2.9"
+    assert vsm_postprocessing.__version__ == "1.2.10"
 
 
 def test_client_release_excludes_private_and_development_artifacts(tmp_path: Path) -> None:
@@ -35,6 +35,9 @@ def test_client_release_excludes_private_and_development_artifacts(tmp_path: Pat
 
     assert any(name.endswith("/RELEASE_MANIFEST.json") for name in names)
     assert any(name.endswith("/START_VSM_TOOL.bat") for name in names)
+    assert any(name.endswith("/assets/scenarios/caiman_sp_hybrid/missing_phase_profiles.csv") for name in names)
+    assert any(name.endswith("/assets/scenarios/caiman_sp_hybrid/profile_provider.yaml") for name in names)
+    assert any(name.endswith("/assets/scenarios/caiman_sp_hybrid/profile_asset_provenance.json") for name in names)
     assert not any("/tests/" in name for name in names)
     assert not any("Sprayer_Caiman" in name for name in names)
     assert not any(name.lower().endswith((".xlsx", ".pptx")) for name in names)

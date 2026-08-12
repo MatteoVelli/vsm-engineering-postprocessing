@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import zipfile
 from pathlib import Path
+from xml.etree import ElementTree
 
 import numpy as np
 import pytest
 from openpyxl import load_workbook
+from pptx import Presentation
 
 from vsm_postprocessing.duty_cycle import (
     WorkbookRowProfileProvider,
@@ -198,3 +201,74 @@ def test_full_duty_cycle_runs_through_normal_reporting_pipeline(tmp_path: Path) 
         assert not any("C:\\Users" in value or "Desktop\\Agro" in value for value in metadata_values)
     finally:
         workbook.close()
+
+    assert result.powerpoint_path is not None
+    prs = Presentation(result.powerpoint_path)
+    assert len(prs.slides) == 10
+    assert prs.core_properties.title == "Hybrid SP Caiman Sprayer - Feasibility Study"
+    assert prs.core_properties.subject == "Hybrid SP Caiman deterministic duty-cycle feasibility study"
+    assert prs.core_properties.author == "VSM Engineering"
+    slide_texts = [
+        [
+            " ".join(paragraph.text for paragraph in shape.text_frame.paragraphs).strip()
+            for shape in slide.shapes
+            if getattr(shape, "has_text_frame", False)
+            and " ".join(paragraph.text for paragraph in shape.text_frame.paragraphs).strip()
+        ]
+        for slide in prs.slides
+    ]
+    titles = [texts[0] for texts in slide_texts]
+    assert titles == [
+        "Hybrid SP Caiman Sprayer - Feasibility Study",
+        "System and Mission Overview",
+        "Duty-Cycle Executive Results",
+        "Duty-Cycle Vehicle Operation",
+        "Battery and Electrical Energy System",
+        "Battery Power and Energy Recovery",
+        "Range Extender and Generator",
+        "Opportunity Charging During Loading",
+        "Traction, EDU and Auxiliary Energy Demand",
+        "Simulation Summary",
+    ]
+    assert len(titles) == len(set(titles))
+    all_text = "\n".join(text for slide in slide_texts for text in slide)
+    for expected in ("114.00 km", "290.28 min", "23.94 %", "39.84 kg", "80.03 kW", "1/10", "10/10"):
+        assert expected in all_text
+    assert "VSM Engineering Post-Processing Tool | v" in all_text
+    assert not any("C:\\Users" in text or "Desktop\\Agro" in text for text in all_text.splitlines())
+    picture_count = sum(
+        1
+        for slide in prs.slides
+        for shape in slide.shapes
+        if getattr(shape, "shape_type", None) == 13
+    )
+    assert picture_count == 11
+    assert result.stages[7].metrics["slides"] == 10
+    assert result.stages[7].metrics["plots"] == 10
+
+    ppt_manifest = json.loads(
+        (result.powerpoint_path.parent / "powerpoint_report_manifest.json").read_text(encoding="utf-8")
+    )
+    assert ppt_manifest["slide_count"] == 10
+    assert ppt_manifest["displayed_kpi_count"] == 58
+    assert ppt_manifest["appendix_slide_count"] == 0
+    assert ppt_manifest["matplotlib_image_count"] == 10
+    assert ppt_manifest["matplotlib_image_placement_count"] == 11
+    assert set(ppt_manifest["plot_files"]) == set(ppt_manifest["plots_used"])
+    assert all(Path(path).exists() for path in ppt_manifest["plot_files"].values())
+
+    with zipfile.ZipFile(result.powerpoint_path) as archive:
+        names = set(archive.namelist())
+        assert "[Content_Types].xml" in names
+        media = [name for name in names if name.startswith("ppt/media/")]
+        assert len(media) == 10
+        missing_media: list[tuple[str, str]] = []
+        for rel_name in [name for name in names if name.startswith("ppt/slides/_rels/")]:
+            root = ElementTree.fromstring(archive.read(rel_name))
+            for node in root:
+                target = node.attrib.get("Target", "")
+                if target.startswith("../media/"):
+                    media_name = "ppt/media/" + target.split("../media/", 1)[1]
+                    if media_name not in names:
+                        missing_media.append((rel_name, target))
+        assert missing_media == []

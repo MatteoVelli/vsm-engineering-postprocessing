@@ -12,6 +12,8 @@ from ..models import ImportedDataset
 from ..utils import sha256_file
 from .models import DutyCyclePhase, DutyCycleRowProvenance, DutyCycleScenario
 
+PROFILE_VALIDATION_MODES = {"strict", "compatible"}
+
 
 @dataclass(frozen=True)
 class WorkbookProfileProviderConfig:
@@ -57,6 +59,11 @@ class ProfileProviderValidation:
     provider_type: str
     source_file: str
     source_sha256: str
+    expected_filename: str | None
+    reference_filename_matches: bool | None
+    expected_sha256: str | None
+    reference_sha256_matches: bool | None
+    validation_mode: str
     supported_phase_ids: tuple[str, ...]
     sample_count: int
     channel_count: int
@@ -107,7 +114,19 @@ class WorkbookRowProfileProvider:
     SUPPORTED_VALUE_POLICIES = {"absolute_reference"}
     SUPPORTED_CHANNEL_ALIGNMENTS = {"channel_id", "column_position"}
 
-    def __init__(self, config: WorkbookProfileProviderConfig, workbook_path: str | Path):
+    def __init__(
+        self,
+        config: WorkbookProfileProviderConfig,
+        workbook_path: str | Path,
+        *,
+        validation_mode: str = "strict",
+        original_filename: str | None = None,
+    ):
+        if validation_mode not in PROFILE_VALIDATION_MODES:
+            raise ConfigurationError(
+                "Profile-provider validation_mode must be one of: "
+                + ", ".join(sorted(PROFILE_VALIDATION_MODES))
+            )
         if config.provider_type not in {"workbook_phase_rows", "workbook_report_rows"}:
             raise ConfigurationError(
                 f"Unsupported profile provider type '{config.provider_type}'; expected 'workbook_phase_rows'"
@@ -130,12 +149,28 @@ class WorkbookRowProfileProvider:
         path = Path(workbook_path).expanduser().resolve()
         if not path.exists() or not path.is_file():
             raise ConfigurationError(f"Profile-provider workbook does not exist: {path}")
-        if config.expected_filename is not None and path.name != config.expected_filename:
+        source_filename = Path(original_filename).name if original_filename else path.name
+        reference_filename_matches = (
+            None if config.expected_filename is None else source_filename == config.expected_filename
+        )
+        if (
+            validation_mode == "strict"
+            and config.expected_filename is not None
+            and reference_filename_matches is False
+        ):
             raise DataValidationError(
-                f"Profile-provider workbook filename '{path.name}' does not match expected '{config.expected_filename}'"
+                "Profile-provider workbook filename "
+                f"'{source_filename}' does not match expected '{config.expected_filename}'"
             )
         actual_hash = sha256_file(path)
-        if config.expected_sha256 is not None and actual_hash.lower() != config.expected_sha256.lower():
+        reference_sha256_matches = (
+            None if config.expected_sha256 is None else actual_hash.lower() == config.expected_sha256.lower()
+        )
+        if (
+            validation_mode == "strict"
+            and config.expected_sha256 is not None
+            and reference_sha256_matches is False
+        ):
             raise DataValidationError(
                 "Profile-provider workbook SHA-256 does not match configuration: "
                 f"expected {config.expected_sha256}, got {actual_hash}"
@@ -152,8 +187,12 @@ class WorkbookRowProfileProvider:
         )
         self.config = config
         self.workbook_path = path
+        self._source_file = source_filename
         self.dataset = load_data_file(path, options)
         self._sha256 = actual_hash
+        self._reference_filename_matches = reference_filename_matches
+        self._reference_sha256_matches = reference_sha256_matches
+        self._validation_mode = validation_mode
         self._phase_ids = frozenset(config.phase_ids)
 
     @property
@@ -162,11 +201,31 @@ class WorkbookRowProfileProvider:
 
     @property
     def source_file(self) -> str:
-        return self.workbook_path.name
+        return self._source_file
 
     @property
     def source_sha256(self) -> str:
         return self._sha256
+
+    @property
+    def expected_sha256(self) -> str | None:
+        return self.config.expected_sha256
+
+    @property
+    def expected_filename(self) -> str | None:
+        return self.config.expected_filename
+
+    @property
+    def reference_filename_matches(self) -> bool | None:
+        return self._reference_filename_matches
+
+    @property
+    def reference_sha256_matches(self) -> bool | None:
+        return self._reference_sha256_matches
+
+    @property
+    def validation_mode(self) -> str:
+        return self._validation_mode
 
     def supports(self, phase: DutyCyclePhase) -> bool:
         return phase.phase_id in self._phase_ids
@@ -245,6 +304,11 @@ class WorkbookRowProfileProvider:
             provider_type=self.config.provider_type,
             source_file=self.source_file,
             source_sha256=self.source_sha256,
+            expected_filename=self.expected_filename,
+            reference_filename_matches=self.reference_filename_matches,
+            expected_sha256=self.expected_sha256,
+            reference_sha256_matches=self.reference_sha256_matches,
+            validation_mode=self.validation_mode,
             supported_phase_ids=tuple(
                 phase.phase_id for phase in scenario.phases if self.supports(phase)
             ),
