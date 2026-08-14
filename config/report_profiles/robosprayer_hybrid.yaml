@@ -1,0 +1,93 @@
+version: 1
+profile:
+  profile_id: robosprayer_hybrid
+  name: RoboSprayer Hybrid
+  description: Hybrid extension of the RoboSprayer Electric/common base using the nine additional Sergio Hybrid workbook entries.
+  powertrain: hybrid
+  extends: robosprayer_electric.yaml
+channels:
+  raw:
+  - semantic_name: engine_fuel_consumption
+    source_name: 'Engine Fuel Consumption '
+    report_name: 'Engine Fuel Consumption '
+    unit: kg
+    required: true
+    for_plot: true
+    channel_type: VSM
+    aliases:
+    - Engine_FuelConsumption_absolut
+    notes: Alias records the likely raw CSV channel; Sergio workbook source name differs and does not fully prove the mapping.
+  - semantic_name: engine_fuelconsumption_specific
+    source_name: Engine_FuelConsumption_specific
+    report_name: Engine_FuelConsumption_specific
+    unit: g/kWh
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: fuel_flow
+    source_name: Fuel Flow
+    report_name: Fuel Flow
+    unit: l/h
+    required: true
+    for_plot: false
+    channel_type: VSM
+    aliases:
+    - Engine_FuelConsumption_volumeflow
+    notes: Alias records the likely l/h fuel-flow channel; Sergio workbook source name differs and does not fully prove the
+      mapping.
+  - semantic_name: engine_speed
+    source_name: Engine Speed
+    report_name: Engine Speed
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: engine_torque
+    source_name: Engine Torque
+    report_name: Engine Torque
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: generator_torque_1
+    source_name: Generator Torque_1
+    report_name: 'ICE Generator Torque '
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: AVL
+    notes: Required Hybrid channel absent from the supplied Electric CSV; expected to be validated with a genuine Hybrid export.
+  math:
+  - semantic_name: engine_power_required
+    source_name: Engine Power Required
+    report_name: Engine Power Required
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - engine_speed
+    - engine_torque
+    formula: =BX5*BY5/9548.8
+    expression: engine_speed * engine_torque / rpm_nm_to_kw_divisor
+  - semantic_name: engine_energy_delivered_kwh
+    source_name: Engine Energy Delivered [kWh]
+    report_name: Engine Energy Delivered [kWh]
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - engine_power_required
+    - track_time
+    formula: =BZ5/3600
+    expression: sample_energy_kwh(engine_power_required, track_time)
+  - semantic_name: generator_power_1
+    source_name: Generator Power_1
+    report_name: ICE Generator Power
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - engine_speed
+    - generator_torque_1
+    formula: =BX5*HP5/9548.8
+    expression: engine_speed * generator_torque_1 / rpm_nm_to_kw_divisor

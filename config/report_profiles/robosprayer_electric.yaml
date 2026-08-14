@@ -1,0 +1,2330 @@
+version: 1
+profile:
+  profile_id: robosprayer_electric
+  name: RoboSprayer Electric
+  description: Semantic reporting profile extracted from Sergio RoboSprayer Electric workbook. Runtime channel IDs are resolved
+    from source names at import time.
+  powertrain: electric
+channels:
+  raw:
+  - semantic_name: track_time
+    source_name: Track_Time
+    report_name: Time (s)
+    unit: s
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: chassis_acceleration_longitudinal
+    source_name: Chassis_Acceleration_Longitudinal
+    report_name: Longitudinal Acceleration
+    unit: m/s^2
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: chassis_acceleration_vertical
+    source_name: Chassis_Acceleration_Vertical
+    report_name: Vertical Acceleration
+    unit: m/s^2
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: chassis_speed
+    source_name: Chassis_Speed
+    report_name: Speed
+    unit: kph
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: track_distance
+    source_name: Track_Distance
+    report_name: Distance (m)
+    unit: m
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: track_gradient
+    source_name: Track_Gradient
+    report_name: Road Gradient
+    unit: '%'
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: track_referenceposition_x
+    source_name: Track_ReferencePosition_X
+    report_name: Road ReferencePosition X
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: track_referenceposition_y
+    source_name: Track_ReferencePosition_Y
+    report_name: Road ReferencePosition Y
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: driver_acceleratorpedal
+    source_name: Driver_AcceleratorPedal
+    report_name: Accelerator Pedal
+    unit: '%'
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: driver_brakepedal
+    source_name: Driver_BrakePedal
+    report_name: Brake Pedal
+    unit: '%'
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: brake_pressure_front
+    source_name: Brake_Pressure_Front
+    report_name: Brake Pressure FT
+    unit: bar
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: brake_pressure_rear
+    source_name: Brake_Pressure_Rear
+    report_name: Brake Pressure RR
+    unit: bar
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: driver_handwheel_angle
+    source_name: Driver_HandWheel_Angle
+    report_name: Steering Wheel Angle
+    unit: deg
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_cell_current
+    source_name: ElectricSystem_Battery_Cell_Current
+    report_name: Battery Cell Current
+    unit: A
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_cell_power
+    source_name: ElectricSystem_Battery_Cell_Power
+    report_name: Battery Cell Power
+    unit: W
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_cell_voltage
+    source_name: ElectricSystem_Battery_Cell_Voltage
+    report_name: Battery Cell Voltage
+    unit: V
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_current
+    source_name: ElectricSystem_Battery_Current
+    report_name: Battery Current
+    unit: A
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_temperature_cell
+    source_name: ElectricSystem_Battery_Temperature_Cell
+    report_name: Battery Temperature Cell
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_temperature_input
+    source_name: ElectricSystem_Battery_Temperature_Input
+    report_name: Battery Temperature Input
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_temperature_output
+    source_name: ElectricSystem_Battery_Temperature_Output
+    report_name: Battery Temperature Output
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_voltage
+    source_name: ElectricSystem_Battery_Voltage
+    report_name: Battery Voltage
+    unit: V
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_em1_power
+    source_name: ElectricSystem_Battery_EM1_Power
+    report_name: Electric Power FL
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_em2_power
+    source_name: ElectricSystem_Battery_EM2_Power
+    report_name: Electric Power FR
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_em3_power
+    source_name: ElectricSystem_Battery_EM3_Power
+    report_name: Electric Power RL
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_em4_power
+    source_name: ElectricSystem_Battery_EM4_Power
+    report_name: Electric Power RR
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_power
+    source_name: ElectricSystem_Battery_Power
+    report_name: Battery Power
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_heatflow
+    source_name: ElectricSystem_Battery_Heatflow
+    report_name: Battery Heatflow
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_energy
+    source_name: ElectricSystem_Battery_Energy
+    report_name: Battery Energy
+    unit: kWh
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_battery_soc
+    source_name: ElectricSystem_Battery_SOC
+    report_name: Battery SOC
+    unit: '%'
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em_energy_recuperated
+    source_name: ElectricSystem_EM_Energy_Recuperated
+    report_name: Energy Recuperated
+    unit: kWh
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em_energy_released
+    source_name: ElectricSystem_EM_Energy_Released
+    report_name: Energy Released
+    unit: kWh
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em1_heatflow
+    source_name: ElectricSystem_EM1_Heatflow
+    report_name: EDU Heatflow FL
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_em2_heatflow
+    source_name: ElectricSystem_EM2_Heatflow
+    report_name: EDU Heatflow FR
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_em3_heatflow
+    source_name: ElectricSystem_EM3_Heatflow
+    report_name: EDU Heatflow RL
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_em4_heatflow
+    source_name: ElectricSystem_EM4_Heatflow
+    report_name: EDU Heatflow RR
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_em1_temperature_input
+    source_name: ElectricSystem_EM1_Temperature_Input
+    report_name: EDU Temperature Input FL
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em1_temperature_output
+    source_name: ElectricSystem_EM1_Temperature_Output
+    report_name: EDU Temperature Output FL
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em1_temperature_stator
+    source_name: ElectricSystem_EM1_Temperature_Stator
+    report_name: Temperature Stator FL
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em2_temperature_input
+    source_name: ElectricSystem_EM2_Temperature_Input
+    report_name: EDU Temperature Input FR
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em2_temperature_output
+    source_name: ElectricSystem_EM2_Temperature_Output
+    report_name: EDU Temperature Output FR
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em2_temperature_stator
+    source_name: ElectricSystem_EM2_Temperature_Stator
+    report_name: Temperature Stator FR
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em3_temperature_input
+    source_name: ElectricSystem_EM3_Temperature_Input
+    report_name: EDU Temperature Input RL
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em3_temperature_output
+    source_name: ElectricSystem_EM3_Temperature_Output
+    report_name: EDU Temperature Output RL
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em3_temperature_stator
+    source_name: ElectricSystem_EM3_Temperature_Stator
+    report_name: Temperature Stator RL
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em4_temperature_input
+    source_name: ElectricSystem_EM4_Temperature_Input
+    report_name: EDU Temperature Input RR
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em4_temperature_output
+    source_name: ElectricSystem_EM4_Temperature_Output
+    report_name: EDU Temperature Output RR
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em4_temperature_stator
+    source_name: ElectricSystem_EM4_Temperature_Stator
+    report_name: Temperature Stator RR
+    unit: Â°C
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em1_speed
+    source_name: ElectricSystem_EM1_Speed
+    report_name: EDU Speed FL
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em2_speed
+    source_name: ElectricSystem_EM2_Speed
+    report_name: EDU Speed FR
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em3_speed
+    source_name: ElectricSystem_EM3_Speed
+    report_name: EDU Speed RL
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em4_speed
+    source_name: ElectricSystem_EM4_Speed
+    report_name: EDU Speed RR
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em1_torque
+    source_name: ElectricSystem_EM1_Torque
+    report_name: EDU Torque FL
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em2_torque
+    source_name: ElectricSystem_EM2_Torque
+    report_name: EDU Torque FR
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em3_torque
+    source_name: ElectricSystem_EM3_Torque
+    report_name: EDU Torque RL
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_em4_torque
+    source_name: ElectricSystem_EM4_Torque
+    report_name: EDU Torque RR
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: electricsystem_controller_em1_powerratio
+    source_name: ElectricSystem_Controller_EM1_PowerRatio
+    report_name: Controller PowerRatio FL
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_controller_em2_powerratio
+    source_name: ElectricSystem_Controller_EM2_PowerRatio
+    report_name: Controller PowerRatio FR
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_controller_em3_powerratio
+    source_name: ElectricSystem_Controller_EM3_PowerRatio
+    report_name: Controller PowerRatio RL
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_controller_em4_powerratio
+    source_name: ElectricSystem_Controller_EM4_PowerRatio
+    report_name: Controller PowerRatio RR
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_controller_heatflow
+    source_name: ElectricSystem_Controller_Heatflow
+    report_name: Controller Heatflow
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_controller_temperature_input
+    source_name: ElectricSystem_Controller_Temperature_Input
+    report_name: Controller Temperature Input
+    unit: Â°C
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: electricsystem_controller_temperature_output
+    source_name: ElectricSystem_Controller_Temperature_Output
+    report_name: Controller Temperature Output
+    unit: Â°C
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: agrochemical_discharge_force
+    source_name: Agrochemical Discharge
+    report_name: Agrochemical Discharge
+    unit: N
+    required: false
+    for_plot: true
+    channel_type: VSM
+    notes: Template channel is unresolved in the supplied Electric CSV; no semantic alias is proven yet.
+  - semantic_name: differential_torquevectoringdeltatorque_center
+    source_name: Differential_TorqueVectoringDeltaTorque_Center
+    report_name: Torque Vectoring Delta Torque Center
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorque_front
+    source_name: Differential_TorqueVectoringDeltaTorque_Front
+    report_name: Torque Vectoring Delta Torque FT
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorque_rear
+    source_name: Differential_TorqueVectoringDeltaTorque_Rear
+    report_name: Torque Vectoring Delta Torque RR
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquemax_center
+    source_name: Differential_TorqueVectoringDeltaTorqueMax_Center
+    report_name: Torque Vectoring Delta Torque Max Center
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquemax_front
+    source_name: Differential_TorqueVectoringDeltaTorqueMax_Front
+    report_name: Torque Vectoring Delta Torque Max FT
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquemax_rear
+    source_name: Differential_TorqueVectoringDeltaTorqueMax_Rear
+    report_name: Torque Vectoring Delta Torque Max RR
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquemin_center
+    source_name: Differential_TorqueVectoringDeltaTorqueMin_Center
+    report_name: Torque Vectoring Delta Torque Min Center
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquemin_front
+    source_name: Differential_TorqueVectoringDeltaTorqueMin_Front
+    report_name: ' Torque Vectoring Delta Torque Min FT'
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquemin_rear
+    source_name: Differential_TorqueVectoringDeltaTorqueMin_Rear
+    report_name: ' Torque Vectoring Delta Torque Min RR'
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquerequest_center
+    source_name: Differential_TorqueVectoringDeltaTorqueRequest_Center
+    report_name: Torque Vectoring Delta Torque Request Center
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquerequest_front
+    source_name: Differential_TorqueVectoringDeltaTorqueRequest_Front
+    report_name: Torque Vectoring Delta Torque Request FT
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringdeltatorquerequest_rear
+    source_name: Differential_TorqueVectoringDeltaTorqueRequest_Rear
+    report_name: Torque Vectoring Delta Torque Request RR
+    unit: Nm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringpowerloss_center
+    source_name: Differential_TorqueVectoringPowerLoss_Center
+    report_name: Torque Vectoring Power Loss Center
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringpowerloss_front
+    source_name: Differential_TorqueVectoringPowerLoss_Front
+    report_name: Torque Vectoring Power Loss FT
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: differential_torquevectoringpowerloss_rear
+    source_name: Differential_TorqueVectoringPowerLoss_Rear
+    report_name: Torque Vectoring Power Loss RR
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_force_fl
+    source_name: Suspension_Damper_Force_FL
+    report_name: Suspension Damper Force FL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_force_fr
+    source_name: Suspension_Damper_Force_FR
+    report_name: Suspension Damper Force FL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_force_rl
+    source_name: Suspension_Damper_Force_RL
+    report_name: Suspension Damper Force FR
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_force_rr
+    source_name: Suspension_Damper_Force_RR
+    report_name: Suspension Damper Force RL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_speed_fl
+    source_name: Suspension_Damper_Speed_FL
+    report_name: Suspension Damper Speed FL
+    unit: m/s
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_speed_fr
+    source_name: Suspension_Damper_Speed_FR
+    report_name: Suspension Damper Speed FR
+    unit: m/s
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_speed_rl
+    source_name: Suspension_Damper_Speed_RL
+    report_name: Suspension Damper Speed RL
+    unit: m/s
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_speed_rr
+    source_name: Suspension_Damper_Speed_RR
+    report_name: Suspension Damper Speed RR
+    unit: m/s
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_travel_fl
+    source_name: Suspension_Damper_Travel_FL
+    report_name: Suspension Damper Travel FL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_travel_fr
+    source_name: Suspension_Damper_Travel_FR
+    report_name: Suspension Damper Travel FL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_travel_rl
+    source_name: Suspension_Damper_Travel_RL
+    report_name: Suspension Damper Travel RL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_damper_travel_rr
+    source_name: Suspension_Damper_Travel_RR
+    report_name: Suspension Damper Travel RR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_rollcenter_height_front
+    source_name: Suspension_Rollcenter_Height_Front
+    report_name: Suspension Rollcenter Height FT
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_rollcenter_height_rear
+    source_name: Suspension_Rollcenter_Height_Rear
+    report_name: Suspension Rollcenter Height RR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: suspension_spring_travel_fl
+    source_name: Suspension_Spring_Travel_FL
+    report_name: Suspension Spring Travel FL
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: suspension_spring_travel_fr
+    source_name: Suspension_Spring_Travel_FR
+    report_name: Suspension Spring Travel FR
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: suspension_spring_travel_rl
+    source_name: Suspension_Spring_Travel_RL
+    report_name: Suspension Spring Travel RL
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: suspension_spring_travel_rr
+    source_name: Suspension_Spring_Travel_RR
+    report_name: Suspension Spring Travel RR
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistanceforce_fl
+    source_name: Tyre_BulldozingResistanceForce_FL
+    report_name: Tyre Bulldozing Resistance Force FL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistanceforce_fr
+    source_name: Tyre_BulldozingResistanceForce_FR
+    report_name: Tyre Bulldozing Resistance Force FR
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistanceforce_rl
+    source_name: Tyre_BulldozingResistanceForce_RL
+    report_name: Tyre Bulldozing Resistance Force RL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistanceforce_rr
+    source_name: Tyre_BulldozingResistanceForce_RR
+    report_name: Tyre Bulldozing Resistance Force RR
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistancepower_fl
+    source_name: Tyre_BulldozingResistancePower_FL
+    report_name: Tyre Bulldozing Resistance Power FL
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistancepower_fr
+    source_name: Tyre_BulldozingResistancePower_FR
+    report_name: Tyre Bulldozing Resistance Power FR
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistancepower_rl
+    source_name: Tyre_BulldozingResistancePower_RL
+    report_name: Tyre Bulldozing Resistance Power RL
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_bulldozingresistancepower_rr
+    source_name: Tyre_BulldozingResistancePower_RR
+    report_name: Tyre Bulldozing Resistance Power RR
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistanceforce_fl
+    source_name: Tyre_CompactionResistanceForce_FL
+    report_name: Tyre Compaction Resistance Force FL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistanceforce_fr
+    source_name: Tyre_CompactionResistanceForce_FR
+    report_name: Tyre Compaction Resistance Force FR
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistanceforce_rl
+    source_name: Tyre_CompactionResistanceForce_RL
+    report_name: Tyre Compaction Resistance Force RL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistanceforce_rr
+    source_name: Tyre_CompactionResistanceForce_RR
+    report_name: Tyre Compaction Resistance Force RR
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistancepower_fl
+    source_name: Tyre_CompactionResistancePower_FL
+    report_name: Tyre Compaction Resistance Power FL
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistancepower_fr
+    source_name: Tyre_CompactionResistancePower_FR
+    report_name: Tyre Compaction Resistance Power FR
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistancepower_rl
+    source_name: Tyre_CompactionResistancePower_RL
+    report_name: Tyre Compaction Resistance Power RL
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_compactionresistancepower_rr
+    source_name: Tyre_CompactionResistancePower_RR
+    report_name: Tyre Compaction Resistance Power RR
+    unit: kW
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_deflection_fl
+    source_name: Tyre_Deflection_FL
+    report_name: Tyre Deflection FL
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_deflection_fr
+    source_name: Tyre_Deflection_FR
+    report_name: Tyre Deflection FR
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_deflection_rl
+    source_name: Tyre_Deflection_RL
+    report_name: Tyre Deflection RL
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_deflection_rr
+    source_name: Tyre_Deflection_RR
+    report_name: Tyre Deflection RR
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_energy_longitudinal_fl
+    source_name: Tyre_Energy_Longitudinal_FL
+    report_name: Tyre Energy Longitudinal FL
+    unit: kJ
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_energy_longitudinal_fr
+    source_name: Tyre_Energy_Longitudinal_FR
+    report_name: Tyre Energy Longitudinal FR
+    unit: kJ
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_energy_longitudinal_rl
+    source_name: Tyre_Energy_Longitudinal_RL
+    report_name: Tyre Energy Longitudinal RL
+    unit: kJ
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_energy_longitudinal_rr
+    source_name: Tyre_Energy_Longitudinal_RR
+    report_name: Tyre Energy Longitudinal RR
+    unit: kJ
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_fx_fl
+    source_name: Tyre_Fx_FL
+    report_name: Tyre Fx FL
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_fx_fr
+    source_name: Tyre_Fx_FR
+    report_name: Tyre Fx FR
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_fx_rl
+    source_name: Tyre_Fx_RL
+    report_name: Tyre Fx RL
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_fx_rr
+    source_name: Tyre_Fx_RR
+    report_name: Tyre_Fx_RR
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_fz_fl
+    source_name: Tyre_Fz_FL
+    report_name: Tyre Fz FL
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_fz_fr
+    source_name: Tyre_Fz_FR
+    report_name: Tyre Fz FR
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_fz_rl
+    source_name: Tyre_Fz_RL
+    report_name: Tyre Fz RL
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_fz_rr
+    source_name: Tyre_Fz_RR
+    report_name: Tyre Fz RR
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_loadedradius_fl
+    source_name: Tyre_LoadedRadius_FL
+    report_name: Tyre Loaded Radius FL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_loadedradius_fr
+    source_name: Tyre_LoadedRadius_FR
+    report_name: Tyre Loaded Radius FR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_loadedradius_rl
+    source_name: Tyre_LoadedRadius_RL
+    report_name: Tyre Loaded Radius RL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_loadedradius_rr
+    source_name: Tyre_LoadedRadius_RR
+    report_name: Tyre Loaded Radius RR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_pressure_fl
+    source_name: Tyre_Pressure_FL
+    report_name: Tyre Pressure FL
+    unit: bar
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_pressure_fr
+    source_name: Tyre_Pressure_FR
+    report_name: Tyre Pressure FR
+    unit: bar
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_pressure_rl
+    source_name: Tyre_Pressure_RL
+    report_name: Tyre Pressure RL
+    unit: bar
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_pressure_rr
+    source_name: Tyre_Pressure_RR
+    report_name: Tyre Pressure RR
+    unit: bar
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_rollingradius_fl
+    source_name: Tyre_RollingRadius_FL
+    report_name: Tyre Rolling Radius FL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_rollingradius_fr
+    source_name: Tyre_RollingRadius_FR
+    report_name: Tyre Rolling Radius FR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_rollingradius_rl
+    source_name: Tyre_RollingRadius_RL
+    report_name: Tyre Rolling Radius RL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_rollingradius_rr
+    source_name: Tyre_RollingRadius_RR
+    report_name: Tyre Rolling Radius RR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistanceforce_fl
+    source_name: Tyre_RollingResistanceForce_FL
+    report_name: Tyre Rolling Resistance Force FL
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistanceforce_fr
+    source_name: Tyre_RollingResistanceForce_FR
+    report_name: Tyre Rolling Resistance Force FR
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistanceforce_rl
+    source_name: Tyre_RollingResistanceForce_RL
+    report_name: Tyre Rolling Resistance Force RL
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistanceforce_rr
+    source_name: Tyre_RollingResistanceForce_RR
+    report_name: Tyre Rolling Resistance Force RR
+    unit: N
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistancepower_fl
+    source_name: Tyre_RollingResistancePower_FL
+    report_name: Tyre Rolling Resistance Power FL
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistancepower_fr
+    source_name: Tyre_RollingResistancePower_FR
+    report_name: Tyre Rolling Resistance Power FR
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistancepower_rl
+    source_name: Tyre_RollingResistancePower_RL
+    report_name: Tyre Rolling Resistance Power RL
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_rollingresistancepower_rr
+    source_name: Tyre_RollingResistancePower_RR
+    report_name: Tyre Rolling Resistance Power FR
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: tyre_slipratio_fl
+    source_name: Tyre_SlipRatio_FL
+    report_name: Tyre Slip Ratio FL
+    unit: '%'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_slipratio_fr
+    source_name: Tyre_SlipRatio_FR
+    report_name: Tyre Slip Ratio FR
+    unit: '%'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_slipratio_rl
+    source_name: Tyre_SlipRatio_RL
+    report_name: Tyre Slip Ratio RL
+    unit: '%'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_slipratio_rr
+    source_name: Tyre_SlipRatio_RR
+    report_name: Tyre Slip Ratio RR
+    unit: '%'
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_slipsinkage_fl
+    source_name: Tyre_SlipSinkage_FL
+    report_name: Tyre Slip Sinkage FL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_slipsinkage_fr
+    source_name: Tyre_SlipSinkage_FR
+    report_name: Tyre Slip Sinkage FR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_slipsinkage_rl
+    source_name: Tyre_SlipSinkage_RL
+    report_name: Tyre Slip Sinkage RL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_slipsinkage_rr
+    source_name: Tyre_SlipSinkage_RR
+    report_name: Tyre Slip Sinkage RR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_staticsinkage_fl
+    source_name: Tyre_StaticSinkage_FL
+    report_name: Tyre Static Sinkage FL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_staticsinkage_fr
+    source_name: Tyre_StaticSinkage_FR
+    report_name: Tyre Static Sinkage FR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_staticsinkage_rl
+    source_name: Tyre_StaticSinkage_RL
+    report_name: Tyre Static Sinkage RL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: tyre_staticsinkage_rr
+    source_name: Tyre_StaticSinkage_RR
+    report_name: Tyre Static Sinkage RR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: vehicle_cogheight_sprungmass
+    source_name: Vehicle_COGHeight_SprungMass
+    report_name: COG Height Sprung Mass
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: vehicle_position_x
+    source_name: Vehicle_Position_X
+    report_name: Vehicle Position X
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: vehicle_position_y
+    source_name: Vehicle_Position_Y
+    report_name: Vehicle Position Y
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: vehicle_position_z
+    source_name: Vehicle_Position_Z
+    report_name: Vehicle Position Z
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: vehicle_sprungmass
+    source_name: Vehicle_SprungMass
+    report_name: Vehicle Sprung Mass
+    unit: kg
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: vehicle_totalmass
+    source_name: Vehicle_TotalMass
+    report_name: Vehicle Total Mass
+    unit: kg
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: wheel_acceleration_vertical_fl
+    source_name: Wheel_Acceleration_Vertical_FL
+    report_name: Wheel Acceleration Vertical FL
+    unit: m/s^2
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_acceleration_vertical_fr
+    source_name: Wheel_Acceleration_Vertical_FR
+    report_name: Wheel Acceleration Vertical FR
+    unit: m/s^2
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_acceleration_vertical_rl
+    source_name: Wheel_Acceleration_Vertical_RL
+    report_name: Wheel Acceleration Vertical RL
+    unit: m/s^2
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_acceleration_vertical_rr
+    source_name: Wheel_Acceleration_Vertical_RR
+    report_name: Wheel Acceleration Vertical RR
+    unit: m/s^2
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_load_dynamic_fl
+    source_name: Wheel_Load_Dynamic_FL
+    report_name: Wheel Load Dynamic FL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_load_dynamic_fr
+    source_name: Wheel_Load_Dynamic_FR
+    report_name: Wheel Load Dynamic FR
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_load_dynamic_rl
+    source_name: Wheel_Load_Dynamic_RL
+    report_name: Wheel Load Dynamic RL
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_load_dynamic_rr
+    source_name: Wheel_Load_Dynamic_RR
+    report_name: Wheel Load Dynamic RR
+    unit: N
+    required: true
+    for_plot: false
+    channel_type: VSM
+  - semantic_name: wheel_rotationalspeed_fl
+    source_name: Wheel_RotationalSpeed_FL
+    report_name: Wheel Speed FL
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: wheel_rotationalspeed_fr
+    source_name: Wheel_RotationalSpeed_FR
+    report_name: Wheel Speed FR
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: wheel_rotationalspeed_rl
+    source_name: Wheel_RotationalSpeed_RL
+    report_name: Wheel Speed RL
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: wheel_rotationalspeed_rr
+    source_name: Wheel_RotationalSpeed_RR
+    report_name: Wheel Speed RR
+    unit: rpm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: wheel_steerangle_fl
+    source_name: Wheel_SteerAngle_FL
+    report_name: Wheel Steer Angle FL
+    unit: deg
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: wheel_steerangle_fr
+    source_name: Wheel_SteerAngle_FR
+    report_name: Wheel Steer Angle FR
+    unit: deg
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: wheel_steerangle_rl
+    source_name: Wheel_SteerAngle_RL
+    report_name: Wheel Steer Angle RL
+    unit: deg
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: wheel_steerangle_rr
+    source_name: Wheel_SteerAngle_RR
+    report_name: Wheel Steer Angle RR
+    unit: deg
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: wheel_travel_vertical_fl
+    source_name: Wheel_Travel_Vertical_FL
+    report_name: Wheel Travel Vertical FL
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: wheel_travel_vertical_fr
+    source_name: Wheel_Travel_Vertical_FR
+    report_name: Wheel Travel Vertical FR
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: wheel_travel_vertical_rl
+    source_name: Wheel_Travel_Vertical_RL
+    report_name: Wheel Travel Vertical RL
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: wheel_travel_vertical_rr
+    source_name: Wheel_Travel_Vertical_RR
+    report_name: Wheel Travel Vertical RR
+    unit: mm
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: electricsystem_auxiliary_lowvoltagepowerconsumption
+    source_name: ElectricSystem_Auxiliary_LowVoltagePowerConsumption
+    report_name: Auxiliary Low Voltage Power Consumption
+    unit: kW
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: ambient_humidity
+    source_name: Ambient_Humidity
+    report_name: Ambient Humidity
+    unit: '%'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: ambient_pressure
+    source_name: Ambient_Pressure
+    report_name: Ambient Pressure
+    unit: bar
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: ambient_temperature
+    source_name: Ambient_Temperature
+    report_name: Ambient Temperature
+    unit: Â°C
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: environment_airdensity
+    source_name: Environment_AirDensity
+    report_name: Environment Air Density
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: environment_winddirection
+    source_name: Environment_WindDirection
+    report_name: Environment Wind Direction
+    unit: deg
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: environment_windspeed
+    source_name: Environment_WindSpeed
+    report_name: Environment Wind Speed
+    unit: kph
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: road_temperature
+    source_name: Road_Temperature
+    report_name: Road Temperature
+    unit: Â°C
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: chassis_rideheight_fl
+    source_name: Chassis_Rideheight_FL
+    report_name: Chassis Rideheight FL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: chassis_rideheight_fr
+    source_name: Chassis_Rideheight_FR
+    report_name: Chassis Rideheight FR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: chassis_rideheight_rl
+    source_name: Chassis_Rideheight_RL
+    report_name: Chassis Rideheight RL
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: chassis_rideheight_rr
+    source_name: Chassis_Rideheight_RR
+    report_name: Chassis Rideheight RR
+    unit: mm
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: chassis_rollangle
+    source_name: Chassis_RollAngle
+    report_name: Chassis Roll Angle
+    unit: deg
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: chassis_slipangle
+    source_name: Chassis_SlipAngle
+    report_name: Chassis Slip Angle
+    unit: deg
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_in_fl
+    source_name: SoftSoil_Adhesion_IN_FL
+    report_name: SoftSoil Adhesion IN FL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_in_fr
+    source_name: SoftSoil_Adhesion_IN_FR
+    report_name: SoftSoil Adhesion IN FR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_in_rl
+    source_name: SoftSoil_Adhesion_IN_RL
+    report_name: SoftSoil Adhesion IN RL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_in_rr
+    source_name: SoftSoil_Adhesion_IN_RR
+    report_name: SoftSoil Adhesion IN RR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_out_fl
+    source_name: SoftSoil_Adhesion_OUT_FL
+    report_name: SoftSoil Adhesion OUT FL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_out_fr
+    source_name: SoftSoil_Adhesion_OUT_FR
+    report_name: SoftSoil Adhesion OUT FR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_out_rl
+    source_name: SoftSoil_Adhesion_OUT_RL
+    report_name: SoftSoil Adhesion OUT RL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_adhesion_out_rr
+    source_name: SoftSoil_Adhesion_OUT_RR
+    report_name: SoftSoil Adhesion OUT RR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_in_fl
+    source_name: SoftSoil_CohesionStress_IN_FL
+    report_name: SoftSoil Cohesion Stress IN FL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_in_fr
+    source_name: SoftSoil_CohesionStress_IN_FR
+    report_name: SoftSoil Cohesion Stress IN FR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_in_rl
+    source_name: SoftSoil_CohesionStress_IN_RL
+    report_name: SoftSoil Cohesion Stress IN RL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_in_rr
+    source_name: SoftSoil_CohesionStress_IN_RR
+    report_name: SoftSoil Cohesion Stress IN RR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_out_fl
+    source_name: SoftSoil_CohesionStress_OUT_FL
+    report_name: SoftSoil Cohesion Stress OUT FL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_out_fr
+    source_name: SoftSoil_CohesionStress_OUT_FR
+    report_name: SoftSoil Cohesion Stress OUT FR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_out_rl
+    source_name: SoftSoil_CohesionStress_OUT_RL
+    report_name: SoftSoil Cohesion Stress OUT RL
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesionstress_out_rr
+    source_name: SoftSoil_CohesionStress_OUT_RR
+    report_name: SoftSoil Cohesion Stress OUT RR
+    unit: Pa
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_in_fl
+    source_name: SoftSoil_CohesiveModulus_IN_FL
+    report_name: SoftSoil Cohesive Modulus IN FL
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_in_fr
+    source_name: SoftSoil_CohesiveModulus_IN_FR
+    report_name: SoftSoil Cohesive Modulus IN FR
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_in_rl
+    source_name: SoftSoil_CohesiveModulus_IN_RL
+    report_name: SoftSoil Cohesive Modulus IN RL
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_in_rr
+    source_name: SoftSoil_CohesiveModulus_IN_RR
+    report_name: SoftSoil Cohesive Modulus IN RR
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_out_fl
+    source_name: SoftSoil_CohesiveModulus_OUT_FL
+    report_name: SoftSoil Cohesive Modulus OUT FL
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_out_fr
+    source_name: SoftSoil_CohesiveModulus_OUT_FR
+    report_name: SoftSoil Cohesive Modulus OUT FR
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_out_rl
+    source_name: SoftSoil_CohesiveModulus_OUT_RL
+    report_name: SoftSoil Cohesive Modulus OUT RL
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_cohesivemodulus_out_rr
+    source_name: SoftSoil_CohesiveModulus_OUT_RR
+    report_name: SoftSoil Cohesive Modulus OUT RR
+    unit: N/m^(k+1)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_in_fl
+    source_name: SoftSoil_Density_IN_FL
+    report_name: SoftSoil Density IN FL
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_in_fr
+    source_name: SoftSoil_Density_IN_FR
+    report_name: SoftSoil Density IN FR
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_in_rl
+    source_name: SoftSoil_Density_IN_RL
+    report_name: SoftSoil Density IN RL
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_in_rr
+    source_name: SoftSoil_Density_IN_RR
+    report_name: SoftSoil Density IN RR
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_out_fl
+    source_name: SoftSoil_Density_OUT_FL
+    report_name: SoftSoil Density OUT FL
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_out_fr
+    source_name: SoftSoil_Density_OUT_FR
+    report_name: SoftSoil Density OUT FR
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_out_rl
+    source_name: SoftSoil_Density_OUT_RL
+    report_name: SoftSoil Density OUT RL
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_density_out_rr
+    source_name: SoftSoil_Density_OUT_RR
+    report_name: SoftSoil Density OUT RR
+    unit: kg/m^3
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_in_fl
+    source_name: SoftSoil_FrictionalModulus_IN_FL
+    report_name: SoftSoil Frictional Modulus IN FL
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_in_fr
+    source_name: SoftSoil_FrictionalModulus_IN_FR
+    report_name: SoftSoil Frictional Modulus IN FR
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_in_rl
+    source_name: SoftSoil_FrictionalModulus_IN_RL
+    report_name: SoftSoil Frictional Modulus IN RL
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_in_rr
+    source_name: SoftSoil_FrictionalModulus_IN_RR
+    report_name: SoftSoil Frictional Modulus IN RR
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_out_fl
+    source_name: SoftSoil_FrictionalModulus_OUT_FL
+    report_name: SoftSoil Frictional Modulus OUT FL
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_out_fr
+    source_name: SoftSoil_FrictionalModulus_OUT_FR
+    report_name: SoftSoil Frictional Modulus OUT FR
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_out_rl
+    source_name: SoftSoil_FrictionalModulus_OUT_RL
+    report_name: SoftSoil Frictional Modulus OUT RL
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionalmodulus_out_rr
+    source_name: SoftSoil_FrictionalModulus_OUT_RR
+    report_name: SoftSoil Frictional Modulus OUT  RR
+    unit: N/m^(k+2)
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_in_fl
+    source_name: SoftSoil_FrictionAngle_IN_FL
+    report_name: SoftSoil Friction Angle IN FL
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_in_fr
+    source_name: SoftSoil_FrictionAngle_IN_FR
+    report_name: SoftSoil Friction Angle IN FR
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_in_rl
+    source_name: SoftSoil_FrictionAngle_IN_RL
+    report_name: SoftSoil Friction Angle IN RL
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_in_rr
+    source_name: SoftSoil_FrictionAngle_IN_RR
+    report_name: SoftSoil Friction Angle IN RR
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_out_fl
+    source_name: SoftSoil_FrictionAngle_OUT_FL
+    report_name: SoftSoil Friction Angle OUT FL
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_out_fr
+    source_name: SoftSoil_FrictionAngle_OUT_FR
+    report_name: SoftSoil Friction Angle OUT FR
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_out_rl
+    source_name: SoftSoil_FrictionAngle_OUT_RL
+    report_name: SoftSoil Friction Angle OUT RL
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictionangle_out_rr
+    source_name: SoftSoil_FrictionAngle_OUT_RR
+    report_name: SoftSoil Friction Angle OUT RR
+    unit: rad
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_in_fl
+    source_name: SoftSoil_FrictionCoefficient_IN_FL
+    report_name: SoftSoil FrictionCoefficient IN FL
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_in_fr
+    source_name: SoftSoil_FrictionCoefficient_IN_FR
+    report_name: SoftSoil FrictionCoefficient IN FR
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_in_rl
+    source_name: SoftSoil_FrictionCoefficient_IN_RL
+    report_name: SoftSoil FrictionCoefficient IN RL
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_in_rr
+    source_name: SoftSoil_FrictionCoefficient_IN_RR
+    report_name: SoftSoil FrictionCoefficient IN RR
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_out_fl
+    source_name: SoftSoil_FrictionCoefficient_OUT_FL
+    report_name: SoftSoil FrictionCoefficient OUT FL
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_out_fr
+    source_name: SoftSoil_FrictionCoefficient_OUT_FR
+    report_name: SoftSoil FrictionCoefficient OUT FR
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_out_rl
+    source_name: SoftSoil_FrictionCoefficient_OUT_RL
+    report_name: SoftSoil FrictionCoefficient OUT RL
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_frictioncoefficient_out_rr
+    source_name: SoftSoil_FrictionCoefficient_OUT_RR
+    report_name: SoftSoil FrictionCoefficient OUT RR
+    unit: '-'
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_in_fl
+    source_name: SoftSoil_Hardness_IN_FL
+    report_name: SoftSoil Hardness IN FL
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_in_fr
+    source_name: SoftSoil_Hardness_IN_FR
+    report_name: SoftSoil Hardness IN FR
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_in_rl
+    source_name: SoftSoil_Hardness_IN_RL
+    report_name: SoftSoil Hardness IN RL
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_in_rr
+    source_name: SoftSoil_Hardness_IN_RR
+    report_name: SoftSoil Hardness IN RR
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_out_fl
+    source_name: SoftSoil_Hardness_OUT_FL
+    report_name: SoftSoil Hardness OUT FL
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_out_fr
+    source_name: SoftSoil_Hardness_OUT_FR
+    report_name: SoftSoil Hardness OUT FR
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_out_rl
+    source_name: SoftSoil_Hardness_OUT_RL
+    report_name: SoftSoil Hardness OUT RL
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_hardness_out_rr
+    source_name: SoftSoil_Hardness_OUT_RR
+    report_name: SoftSoil Hardness OUT RR
+    unit: Pa
+    required: true
+    for_plot: true
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_in_fl
+    source_name: SoftSoil_ShearDisplacementX_IN_FL
+    report_name: SoftSoi Shear Displacement X IN FL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_in_fr
+    source_name: SoftSoil_ShearDisplacementX_IN_FR
+    report_name: SoftSoi Shear Displacement X IN FR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_in_rl
+    source_name: SoftSoil_ShearDisplacementX_IN_RL
+    report_name: SoftSoi Shear Displacement X IN RL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_in_rr
+    source_name: SoftSoil_ShearDisplacementX_IN_RR
+    report_name: SoftSoi Shear Displacement X IN RR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_out_fl
+    source_name: SoftSoil_ShearDisplacementX_OUT_FL
+    report_name: SoftSoi Shear Displacement X OUT FL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_out_fr
+    source_name: SoftSoil_ShearDisplacementX_OUT_FR
+    report_name: SoftSoi Shear Displacement X OUT FR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_out_rl
+    source_name: SoftSoil_ShearDisplacementX_OUT_RL
+    report_name: SoftSoi Shear Displacement X OUT RL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementx_out_rr
+    source_name: SoftSoil_ShearDisplacementX_OUT_RR
+    report_name: SoftSoi Shear Displacement X OUT RR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_in_fl
+    source_name: SoftSoil_ShearDisplacementY_IN_FL
+    report_name: SoftSoil Shear Displacement Y IN FL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_in_fr
+    source_name: SoftSoil_ShearDisplacementY_IN_FR
+    report_name: SoftSoil Shear Displacement Y IN FR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_in_rl
+    source_name: SoftSoil_ShearDisplacementY_IN_RL
+    report_name: SoftSoil Shear Displacement Y IN RL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_in_rr
+    source_name: SoftSoil_ShearDisplacementY_IN_RR
+    report_name: SoftSoil Shear Displacement Y IN FL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_out_fl
+    source_name: SoftSoil_ShearDisplacementY_OUT_FL
+    report_name: SoftSoil Shear Displacement Y OUT FL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_out_fr
+    source_name: SoftSoil_ShearDisplacementY_OUT_FR
+    report_name: SoftSoil Shear Displacement Y OUT FR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_out_rl
+    source_name: SoftSoil_ShearDisplacementY_OUT_RL
+    report_name: SoftSoil Shear Displacement Y OUT RL
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sheardisplacementy_out_rr
+    source_name: SoftSoil_ShearDisplacementY_OUT_RR
+    report_name: SoftSoil Shear Displacement Y OUT RR
+    unit: m
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_in_fl
+    source_name: SoftSoil_SinkageExponent_IN_FL
+    report_name: SoftSoil Sinkage Exponent IN FL
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_in_fr
+    source_name: SoftSoil_SinkageExponent_IN_FR
+    report_name: SoftSoil Sinkage Exponent IN FR
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_in_rl
+    source_name: SoftSoil_SinkageExponent_IN_RL
+    report_name: SoftSoil Sinkage Exponent IN RL
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_in_rr
+    source_name: SoftSoil_SinkageExponent_IN_RR
+    report_name: SoftSoil Sinkage Exponent IN RR
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_out_fl
+    source_name: SoftSoil_SinkageExponent_OUT_FL
+    report_name: SoftSoil Sinkage Exponent OUT FL
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_out_fr
+    source_name: SoftSoil_SinkageExponent_OUT_FR
+    report_name: SoftSoil Sinkage Exponent OUT FR
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_out_rl
+    source_name: SoftSoil_SinkageExponent_OUT_RL
+    report_name: SoftSoil Sinkage Exponent OUT RL
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  - semantic_name: softsoil_sinkageexponent_out_rr
+    source_name: SoftSoil_SinkageExponent_OUT_RR
+    report_name: SoftSoil Sinkage Exponent OUT RR
+    unit: '-'
+    required: true
+    for_plot: false
+    channel_type: AVL
+  math:
+  - semantic_name: time_minutes
+    source_name: Time
+    report_name: Time (min)
+    unit: min
+    required: true
+    for_plot: true
+    dependencies:
+    - track_time
+    formula: =A5/60
+    expression: track_time / 60
+  - semantic_name: distance_km
+    source_name: Distance
+    report_name: Distance (Km)
+    unit: Km
+    required: true
+    for_plot: true
+    dependencies:
+    - track_distance
+    formula: =F5/1000
+    expression: track_distance / 1000
+  - semantic_name: total_edu_elect_power
+    source_name: Total EDU Elect Power
+    report_name: Total EDU Elect Power
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_battery_em1_power
+    - electricsystem_battery_em2_power
+    - electricsystem_battery_em4_power
+    - electricsystem_battery_em3_power
+    formula: =X5+Y5+AA5+Z5
+    expression: electricsystem_battery_em1_power + electricsystem_battery_em2_power + electricsystem_battery_em4_power + electricsystem_battery_em3_power
+  - semantic_name: battery_power_squared
+    source_name: Battery Power RMS
+    report_name: Battery Power RMS
+    unit: kW^2
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_battery_power
+    formula: =AC5^2
+    expression: electricsystem_battery_power ** 2
+  - semantic_name: battery_heatflow_squared
+    source_name: Battery Heatflow RMS
+    report_name: Battery Heatflow RMS
+    unit: kW^2
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_battery_heatflow
+    formula: =AE5^2
+    expression: electricsystem_battery_heatflow ** 2
+  - semantic_name: edu_mech_power_fl
+    source_name: EDU Mech Power FL
+    report_name: EDU Mech Power FL
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_em1_speed
+    - electricsystem_em1_torque
+    formula: =BA5*BE5/9548.8
+    expression: electricsystem_em1_speed * electricsystem_em1_torque / rpm_nm_to_kw_divisor
+  - semantic_name: edu_mech_power_fr
+    source_name: EDU Mech Power FR
+    report_name: EDU Mech Power FR
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_em2_speed
+    - electricsystem_em2_torque
+    formula: =BB5*BF5/9548.8
+    expression: electricsystem_em2_speed * electricsystem_em2_torque / rpm_nm_to_kw_divisor
+  - semantic_name: edu_mech_power_rl
+    source_name: EDU Mech Power RL
+    report_name: EDU Mech Power RL
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_em3_speed
+    - electricsystem_em3_torque
+    formula: =BC5*BG5/9548.8
+    expression: electricsystem_em3_speed * electricsystem_em3_torque / rpm_nm_to_kw_divisor
+  - semantic_name: edu_mech_power_rr
+    source_name: EDU Mech Power RR
+    report_name: EDU Mech Power RR
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_em4_speed
+    - electricsystem_em4_torque
+    formula: =BD5*BH5/9548.8
+    expression: electricsystem_em4_speed * electricsystem_em4_torque / rpm_nm_to_kw_divisor
+  - semantic_name: total_edu_mech_power
+    source_name: Total EDU Mech Power
+    report_name: Total EDU Mech Power
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - edu_mech_power_fl
+    - edu_mech_power_fr
+    - edu_mech_power_rr
+    - edu_mech_power_rl
+    formula: =BI5+BJ5+BL5+BK5
+    expression: edu_mech_power_fl + edu_mech_power_fr + edu_mech_power_rr + edu_mech_power_rl
+  - semantic_name: agrochemical_discharge
+    source_name: Agrochemical Discharge
+    report_name: Agrochemical Discharge
+    unit: Kg
+    required: false
+    for_plot: true
+    dependencies:
+    - agrochemical_discharge_force
+    formula: =-1*BU5/9.81
+    expression: -1 * agrochemical_discharge_force / 9.81
+    notes: Depends on Sergio raw Agrochemical Discharge force channel, which is not present in the supplied Electric CSV.
+  - semantic_name: total_rolling_resistance_power
+    source_name: ' Total Rolling Resistance Power'
+    report_name: ' Total Rolling Resistance Power'
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_rollingresistancepower_fl
+    - tyre_rollingresistancepower_fr
+    - tyre_rollingresistancepower_rl
+    - tyre_rollingresistancepower_rr
+    formula: =EZ5+FA5+FB5+FC5
+    expression: tyre_rollingresistancepower_fl + tyre_rollingresistancepower_fr + tyre_rollingresistancepower_rl + tyre_rollingresistancepower_rr
+  - semantic_name: tyre_rolling_resistance_energy_kwh
+    source_name: ' Tyre Rolling Resistance Energy'
+    report_name: ' Tyre Rolling Resistance Energy'
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - total_rolling_resistance_power
+    - track_time
+    formula: =(FD5)*1/3600
+    expression: sample_energy_kwh(total_rolling_resistance_power, track_time)
+  - semantic_name: tyre_rolling_resistance_energy_wh
+    source_name: ' Tyre Rolling Resistance Energy'
+    report_name: ' Tyre Rolling Resistance Energy'
+    unit: Wh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_rolling_resistance_energy_kwh
+    formula: =FE5*1000
+    expression: tyre_rolling_resistance_energy_kwh * 1000
+  - semantic_name: tyre_rolling_resistance_energy_accumulated
+    source_name: ' Tyre Rolling Resistance Energy Accomulated'
+    report_name: ' Tyre Rolling Resistance Energy Accomulated'
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_rolling_resistance_energy_kwh
+    formula: =SUM(FE5:FE$6)
+    expression: cumulative_sum(tyre_rolling_resistance_energy_kwh)
+  - semantic_name: driveshaft_torque_fl
+    source_name: DriveShaft_Torque_FL
+    report_name: Wheel Torque FL
+    unit: Nm
+    required: true
+    for_plot: true
+    formula: '0'
+    expression: '0'
+  - semantic_name: driveshaft_torque_fr
+    source_name: DriveShaft_Torque_FR
+    report_name: Wheel Torque FR
+    unit: Nm
+    required: true
+    for_plot: true
+    formula: '0'
+    expression: '0'
+  - semantic_name: driveshaft_torque_rl
+    source_name: DriveShaft_Torque_RL
+    report_name: Wheel Torque RL
+    unit: Nm
+    required: true
+    for_plot: true
+    formula: '0'
+    expression: '0'
+  - semantic_name: driveshaft_torque_rr
+    source_name: DriveShaft_Torque_RR
+    report_name: Wheel Torque RR
+    unit: Nm
+    required: true
+    for_plot: true
+    formula: '0'
+    expression: '0'
+  - semantic_name: wheel_total_torque
+    source_name: Wheel Total Torque
+    report_name: Wheel Total Torque
+    unit: Nm
+    required: true
+    for_plot: true
+    dependencies:
+    - driveshaft_torque_rl
+    - driveshaft_torque_rr
+    formula: =GN5+GO5
+    expression: driveshaft_torque_rl + driveshaft_torque_rr
+  - semantic_name: wheel_power_fl
+    source_name: Wheel Power FL
+    report_name: Wheel Power FL
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - wheel_rotationalspeed_fl
+    - driveshaft_torque_fl
+    formula: =GH5*GL5/9548.8
+    expression: wheel_rotationalspeed_fl * driveshaft_torque_fl / rpm_nm_to_kw_divisor
+  - semantic_name: wheel_power_fr
+    source_name: Wheel Power FR
+    report_name: Wheel Power FR
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - wheel_rotationalspeed_fr
+    - driveshaft_torque_fr
+    formula: =GI5*GM5/9548.8
+    expression: wheel_rotationalspeed_fr * driveshaft_torque_fr / rpm_nm_to_kw_divisor
+  - semantic_name: wheel_power_rl
+    source_name: Wheel Power RL
+    report_name: Wheel Power RL
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - wheel_rotationalspeed_rl
+    - driveshaft_torque_rl
+    formula: =GJ5*GN5/9548.8
+    expression: wheel_rotationalspeed_rl * driveshaft_torque_rl / rpm_nm_to_kw_divisor
+  - semantic_name: wheel_power_rr
+    source_name: Wheel Power RR
+    report_name: Wheel Power RR
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - wheel_rotationalspeed_rr
+    - driveshaft_torque_rr
+    formula: =GK5*GO5/9548.8
+    expression: wheel_rotationalspeed_rr * driveshaft_torque_rr / rpm_nm_to_kw_divisor
+  - semantic_name: wheel_power_total
+    source_name: Wheel Power Total
+    report_name: Wheel Power Total
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - wheel_power_rl
+    - wheel_power_rr
+    formula: =GS5+GT5
+    expression: wheel_power_rl + wheel_power_rr
+  - semantic_name: auxiliary_high_voltage_power_consumption
+    source_name: Auxiliary Haigh Voltage Power Consumption
+    report_name: Auxiliary Haigh Voltage Power Consumption
+    unit: kW
+    required: true
+    for_plot: true
+    formula: '0'
+    expression: '0'
+  - semantic_name: total_auxiliary_power
+    source_name: Total Auxiliary Power
+    report_name: Total Auxiliary Power
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - electricsystem_auxiliary_lowvoltagepowerconsumption
+    - auxiliary_high_voltage_power_consumption
+    formula: =HD5+HE5
+    expression: electricsystem_auxiliary_lowvoltagepowerconsumption + auxiliary_high_voltage_power_consumption
+  - semantic_name: auxiliary_energy_consumption
+    source_name: Auxiliary Energy Consumption
+    report_name: Auxiliary Energy Consumption
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - total_auxiliary_power
+    - track_time
+    formula: =(HF5)*1/3600
+    expression: sample_energy_kwh(total_auxiliary_power, track_time)
+  - semantic_name: auxiliary_energy_consumption_accumulated
+    source_name: Auxiliary Energy Consumption Accumulated
+    report_name: Auxiliary Energy Consumption Accumulated
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - auxiliary_energy_consumption
+    formula: =HG5
+    expression: cumulative_sum(auxiliary_energy_consumption)
