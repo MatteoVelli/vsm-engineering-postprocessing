@@ -231,11 +231,42 @@ def test_electric_profile_full_math_execution_against_reference_csv() -> None:
     result = calculate_profile_math_channels(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
     assert result.configured_math_count == 29
-    assert result.calculated_math_count == 28
-    assert [(item.definition.semantic_name, item.missing_dependencies) for item in result.unavailable_optional] == [
-        ("agrochemical_discharge", ("agrochemical_discharge_force",))
-    ]
+    assert result.calculated_math_count == 29
+    assert not result.unavailable_optional
     assert not result.unavailable_required
+    np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
+
+
+def test_agrochemical_discharge_math_converts_force_to_mass() -> None:
+    dataset = _dataset(
+        [_channel("force__col_042", "HitchRear_Force_Z_VehicleCoordinates", "N", column=42)],
+        [[-9.81], [-19.62], [0.0]],
+    )
+    profile = _profile(
+        raw_channels=[
+            RawChannelDefinition(
+                "agrochemical_discharge_force",
+                "HitchRear_Force_Z_VehicleCoordinates",
+                "Agrochemical Discharge",
+                "VSM",
+                unit="N",
+            )
+        ],
+        math_channels=[
+            MathChannelDefinition(
+                "agrochemical_discharge",
+                "Agrochemical Discharge",
+                "Agrochemical Discharge",
+                "kg",
+                ("agrochemical_discharge_force",),
+                "-1 * agrochemical_discharge_force / 9.81",
+            )
+        ],
+    )
+
+    result = calculate_profile_math_channels(dataset, profile)
+
+    np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], [1.0, 2.0, 0.0])
 
 
 def test_electric_profile_representative_numeric_regression() -> None:
@@ -265,12 +296,11 @@ def test_hybrid_generator_power_computes_zero_against_electric_reference_csv() -
     result = calculate_profile_math_channels(dataset, load_reporting_profile(HYBRID_PROFILE))
 
     assert result.configured_math_count == 32
-    assert result.calculated_math_count == 31
-    assert [(item.definition.semantic_name, item.missing_dependencies) for item in result.unavailable_optional] == [
-        ("agrochemical_discharge", ("agrochemical_discharge_force",))
-    ]
+    assert result.calculated_math_count == 32
+    assert not result.unavailable_optional
     assert not result.unavailable_required
     np.testing.assert_allclose(result.values_by_semantic_name["generator_power_1"], 0.0)
+    np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
 
 
 def test_legacy_caiman_math_path_remains_unchanged(tmp_path: Path) -> None:

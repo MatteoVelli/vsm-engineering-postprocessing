@@ -442,13 +442,15 @@ channels:
     for_plot: false
     channel_type: VSM
   - semantic_name: agrochemical_discharge_force
-    source_name: Agrochemical Discharge
+    source_name: HitchRear_Force_Z_VehicleCoordinates
     report_name: Agrochemical Discharge
     unit: N
     required: false
     for_plot: true
     channel_type: VSM
-    notes: Template channel is unresolved in the supplied Electric CSV; no semantic alias is proven yet.
+    aliases:
+    - Agrochemical Discharge
+    notes: Original Caiman mapping proves HitchRear_Force_Z_VehicleCoordinates is the raw VSM source for the Agrochemical Discharge force report channel.
   - semantic_name: differential_torquevectoringdeltatorque_center
     source_name: Differential_TorqueVectoringDeltaTorque_Center
     report_name: Torque Vectoring Delta Torque Center
@@ -2145,7 +2147,7 @@ channels:
     - agrochemical_discharge_force
     formula: =-1*BU5/9.81
     expression: -1 * agrochemical_discharge_force / 9.81
-    notes: Depends on Sergio raw Agrochemical Discharge force channel, which is not present in the supplied Electric CSV.
+    notes: Converts the proven HitchRear_Force_Z_VehicleCoordinates force channel to reported agrochemical mass.
   - semantic_name: total_rolling_resistance_power
     source_name: ' Total Rolling Resistance Power'
     report_name: ' Total Rolling Resistance Power'
@@ -2498,7 +2500,7 @@ statistics:
     unit: Kg
     placement_group: summary
     required: false
-    notes: Unavailable until Sergio provides or confirms the raw Agrochemical Discharge source channel.
+    notes: Uses the converted agrochemical mass channel derived from HitchRear_Force_Z_VehicleCoordinates.
 kpis:
   - kpi_id: time_hours
     expression: time_minutes_last / 60
@@ -2707,8 +2709,8 @@ plots:
     x_label: Distance [km]
     primary_y_label: Agrochemical Discharge [kg]
     output_filename: 09_agrochemical_discharge_vs_distance.png
-    status: UNAVAILABLE
-    evidence: Electric chart 9 points to the profile MATH Agrochemical Discharge output; its required source is unresolved in Sergio's CSV.
+    status: PASS
+    evidence: Electric chart 9 points to the profile MATH Agrochemical Discharge output; original Caiman evidence confirms the raw source as HitchRear_Force_Z_VehicleCoordinates.
     series:
       - semantic_name: agrochemical_discharge
         axis: primary
@@ -2758,8 +2760,8 @@ plots:
     primary_y_label: Agrochemical Discharge [kg]
     secondary_y_label: Battery SOC [%]
     output_filename: 12_agrochemical_discharge_and_charge_vs_time.png
-    status: UNAVAILABLE
-    evidence: Electric chart 12 points to unresolved Agrochemical Discharge; Battery SOC is included by chart title and neighbouring charge context.
+    status: RECONSTRUCTED
+    evidence: Electric chart 12 points to Agrochemical Discharge; Battery SOC is included by chart title and neighbouring charge context.
     series:
       - semantic_name: agrochemical_discharge
         axis: primary

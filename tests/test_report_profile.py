@@ -204,13 +204,33 @@ def test_electric_robosprayer_profile_resolution_against_reference_csv() -> None
     result = resolve_profile(dataset, profile)
 
     assert result.is_valid
-    assert len(result.resolved) == 287
+    assert len(result.resolved) == 288
     assert len(result.profile.raw_channels) == 288
-    assert [(item.definition.semantic_name, item.definition.source_name) for item in result.missing_optional] == [
-        ("agrochemical_discharge_force", "Agrochemical Discharge")
-    ]
+    assert not result.missing_required
+    assert not result.missing_optional
     assert result.resolved_channel_ids["chassis_speed"] == "chassis_speed__col_039"
     assert result.resolved_channel_ids["electricsystem_battery_soc"] == "electricsystem_battery_soc__col_091"
+    assert result.resolved_channel_ids["agrochemical_discharge_force"] == "hitchrear_force_z_vehiclecoordinates__col_167"
+    assert result.resolved["agrochemical_discharge_force"].definition.source_name == "HitchRear_Force_Z_VehicleCoordinates"
+    assert result.resolved["agrochemical_discharge_force"].definition.unit == "N"
+    assert result.resolved["agrochemical_discharge_force"].is_all_zero
+
+
+def test_agrochemical_force_mapping_is_independent_from_runtime_column_position() -> None:
+    definition = load_reporting_profile(ELECTRIC_PROFILE).raw_by_semantic_name()["agrochemical_discharge_force"]
+    profile = _profile(raw_channels=[definition])
+
+    first = resolve_profile(
+        _dataset([_channel("hitchrear_force_z_vehiclecoordinates__col_167", "HitchRear_Force_Z_VehicleCoordinates", "N", column=167)]),
+        profile,
+    )
+    reordered = resolve_profile(
+        _dataset([_channel("hitchrear_force_z_vehiclecoordinates__col_601", "HitchRear_Force_Z_VehicleCoordinates", "N", column=601)]),
+        profile,
+    )
+
+    assert first.resolved_channel_ids["agrochemical_discharge_force"] == "hitchrear_force_z_vehiclecoordinates__col_167"
+    assert reordered.resolved_channel_ids["agrochemical_discharge_force"] == "hitchrear_force_z_vehiclecoordinates__col_601"
 
 
 def test_hybrid_profile_extends_electric_profile() -> None:
@@ -264,12 +284,10 @@ def test_hybrid_profile_against_electric_csv_resolves_inactive_hybrid_channels()
     result = resolve_profile(dataset, load_reporting_profile(HYBRID_PROFILE))
 
     assert result.is_valid
-    assert len(result.resolved) == 293
+    assert len(result.resolved) == 294
     assert len(result.profile.raw_channels) == 294
     assert not result.missing_required
-    assert [(item.definition.semantic_name, item.definition.source_name) for item in result.missing_optional] == [
-        ("agrochemical_discharge_force", "Agrochemical Discharge")
-    ]
+    assert not result.missing_optional
     assert result.resolved["engine_speed"].channel.channel_id == "engine_speed__col_149"
     assert result.resolved["engine_speed"].is_all_zero
     assert result.resolved["engine_torque"].is_all_zero

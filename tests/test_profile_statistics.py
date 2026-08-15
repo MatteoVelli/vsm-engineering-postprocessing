@@ -164,11 +164,12 @@ def test_electric_profile_full_statistics_execution_against_reference_csv() -> N
     result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
     assert result.configured_statistic_count == 27
-    assert result.calculated_statistic_count == 26
+    assert result.calculated_statistic_count == 27
     assert result.configured_kpi_count == 9
     assert result.calculated_kpi_count == 9
     assert result.is_complete
-    assert result.unavailable_optional_statistics[0].definition.statistic_id == "agrochemical_discharge_max"
+    assert not result.unavailable_optional_statistics
+    assert not result.unavailable_required_statistics
 
 
 def test_electric_profile_representative_statistics_regression() -> None:
@@ -186,6 +187,7 @@ def test_electric_profile_representative_statistics_regression() -> None:
     assert stats["total_edu_mech_power_max"] == pytest.approx(15.165330139630111)
     assert stats["total_edu_elect_power_min"] == pytest.approx(-19.101329999999997)
     assert stats["total_rolling_resistance_power_max"] == pytest.approx(13.471919999999999)
+    assert stats["agrochemical_discharge_max"] == pytest.approx(0.0)
     assert stats["auxiliary_energy_accumulated_last"] == pytest.approx(11.508375861111489)
     assert stats["tyre_rr_energy_accumulated_last"] == pytest.approx(13.355223967066818)
     assert kpis["battery_capacity_used"] == pytest.approx(33.65367)
@@ -223,12 +225,13 @@ def test_hybrid_generator_statistics_are_zero_against_electric_reference_csv() -
     stats = {item.definition.statistic_id: item.value for item in result.statistics}
 
     assert result.configured_statistic_count == 36
-    assert result.calculated_statistic_count == 35
+    assert result.calculated_statistic_count == 36
     assert result.configured_kpi_count == 9
     assert result.calculated_kpi_count == 9
     assert result.is_complete
-    assert result.unavailable_optional_statistics[0].definition.statistic_id == "agrochemical_discharge_max"
+    assert not result.unavailable_optional_statistics
     assert not result.unavailable_required_statistics
+    assert stats["agrochemical_discharge_max"] == pytest.approx(0.0)
     assert stats["generator_torque_1_max"] == pytest.approx(0.0)
     assert stats["generator_power_1_max"] == pytest.approx(0.0)
 

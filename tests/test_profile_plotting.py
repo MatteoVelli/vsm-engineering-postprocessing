@@ -154,23 +154,27 @@ def test_electric_profile_plot_loading_count_rendering_and_representative_mappin
 
     assert len(profile.plots) == 12
     assert result.configured_plot_count == 12
-    assert result.rendered_plot_count == 10
-    assert result.unavailable_plot_count == 2
-    assert {item.definition.plot_id for item in result.unavailable_plots} == {
-        "agrochemical_discharge_vs_distance",
-        "agrochemical_discharge_and_charge_vs_time",
-    }
+    assert result.rendered_plot_count == 12
+    assert result.unavailable_plot_count == 0
     assert by_id["battery_soc"].x == "distance_km"
     assert [item.semantic_name for item in by_id["battery_soc"].series] == [
         "chassis_speed",
         "electricsystem_battery_soc",
     ]
     assert by_id["battery_energy_time_based"].status == "RECONSTRUCTED"
+    assert by_id["agrochemical_discharge_vs_distance"].status == "PASS"
     assert all(Path(item.png_file).exists() for item in result.rendered_plots)
     assert all(result.values_by_semantic_name[item.x].size == dataset.quality.sample_count for item in profile.plots)
+    np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
+    agro_summary = next(
+        item
+        for item in result.series_summaries["agrochemical_discharge_vs_distance"]
+        if item.semantic_name == "agrochemical_discharge"
+    )
+    assert agro_summary.is_all_zero
 
 
-def test_hybrid_profile_plot_inheritance_generator_mapping_and_zero_inactive_rendering(tmp_path: Path) -> None:
+def test_hybrid_profile_plot_inheritance_generator_and_agrochemical_zero_inactive_rendering(tmp_path: Path) -> None:
     dataset = load_data_file(REFERENCE_CSV, ImportOptions())
     profile = load_reporting_profile(HYBRID_PROFILE)
 
@@ -178,10 +182,11 @@ def test_hybrid_profile_plot_inheritance_generator_mapping_and_zero_inactive_ren
     by_id = {plot.plot_id: plot for plot in profile.plots}
 
     assert len(profile.plots) == 18
-    assert result.rendered_plot_count == 16
-    assert result.unavailable_plot_count == 2
+    assert result.rendered_plot_count == 18
+    assert result.unavailable_plot_count == 0
     assert by_id["generator_power"].series[0].semantic_name == "generator_power_1"
     np.testing.assert_allclose(result.values_by_semantic_name["generator_power_1"], 0.0)
+    np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
     generator_summary = next(item for item in result.series_summaries["generator_power"] if item.semantic_name == "generator_power_1")
     assert generator_summary.is_all_zero
     assert generator_summary.source_name == "Generator Power_1"
