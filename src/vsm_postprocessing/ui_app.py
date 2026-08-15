@@ -25,7 +25,7 @@ from vsm_postprocessing.ui_config import (
     default_full_duty_cycle_scenario,
     default_ui_profile,
     discover_reporting_profiles,
-    generate_reporting_profile_excel_report,
+    generate_reporting_profile_engineering_report,
     get_reporting_profile_definition,
     load_ui_profile,
     load_ui_templates,
@@ -326,8 +326,7 @@ def _render_engineering_report_workflow(st: Any) -> None:
 
 
 def _render_profile_engineering_report_workflow(st: Any) -> None:
-    st.write("Generate a validated RoboSprayer Electric or Hybrid Excel engineering report from one VSM result file.")
-    st.info("PowerPoint output is not available yet for the profile-driven RoboSprayer workflow.")
+    st.write("Generate validated RoboSprayer Electric or Hybrid Excel and PowerPoint engineering reports from one VSM result file.")
 
     try:
         profiles = discover_reporting_profiles(PROJECT_ROOT)
@@ -416,11 +415,11 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
     if run_clicked and source_path is not None:
         run_dir = UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         try:
-            with st.spinner("Generating profile-driven Excel engineering report..."):
-                result = generate_reporting_profile_excel_report(
+            with st.spinner("Generating profile-driven Excel and PowerPoint engineering reports..."):
+                result = generate_reporting_profile_engineering_report(
                     source_path,
                     profile_definition.profile_path,
-                    run_dir / "profile_excel_report",
+                    run_dir,
                     ImportOptions(strict=True),
                 )
         except VSMPostProcessingError as exc:
@@ -430,7 +429,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
             return
 
         st.session_state["profile_report_result"] = result
-        st.success(f"Engineering report generated: {result.report_path.name}")
+        st.success(f"Engineering reports generated: {result.report_path.name} and {result.presentation_path.name}")
         _render_profile_report_completion(st, result)
 
     result = st.session_state.get("profile_report_result")
@@ -560,10 +559,21 @@ def _render_profile_report_download(st: Any, result: Any) -> None:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
-    if result.plotting_result.rendered_plots:
+    powerpoint_path = result.presentation_path
+    if powerpoint_path.exists():
+        with powerpoint_path.open("rb") as handle:
+            powerpoint_bytes = handle.read()
+        st.download_button(
+            "Download PowerPoint Engineering Report",
+            data=powerpoint_bytes,
+            file_name=powerpoint_path.name,
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            use_container_width=True,
+        )
+    if result.excel_result.plotting_result.rendered_plots:
         with st.expander("Generated plot previews"):
             columns = st.columns(2)
-            for index, plot in enumerate(result.plotting_result.rendered_plots):
+            for index, plot in enumerate(result.excel_result.plotting_result.rendered_plots):
                 columns[index % 2].image(plot.png_file, caption=plot.title, use_container_width=True)
 
 

@@ -12,6 +12,7 @@ from .errors import ConfigurationError
 from .duty_cycle import load_duty_cycle_config, validate_source_dataset
 from .excel_report_engine import ProfileExcelReportResult, generate_profile_excel_report
 from .importer import ImportOptions, inspect_data_file, load_data_file
+from .profile_powerpoint_report_engine import ProfilePowerPointReportResult, build_profile_powerpoint_report
 from .profile_math import calculate_profile_math_channels
 from .report_profile import ReportingProfile, load_reporting_profile, resolve_profile
 
@@ -102,6 +103,60 @@ class ReportingProfileValidationSummary:
             and self.ambiguous_count == 0
             and self.unit_mismatch_count == 0
         )
+
+
+@dataclass
+class ReportingProfileEngineeringReportResult:
+    excel_result: ProfileExcelReportResult
+    powerpoint_result: ProfilePowerPointReportResult
+
+    @property
+    def report_path(self) -> Path:
+        return self.excel_result.report_path
+
+    @property
+    def presentation_path(self) -> Path:
+        return self.powerpoint_result.presentation_path
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.powerpoint_result.manifest_path
+
+    @property
+    def summary_path(self) -> Path:
+        return self.powerpoint_result.summary_path
+
+    @property
+    def profile(self) -> ReportingProfile:
+        return self.excel_result.profile
+
+    @property
+    def sample_count(self) -> int:
+        return self.excel_result.sample_count
+
+    @property
+    def slide_count(self) -> int:
+        return self.powerpoint_result.slide_count
+
+    @property
+    def report_channel_count(self) -> int:
+        return self.excel_result.report_channel_count
+
+    @property
+    def math_count(self) -> int:
+        return self.excel_result.math_count
+
+    @property
+    def statistic_count(self) -> int:
+        return self.excel_result.statistic_count
+
+    @property
+    def kpi_count(self) -> int:
+        return self.excel_result.kpi_count
+
+    @property
+    def plot_count(self) -> int:
+        return self.excel_result.plot_count
 
 
 SUPPORTED_PROFILE_UPLOAD_EXTENSIONS = (".csv", ".xlsx")
@@ -209,6 +264,41 @@ def generate_reporting_profile_excel_report(
         output_dir,
         import_options or ImportOptions(strict=True),
     )
+
+
+def generate_reporting_profile_engineering_report(
+    source_file: str | Path,
+    profile_file: str | Path,
+    output_dir: str | Path,
+    import_options: ImportOptions | None = None,
+) -> ReportingProfileEngineeringReportResult:
+    validate_profile_upload_extension(source_file)
+    destination = Path(output_dir).expanduser().resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    profile = load_reporting_profile(profile_file)
+    excel_result = generate_profile_excel_report(
+        source_file,
+        profile_file,
+        destination / "profile_excel_report",
+        import_options or ImportOptions(strict=True),
+        output_filename=_profile_report_filename(profile, ".xlsx"),
+    )
+    powerpoint_result = build_profile_powerpoint_report(
+        excel_result,
+        destination / "profile_powerpoint_report",
+        output_filename=_profile_report_filename(profile, ".pptx"),
+    )
+    return ReportingProfileEngineeringReportResult(
+        excel_result=excel_result,
+        powerpoint_result=powerpoint_result,
+    )
+
+
+def _profile_report_filename(profile: ReportingProfile, suffix: str) -> str:
+    stem = "".join(char if char.isalnum() else "_" for char in profile.metadata.name).strip("_")
+    while "__" in stem:
+        stem = stem.replace("__", "_")
+    return f"{stem or profile.profile_id}_Engineering_Report{suffix}"
 
 
 def _duration_minutes(start: float | None, end: float | None, unit: str | None) -> float | None:

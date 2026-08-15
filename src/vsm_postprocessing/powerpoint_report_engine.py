@@ -479,7 +479,7 @@ def _add_kpi_grid(
 ) -> None:
     if not statistics:
         return
-    stats = statistics[:6]
+    stats = statistics
     columns = min(max_columns, len(stats))
     gap_x = 0.25
     gap_y = 0.24

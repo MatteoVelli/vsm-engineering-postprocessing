@@ -256,3 +256,98 @@ plots:
       - semantic_name: engine_fuel_consumption
         axis: secondary
         label: Engine Fuel Consumption
+presentation:
+  footer: VSM Engineering Post-Processing Tool
+  slides:
+    - slide_id: cover
+      statistics:
+        - distance_km_last
+        - time_minutes_last
+        - battery_soc_last
+        - engine_fuel_consumption_last
+        - generator_power_1_max
+        - engine_power_required_max
+    - slide_id: system_overview
+      statistics:
+        - time_minutes_last
+        - distance_km_last
+        - chassis_speed_max
+        - generator_power_1_max
+    - slide_id: executive_results
+      statistics:
+        - time_minutes_last
+        - distance_km_last
+        - chassis_speed_max
+        - battery_soc_first
+        - battery_soc_last
+        - battery_capacity_used
+        - engine_fuel_consumption_last
+        - generator_power_1_max
+    - slide_id: vehicle_operation
+      statistics:
+        - distance_km_last
+        - time_minutes_last
+        - chassis_speed_max
+        - battery_soc_last
+      plots:
+        - speed_vs_distance
+    - slide_id: battery_system
+      statistics:
+        - battery_soc_first
+        - battery_soc_last
+        - max_battery_discharge_power
+        - battery_power_rms
+        - battery_heatflow_rms
+        - battery_capacity_used
+      plots:
+        - battery_soc
+        - battery_energy_time_based
+    - slide_id: battery_power_recovery
+      statistics:
+        - battery_power_rms
+        - energy_released_last
+        - energy_recuperated_last
+        - auxiliary_energy_accumulated_last
+        - max_battery_discharge_power
+      plots:
+        - battery_power_charge_discharge
+        - energy_released
+    - slide_id: range_extender_generator
+      statistics:
+        - generator_power_1_max
+        - engine_power_required_max
+        - engine_speed_max
+        - engine_torque_max
+        - engine_fuel_consumption_last
+        - engine_energy_delivered_sum
+      plots:
+        - generator_power
+        - engine_power_and_fuel_vs_time
+    - slide_id: agrochemical_battery
+      statistics:
+        - agrochemical_discharge_max
+        - battery_soc_last
+        - engine_fuel_consumption_last
+        - time_minutes_last
+      plots:
+        - agrochemical_discharge_vs_distance
+        - battery_energy_and_fuel_vs_time
+    - slide_id: traction_auxiliaries
+      statistics:
+        - total_edu_mech_power_max
+        - wheel_power_total_max
+        - edu_speed_rl_max
+        - edu_torque_rl_max
+        - tyre_rr_energy_accumulated_last
+        - auxiliary_energy_accumulated_last
+      plots:
+        - power_at_wheels_and_edu
+        - tyres_energy_consumption
+    - slide_id: simulation_summary
+      statistics:
+        - distance_km_last
+        - time_minutes_last
+        - battery_soc_last
+        - engine_fuel_consumption_last
+        - generator_power_1_max
+        - engine_energy_delivered_sum

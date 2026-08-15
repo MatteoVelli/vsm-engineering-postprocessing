@@ -17,6 +17,7 @@ from vsm_postprocessing.ui_config import (
     default_ui_profile,
     discover_reporting_profiles,
     generate_reporting_profile_excel_report,
+    generate_reporting_profile_engineering_report,
     load_ui_profile,
     load_ui_templates,
     save_ui_profile,
@@ -153,6 +154,57 @@ def test_profile_report_generation_wrapper_calls_profile_excel_engine(monkeypatc
     assert result is expected_result
     assert calls["profile_file"] == ELECTRIC_PROFILE
     assert calls["output_dir"] == tmp_path / "out"
+
+
+def test_profile_engineering_report_wrapper_reuses_excel_result_for_powerpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: dict[str, object] = {}
+    expected_excel = object()
+    expected_powerpoint = object()
+
+    class FakeProfile:
+        profile_id = "fake_profile"
+
+        class metadata:
+            name = "Fake Profile"
+
+    def fake_load_profile(profile_file):
+        calls["loaded_profile_file"] = profile_file
+        return FakeProfile()
+
+    def fake_generate(source_file, profile_file, output_dir, import_options, *, output_filename=None):
+        calls["source_file"] = source_file
+        calls["profile_file"] = profile_file
+        calls["excel_output_dir"] = output_dir
+        calls["excel_output_filename"] = output_filename
+        calls["import_options"] = import_options
+        return expected_excel
+
+    def fake_build(excel_result, output_dir, *, output_filename=None):
+        calls["ppt_excel_result"] = excel_result
+        calls["ppt_output_dir"] = output_dir
+        calls["ppt_output_filename"] = output_filename
+        return expected_powerpoint
+
+    monkeypatch.setattr("vsm_postprocessing.ui_config.load_reporting_profile", fake_load_profile)
+    monkeypatch.setattr("vsm_postprocessing.ui_config.generate_profile_excel_report", fake_generate)
+    monkeypatch.setattr("vsm_postprocessing.ui_config.build_profile_powerpoint_report", fake_build)
+
+    result = generate_reporting_profile_engineering_report(
+        tmp_path / "source.csv",
+        ELECTRIC_PROFILE,
+        tmp_path / "out",
+    )
+
+    assert result.excel_result is expected_excel
+    assert result.powerpoint_result is expected_powerpoint
+    assert calls["ppt_excel_result"] is expected_excel
+    assert calls["excel_output_dir"] == tmp_path / "out" / "profile_excel_report"
+    assert calls["ppt_output_dir"] == tmp_path / "out" / "profile_powerpoint_report"
+    assert calls["excel_output_filename"] == "Fake_Profile_Engineering_Report.xlsx"
+    assert calls["ppt_output_filename"] == "Fake_Profile_Engineering_Report.pptx"
 
 
 def test_ui_app_preserves_custom_analysis_and_legacy_caiman_flow() -> None:

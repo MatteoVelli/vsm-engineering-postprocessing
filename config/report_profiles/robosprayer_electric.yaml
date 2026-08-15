@@ -2769,3 +2769,98 @@ plots:
       - semantic_name: electricsystem_battery_soc
         axis: secondary
         label: Battery SOC
+presentation:
+  footer: VSM Engineering Post-Processing Tool
+  slides:
+    - slide_id: cover
+      statistics:
+        - distance_km_last
+        - time_minutes_last
+        - battery_soc_last
+        - battery_energy_consumption_wh_per_km
+        - range_85_battery_km
+        - max_battery_discharge_power
+    - slide_id: system_overview
+      statistics:
+        - time_minutes_last
+        - distance_km_last
+        - chassis_speed_max
+        - battery_soc_last
+    - slide_id: executive_results
+      statistics:
+        - time_minutes_last
+        - distance_km_last
+        - chassis_speed_max
+        - battery_soc_first
+        - battery_soc_last
+        - battery_capacity_used
+        - battery_energy_consumption_wh_per_km
+        - range_85_battery_km
+    - slide_id: vehicle_operation
+      statistics:
+        - distance_km_last
+        - time_minutes_last
+        - chassis_speed_max
+        - battery_soc_last
+      plots:
+        - speed_vs_distance
+    - slide_id: battery_system
+      statistics:
+        - battery_soc_first
+        - battery_soc_last
+        - max_battery_discharge_power
+        - battery_power_rms
+        - battery_heatflow_rms
+        - battery_capacity_used
+      plots:
+        - battery_soc
+        - battery_energy_time_based
+    - slide_id: battery_power_recovery
+      statistics:
+        - battery_power_rms
+        - energy_released_last
+        - energy_recuperated_last
+        - auxiliary_energy_accumulated_last
+        - max_battery_discharge_power
+      plots:
+        - battery_power_charge_discharge
+        - energy_released
+    - slide_id: profile_energy_range
+      statistics:
+        - battery_capacity_used
+        - battery_energy_consumption_wh_per_km
+        - range_85_battery_km
+        - battery_soc_last
+        - max_battery_discharge_power
+        - auxiliary_energy_accumulated_last
+      plots:
+        - battery_energy_distance_based
+        - auxiliaries_energy_consumption
+    - slide_id: agrochemical_battery
+      statistics:
+        - agrochemical_discharge_max
+        - battery_soc_last
+        - battery_capacity_used
+        - time_minutes_last
+      plots:
+        - agrochemical_discharge_vs_distance
+        - agrochemical_discharge_and_charge_vs_time
+    - slide_id: traction_auxiliaries
+      statistics:
+        - total_edu_mech_power_max
+        - wheel_power_total_max
+        - edu_speed_rl_max
+        - edu_torque_rl_max
+        - tyre_rr_energy_accumulated_last
+        - auxiliary_energy_accumulated_last
+      plots:
+        - power_at_wheels_and_edu
+        - tyres_energy_consumption
+    - slide_id: simulation_summary
+      statistics:
+        - distance_km_last
+        - time_minutes_last
+        - battery_soc_last
+        - battery_capacity_used
+        - battery_energy_consumption_wh_per_km
+        - range_85_battery_km
