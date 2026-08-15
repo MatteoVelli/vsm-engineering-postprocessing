@@ -2754,14 +2754,14 @@ plots:
   - plot_id: agrochemical_discharge_and_charge_vs_time
     order: 12
     reference_chart_number: 12
-    title: Agrochemical Discharge & Charge Vs Time
+    title: Agrochemical Discharge and Battery SOC Vs Time
     x: time_minutes
     x_label: Time [min]
     primary_y_label: Agrochemical Discharge [kg]
     secondary_y_label: Battery SOC [%]
     output_filename: 12_agrochemical_discharge_and_charge_vs_time.png
     status: RECONSTRUCTED
-    evidence: Electric chart 12 points to Agrochemical Discharge; Battery SOC is included by chart title and neighbouring charge context.
+    evidence: Electric chart 12 points to Agrochemical Discharge with Battery SOC on the secondary axis; the title is corrected to name both series explicitly.
     series:
       - semantic_name: agrochemical_discharge
         axis: primary
