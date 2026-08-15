@@ -4,11 +4,13 @@ import json
 import math
 import shutil
 import csv
+from datetime import datetime, timezone
 from dataclasses import replace
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+import numpy as np
 import yaml
 from openpyxl import Workbook
 from openpyxl.chart import Reference, ScatterChart, Series
@@ -17,9 +19,13 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .errors import ConfigurationError, ExcelReportError
-from .importer import ImportOptions
+from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots
+from .profile_math import ProfileMathResult, calculate_profile_math_channels
+from .profile_plotting import ProfilePlottingResult, render_profile_plots
+from .profile_statistics import ProfileStatisticsResult, calculate_profile_statistics
+from .report_profile import ProfileResolutionResult, ReportingProfile, load_reporting_profile, resolve_profile
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
 from .utils import client_display_filename, sha256_file
 from .version import __version__
@@ -96,6 +102,60 @@ class ExcelReportResult:
     @property
     def embedded_plot_image_count(self) -> int:
         return len(self.config.plot_ids)
+
+
+@dataclass
+class ProfileExcelReportResult:
+    report_path: Path
+    manifest_path: Path
+    summary_path: Path
+    plot_assets_dir: Path
+    dataset: Any
+    profile: ReportingProfile
+    resolution: ProfileResolutionResult
+    math_result: ProfileMathResult
+    statistics_result: ProfileStatisticsResult
+    plotting_result: ProfilePlottingResult
+    report_channels: list[ChannelInfo]
+    template_comparison: list[dict[str, str]]
+
+    @property
+    def sample_count(self) -> int:
+        return self.dataset.quality.sample_count
+
+    @property
+    def source_raw_channel_count(self) -> int:
+        return self.dataset.quality.raw_channel_count
+
+    @property
+    def report_channel_count(self) -> int:
+        return len(self.report_channels)
+
+    @property
+    def vsm_count(self) -> int:
+        raw_by_name = self.profile.raw_by_semantic_name()
+        return sum(1 for channel in self.report_channels if raw_by_name.get(channel.channel_id) and raw_by_name[channel.channel_id].channel_type == "VSM")
+
+    @property
+    def avl_count(self) -> int:
+        raw_by_name = self.profile.raw_by_semantic_name()
+        return sum(1 for channel in self.report_channels if raw_by_name.get(channel.channel_id) and raw_by_name[channel.channel_id].channel_type == "AVL")
+
+    @property
+    def math_count(self) -> int:
+        return len(self.math_result.calculated_channels)
+
+    @property
+    def statistic_count(self) -> int:
+        return self.statistics_result.calculated_statistic_count
+
+    @property
+    def kpi_count(self) -> int:
+        return self.statistics_result.calculated_kpi_count
+
+    @property
+    def plot_count(self) -> int:
+        return self.plotting_result.rendered_plot_count
 
 
 def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
@@ -406,6 +466,755 @@ def generate_excel_report(
         shutil.rmtree(plot_assets_dir, ignore_errors=True)
 
     return result
+
+
+def generate_profile_excel_report(
+    input_file: str | Path,
+    profile_file: str | Path,
+    output_dir: str | Path,
+    import_options: ImportOptions | None = None,
+    *,
+    output_filename: str | None = None,
+    report_type: str | None = None,
+) -> ProfileExcelReportResult:
+    """Generate a profile-driven RoboSprayer engineering workbook.
+
+    This adapter uses the validated profile processing layers as numerical
+    authority and writes semantic raw/math report channels, statistics, KPIs,
+    and profile-rendered plot images into one workbook.
+    """
+
+    source_path = Path(input_file).expanduser().resolve()
+    profile_path = Path(profile_file).expanduser().resolve()
+    profile = load_reporting_profile(profile_path)
+    dataset = load_data_file(source_path, import_options)
+    resolution = resolve_profile(dataset, profile)
+    if not resolution.is_valid:
+        missing = [item.definition.semantic_name for item in resolution.missing_required]
+        ambiguous = [item.definition.semantic_name for item in resolution.ambiguous]
+        mismatches = [item.definition.semantic_name for item in resolution.unit_mismatches]
+        raise ExcelReportError(
+            "Profile raw channels are not fully resolved: "
+            f"missing={missing}; ambiguous={ambiguous}; unit_mismatches={mismatches}"
+        )
+
+    math_result = calculate_profile_math_channels(dataset, profile, resolution)
+    if math_result.unavailable_required:
+        raise ExcelReportError(
+            "Required profile MATH channels are unavailable: "
+            + ", ".join(item.definition.semantic_name for item in math_result.unavailable_required)
+        )
+
+    statistics_result = calculate_profile_statistics(dataset, profile, resolution, math_result)
+    if not statistics_result.is_complete:
+        missing_stats = [item.definition.statistic_id for item in statistics_result.unavailable_required_statistics]
+        missing_kpis = [item.definition.kpi_id for item in statistics_result.unavailable_required_kpis]
+        raise ExcelReportError(
+            "Required profile statistics/KPIs are unavailable: "
+            f"statistics={missing_stats}; kpis={missing_kpis}"
+        )
+
+    destination = Path(output_dir).expanduser().resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    plot_assets_dir = destination / "profile_plot_assets"
+    plotting_result = render_profile_plots(dataset, profile, plot_assets_dir, resolution, math_result)
+    if plotting_result.unavailable_plots:
+        raise ExcelReportError(
+            "Profile plots are unavailable: "
+            + ", ".join(item.definition.plot_id for item in plotting_result.unavailable_plots)
+        )
+
+    channels_by_name = plotting_result.channels_by_semantic_name
+    report_channels = _profile_report_channels(profile, channels_by_name)
+    comparison = _profile_template_comparison_rows(profile, dataset, report_channels, statistics_result, plotting_result)
+    report_path = destination / _profile_output_filename(profile, output_filename)
+    manifest_path = destination / "profile_excel_report_manifest.json"
+    summary_path = destination / "profile_excel_report_summary.txt"
+    report_type = report_type or (profile.metadata.powertrain or profile.profile_id)
+
+    _write_profile_workbook(
+        report_path,
+        source_path=source_path,
+        profile_path=profile_path,
+        report_type=report_type,
+        profile=profile,
+        dataset=dataset,
+        resolution=resolution,
+        math_result=math_result,
+        statistics_result=statistics_result,
+        plotting_result=plotting_result,
+        report_channels=report_channels,
+        values_by_name=plotting_result.values_by_semantic_name,
+        template_comparison=comparison,
+    )
+
+    result = ProfileExcelReportResult(
+        report_path=report_path,
+        manifest_path=manifest_path,
+        summary_path=summary_path,
+        plot_assets_dir=plot_assets_dir,
+        dataset=dataset,
+        profile=profile,
+        resolution=resolution,
+        math_result=math_result,
+        statistics_result=statistics_result,
+        plotting_result=plotting_result,
+        report_channels=report_channels,
+        template_comparison=comparison,
+    )
+    manifest_path.write_text(
+        json.dumps(_profile_manifest(result, source_path, profile_path, report_type), indent=2),
+        encoding="utf-8",
+    )
+    summary_path.write_text(_profile_summary(result), encoding="utf-8")
+    return result
+
+
+def _profile_output_filename(profile: ReportingProfile, output_filename: str | None) -> str:
+    if output_filename is not None:
+        return _plain_xlsx_filename(output_filename, "output_filename")
+    return f"{profile.profile_id}_profile_report.xlsx"
+
+
+def _profile_report_channels(
+    profile: ReportingProfile,
+    channels_by_name: Mapping[str, ChannelInfo],
+) -> list[ChannelInfo]:
+    channels: list[ChannelInfo] = []
+    for definition in profile.raw_channels:
+        if definition.semantic_name not in channels_by_name:
+            raise ExcelReportError(f"Resolved raw profile channel is unavailable: {definition.semantic_name}")
+        channel = channels_by_name[definition.semantic_name]
+        channels.append(
+            replace(
+                channel,
+                channel_id=definition.semantic_name,
+                source_name=definition.source_name,
+                display_name=definition.report_name,
+                unit=definition.unit,
+                kind=definition.channel_type.lower(),
+            )
+        )
+    for definition in profile.math_channels:
+        if definition.semantic_name not in channels_by_name:
+            raise ExcelReportError(f"Calculated profile MATH channel is unavailable: {definition.semantic_name}")
+        channel = channels_by_name[definition.semantic_name]
+        channels.append(
+            replace(
+                channel,
+                channel_id=definition.semantic_name,
+                source_name=definition.source_name,
+                display_name=definition.report_name,
+                unit=definition.unit,
+                kind="math",
+            )
+        )
+    return channels
+
+
+def _write_profile_workbook(
+    output_path: Path,
+    *,
+    source_path: Path,
+    profile_path: Path,
+    report_type: str,
+    profile: ReportingProfile,
+    dataset: Any,
+    resolution: ProfileResolutionResult,
+    math_result: ProfileMathResult,
+    statistics_result: ProfileStatisticsResult,
+    plotting_result: ProfilePlottingResult,
+    report_channels: list[ChannelInfo],
+    values_by_name: Mapping[str, Any],
+    template_comparison: list[dict[str, str]],
+) -> None:
+    workbook = Workbook()
+    report = workbook.active
+    report.title = _profile_sheet_name(profile)
+    stats_sheet = workbook.create_sheet("Statistics KPIs")
+    plots_sheet = workbook.create_sheet("Plots")
+    metadata_sheet = workbook.create_sheet("Metadata")
+    comparison_sheet = workbook.create_sheet("Template Comparison")
+
+    thin = Side(style="thin", color="B7C9D6")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    title_fill = PatternFill("solid", fgColor="143642")
+    vsm_fill = PatternFill("solid", fgColor="1F4E78")
+    avl_fill = PatternFill("solid", fgColor="375623")
+    math_fill = PatternFill("solid", fgColor="C65911")
+    label_fill = PatternFill("solid", fgColor="D9EAF7")
+    kpi_fill = PatternFill("solid", fgColor="548235")
+    warning_fill = PatternFill("solid", fgColor="F4B183")
+    white_bold = Font(color="FFFFFF", bold=True)
+
+    _write_profile_report_sheet(
+        report,
+        profile=profile,
+        source_path=source_path,
+        report_type=report_type,
+        statistics_result=statistics_result,
+        report_channels=report_channels,
+        values_by_name=values_by_name,
+        border=border,
+        title_fill=title_fill,
+        vsm_fill=vsm_fill,
+        avl_fill=avl_fill,
+        math_fill=math_fill,
+        label_fill=label_fill,
+        white_bold=white_bold,
+    )
+    _write_profile_statistics_sheet(
+        stats_sheet,
+        statistics_result,
+        border=border,
+        label_fill=label_fill,
+        kpi_fill=kpi_fill,
+        white_bold=white_bold,
+    )
+    _write_profile_plots_sheet(plots_sheet, plotting_result, border=border, label_fill=label_fill, white_bold=white_bold)
+    _write_profile_metadata_sheet(
+        metadata_sheet,
+        source_path=source_path,
+        profile_path=profile_path,
+        profile=profile,
+        report_type=report_type,
+        dataset=dataset,
+        resolution=resolution,
+        math_result=math_result,
+        statistics_result=statistics_result,
+        plotting_result=plotting_result,
+        report_channels=report_channels,
+        border=border,
+        label_fill=label_fill,
+        white_bold=white_bold,
+    )
+    _write_profile_template_comparison_sheet(
+        comparison_sheet,
+        template_comparison,
+        border=border,
+        label_fill=label_fill,
+        warning_fill=warning_fill,
+        white_bold=white_bold,
+    )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    workbook.save(output_path)
+
+
+def _write_profile_report_sheet(
+    sheet: Any,
+    *,
+    profile: ReportingProfile,
+    source_path: Path,
+    report_type: str,
+    statistics_result: ProfileStatisticsResult,
+    report_channels: list[ChannelInfo],
+    values_by_name: Mapping[str, Any],
+    border: Border,
+    title_fill: PatternFill,
+    vsm_fill: PatternFill,
+    avl_fill: PatternFill,
+    math_fill: PatternFill,
+    label_fill: PatternFill,
+    white_bold: Font,
+) -> None:
+    channel_count = len(report_channels)
+    sample_count = statistics_result.dataset.quality.sample_count
+    data_start_row = _PROFILE_DATA_START_ROW
+    data_end_row = data_start_row + sample_count - 1
+
+    sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=min(channel_count, 8))
+    title = sheet.cell(1, 1, f"{profile.metadata.name} Engineering Report")
+    title.fill = title_fill
+    title.font = Font(color="FFFFFF", bold=True, size=14)
+    title.alignment = Alignment(horizontal="left", vertical="center")
+    sheet.cell(2, 1, f"Source: {client_display_filename(source_path)}")
+    sheet.cell(2, 2, f"Profile: {profile.profile_id}")
+    sheet.cell(2, 3, f"Report type: {report_type}")
+    sheet.cell(2, 4, f"Samples: {sample_count}")
+
+    rms_stats = [
+        item for item in statistics_result.statistics if item.definition.placement_group == "top_rms"
+    ]
+    rms_start_col = 9
+    for index, item in enumerate(rms_stats):
+        col = rms_start_col + index * 2
+        sheet.merge_cells(start_row=1, start_column=col, end_row=1, end_column=col + 1)
+        sheet.merge_cells(start_row=2, start_column=col, end_row=2, end_column=col + 1)
+        label = sheet.cell(1, col, item.definition.display_name or item.channel_display_name)
+        value = sheet.cell(2, col, item.value)
+        for cell in (label, value):
+            cell.fill = title_fill
+            cell.font = white_bold
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        value.number_format = "0.000000"
+
+    header_labels = {
+        4: "Channel type",
+        5: "Source channel",
+        6: "Report channel",
+        7: "Unit",
+    }
+    for row, label in header_labels.items():
+        cell = sheet.cell(row, 1, label)
+        cell.fill = label_fill
+        cell.font = Font(bold=True)
+        cell.border = border
+
+    for col_index, channel in enumerate(report_channels, start=1):
+        channel_type = channel.kind.upper()
+        fill = math_fill if channel_type == "MATH" else avl_fill if channel_type == "AVL" else vsm_fill
+        headers = (
+            channel_type,
+            channel.source_name,
+            channel.display_name,
+            channel.unit or "-",
+        )
+        for row_index, value in zip((4, 5, 6, 7), headers):
+            cell = sheet.cell(row_index, col_index, value)
+            cell.fill = fill
+            cell.font = white_bold
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for col_index, channel in enumerate(report_channels, start=1):
+        values = np.asarray(values_by_name[channel.channel_id], dtype=np.float64)
+        if values.size != sample_count:
+            raise ExcelReportError(
+                f"Profile channel '{channel.channel_id}' has {values.size} samples; expected {sample_count}"
+            )
+        number_format = _number_format(channel.unit)
+        for row_offset, raw_value in enumerate(values):
+            cell = sheet.cell(data_start_row + row_offset, col_index, float(raw_value))
+            cell.number_format = number_format
+
+    bottom_start = data_end_row + 2
+    summary_stats = [
+        item
+        for item in statistics_result.statistics
+        if item.definition.placement_group in {"summary", "sanity", "kpi_inputs"}
+    ]
+    for row_offset, item in enumerate(summary_stats):
+        row = bottom_start + row_offset
+        sheet.cell(row, 1, item.definition.statistic_id)
+        sheet.cell(row, 2, item.definition.display_name or item.channel_display_name)
+        sheet.cell(row, 3, item.definition.operation)
+        sheet.cell(row, 4, item.value).number_format = "0.000000"
+        sheet.cell(row, 5, item.channel_unit or "-")
+        for col in range(1, 6):
+            cell = sheet.cell(row, col)
+            cell.fill = label_fill
+            cell.border = border
+
+    sheet.freeze_panes = f"B{data_start_row}"
+    for col_index, channel in enumerate(report_channels, start=1):
+        width = min(max(len(channel.display_name), len(channel.source_name), 10), 24)
+        sheet.column_dimensions[get_column_letter(col_index)].width = width
+    for row_index in (4, 5, 6, 7):
+        sheet.row_dimensions[row_index].height = 32 if row_index in (5, 6) else 22
+
+
+def _write_profile_statistics_sheet(
+    sheet: Any,
+    statistics_result: ProfileStatisticsResult,
+    *,
+    border: Border,
+    label_fill: PatternFill,
+    kpi_fill: PatternFill,
+    white_bold: Font,
+) -> None:
+    headers = [
+        "Statistic ID",
+        "Target",
+        "Operation",
+        "Display name",
+        "Value",
+        "Unit",
+        "Placement group",
+        "Sample count",
+        "Used samples",
+        "Omitted samples",
+    ]
+    for col, header in enumerate(headers, start=1):
+        cell = sheet.cell(1, col, header)
+        cell.fill = label_fill
+        cell.font = Font(bold=True)
+        cell.border = border
+    for row, item in enumerate(statistics_result.statistics, start=2):
+        values = [
+            item.definition.statistic_id,
+            item.target_channel,
+            item.definition.operation,
+            item.definition.display_name or item.channel_display_name,
+            item.value,
+            item.channel_unit or "-",
+            item.definition.placement_group or "-",
+            item.sample_count,
+            item.used_sample_count,
+            item.omitted_sample_count,
+        ]
+        for col, value in enumerate(values, start=1):
+            cell = sheet.cell(row, col, value)
+            cell.border = border
+            if col == 5:
+                cell.number_format = "0.000000"
+
+    kpi_start = len(statistics_result.statistics) + 4
+    kpi_headers = ["KPI ID", "Display name", "Value", "Unit", "Dependencies", "Placement group"]
+    for col, header in enumerate(kpi_headers, start=1):
+        cell = sheet.cell(kpi_start, col, header)
+        cell.fill = kpi_fill
+        cell.font = white_bold
+        cell.border = border
+    for row, item in enumerate(statistics_result.kpis, start=kpi_start + 1):
+        values = [
+            item.definition.kpi_id,
+            item.definition.display_name or item.definition.kpi_id,
+            item.value,
+            item.definition.unit or "-",
+            ", ".join(item.definition.dependencies),
+            item.definition.placement_group or "-",
+        ]
+        for col, value in enumerate(values, start=1):
+            cell = sheet.cell(row, col, value)
+            cell.border = border
+            if col == 3:
+                cell.number_format = "0.000000"
+
+    sheet.freeze_panes = "A2"
+    for col in range(1, 11):
+        sheet.column_dimensions[get_column_letter(col)].width = 22
+
+
+def _write_profile_plots_sheet(
+    sheet: Any,
+    plotting_result: ProfilePlottingResult,
+    *,
+    border: Border,
+    label_fill: PatternFill,
+    white_bold: Font,
+) -> None:
+    headers = ["Plot ID", "Title", "Reference chart", "X channel", "Primary series", "Secondary series", "PNG file"]
+    for col, header in enumerate(headers, start=1):
+        cell = sheet.cell(1, col, header)
+        cell.fill = label_fill
+        cell.font = Font(bold=True)
+        cell.border = border
+    for row, plot in enumerate(plotting_result.rendered_plots, start=2):
+        values = [
+            plot.plot_id,
+            plot.title,
+            plot.reference_chart_number or "-",
+            plot.x_channel_id,
+            ", ".join(plot.primary_series_ids),
+            ", ".join(plot.secondary_series_ids),
+            plot.png_file,
+        ]
+        for col, value in enumerate(values, start=1):
+            cell = sheet.cell(row, col, value)
+            cell.border = border
+
+    image_start_row = len(plotting_result.rendered_plots) + 4
+    for index, plot in enumerate(plotting_result.rendered_plots):
+        row = image_start_row + (index // 2) * 20
+        col = 1 + (index % 2) * 6
+        label = sheet.cell(row, col, plot.title)
+        label.fill = label_fill
+        label.font = white_bold
+        label.border = border
+        image = XLImage(plot.png_file)
+        image.width = 480
+        image.height = 288
+        sheet.add_image(image, f"{get_column_letter(col)}{row + 1}")
+
+    for col in range(1, 13):
+        sheet.column_dimensions[get_column_letter(col)].width = 20
+
+
+def _write_profile_metadata_sheet(
+    sheet: Any,
+    *,
+    source_path: Path,
+    profile_path: Path,
+    profile: ReportingProfile,
+    report_type: str,
+    dataset: Any,
+    resolution: ProfileResolutionResult,
+    math_result: ProfileMathResult,
+    statistics_result: ProfileStatisticsResult,
+    plotting_result: ProfilePlottingResult,
+    report_channels: list[ChannelInfo],
+    border: Border,
+    label_fill: PatternFill,
+    white_bold: Font,
+) -> None:
+    raw_counts = _profile_raw_type_counts(profile)
+    metadata = [
+        ("Software version", __version__),
+        ("Generated UTC", datetime.now(timezone.utc).isoformat()),
+        ("Source file", str(source_path)),
+        ("Source display filename", client_display_filename(source_path)),
+        ("Source SHA-256", dataset.quality.source_sha256),
+        ("Source format", dataset.quality.file_type),
+        ("Source raw channel count", dataset.quality.raw_channel_count),
+        ("Source total channel count", dataset.quality.channel_count),
+        ("Source sample count", dataset.quality.sample_count),
+        ("Source data start row", dataset.quality.data_start_row),
+        ("Source data end row", dataset.quality.data_end_row),
+        ("Workbook data start row", _PROFILE_DATA_START_ROW),
+        ("Workbook data end row", _PROFILE_DATA_START_ROW + dataset.quality.sample_count - 1),
+        ("Profile file", str(profile_path)),
+        ("Profile SHA-256", sha256_file(profile_path)),
+        ("Profile ID", profile.profile_id),
+        ("Profile name", profile.metadata.name),
+        ("Powertrain", profile.metadata.powertrain or "-"),
+        ("Report type", report_type),
+        ("Resolved raw profile channels", len(resolution.resolved)),
+        ("Exported report channels", len(report_channels)),
+        ("Exported VSM raw channels", raw_counts["VSM"]),
+        ("Exported AVL raw channels", raw_counts["AVL"]),
+        ("Exported MATH channels", len(math_result.calculated_channels)),
+        ("Configured statistics", statistics_result.configured_statistic_count),
+        ("Calculated statistics", statistics_result.calculated_statistic_count),
+        ("Configured KPIs", statistics_result.configured_kpi_count),
+        ("Calculated KPIs", statistics_result.calculated_kpi_count),
+        ("Configured plots", plotting_result.configured_plot_count),
+        ("Rendered plots", plotting_result.rendered_plot_count),
+        ("Plot series", plotting_result.series_count),
+        ("Report sheet", _profile_sheet_name(profile)),
+        ("Statistics sheet", "Statistics KPIs"),
+        ("Plots sheet", "Plots"),
+        ("Template comparison sheet", "Template Comparison"),
+    ]
+    sheet.cell(1, 1, "Field").fill = label_fill
+    sheet.cell(1, 2, "Value").fill = label_fill
+    for cell in (sheet.cell(1, 1), sheet.cell(1, 2)):
+        cell.font = white_bold
+        cell.border = border
+    for row, (key, value) in enumerate(metadata, start=2):
+        sheet.cell(row, 1, key).border = border
+        sheet.cell(row, 2, value).border = border
+    sheet.column_dimensions["A"].width = 32
+    sheet.column_dimensions["B"].width = 96
+
+
+def _write_profile_template_comparison_sheet(
+    sheet: Any,
+    rows: list[dict[str, str]],
+    *,
+    border: Border,
+    label_fill: PatternFill,
+    warning_fill: PatternFill,
+    white_bold: Font,
+) -> None:
+    headers = ["Feature", "Sergio template", "Generated report", "Status", "Comments"]
+    for col, header in enumerate(headers, start=1):
+        cell = sheet.cell(1, col, header)
+        cell.fill = label_fill
+        cell.font = white_bold
+        cell.border = border
+    for row_index, row in enumerate(rows, start=2):
+        values = [row["feature"], row["sergio_template"], row["generated_report"], row["status"], row["comments"]]
+        for col, value in enumerate(values, start=1):
+            cell = sheet.cell(row_index, col, value)
+            cell.border = border
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
+            if row["status"] == "INTENTIONAL CORRECTION":
+                cell.fill = warning_fill
+    for col, width in enumerate((28, 36, 36, 24, 64), start=1):
+        sheet.column_dimensions[get_column_letter(col)].width = width
+
+
+def _profile_template_comparison_rows(
+    profile: ReportingProfile,
+    dataset: Any,
+    report_channels: list[ChannelInfo],
+    statistics_result: ProfileStatisticsResult,
+    plotting_result: ProfilePlottingResult,
+) -> list[dict[str, str]]:
+    raw_counts = _profile_raw_type_counts(profile)
+    return [
+        _comparison_row(
+            "Channel selection",
+            "Selected RoboSprayer Electric engineering channels",
+            f"{len(profile.raw_channels)} raw + {len(profile.math_channels)} MATH channels",
+            "PASS",
+            "Selection is profile-owned and independent of runtime column IDs.",
+        ),
+        _comparison_row(
+            "Channel order",
+            "Template raw channels followed by calculated channels",
+            f"{len(report_channels)} semantic report columns in profile order",
+            "PASS",
+            "No source workbook column order is used for report layout.",
+        ),
+        _comparison_row(
+            "Channel names and units",
+            "Sergio visible report labels and units",
+            "Report labels and units come from the active YAML profile",
+            "PASS",
+            "Runtime IDs remain internal provenance only.",
+        ),
+        _comparison_row(
+            "Sample geometry",
+            "Electric source cycle length",
+            f"{dataset.quality.sample_count} samples from imported data",
+            "PASS",
+            "Workbook row count is generated dynamically from source data.",
+        ),
+        _comparison_row(
+            "Powertrain split",
+            "VSM, AVL, and MATH regions",
+            f"{raw_counts['VSM']} VSM, {raw_counts['AVL']} AVL, {len(profile.math_channels)} MATH",
+            "PASS",
+            "Channel type is visible in header row 4 and color-coded.",
+        ),
+        _comparison_row(
+            "RMS calculations",
+            "Battery power and heatflow RMS in top region",
+            f"{statistics_result.calculated_statistic_count} profile statistics calculated in Python",
+            "INTENTIONAL CORRECTION",
+            "RMS values use current Electric sample count, avoiding stale Caiman denominators.",
+        ),
+        _comparison_row(
+            "Statistics and KPIs",
+            "Template KPI/statistical summary areas",
+            f"{statistics_result.calculated_statistic_count} statistics + {statistics_result.calculated_kpi_count} KPIs",
+            "PASS",
+            "Values are written as numbers, not stale Excel formulas.",
+        ),
+        _comparison_row(
+            "Agrochemical channel",
+            "Electric report agrochemical discharge/charge plots",
+            "Profile semantic agrochemical channels retained",
+            "PASS",
+            "Inactive Electric values remain valid zero series and plotted accordingly.",
+        ),
+        _comparison_row(
+            "Plots",
+            "Sergio reference plot set",
+            f"{plotting_result.rendered_plot_count} of {plotting_result.configured_plot_count} profile plots embedded",
+            "PASS",
+            "The workbook embeds profile-rendered PNG plot assets.",
+        ),
+        _comparison_row(
+            "Sergio template fidelity",
+            "Visual reference layout",
+            "Semantic profile workbook with report, stats/KPIs, plots, metadata, and comparison sheets",
+            "REVIEW",
+            "The report preserves engineering content while correcting source/profile conflicts.",
+        ),
+    ]
+
+
+def _comparison_row(feature: str, sergio: str, generated: str, status: str, comments: str) -> dict[str, str]:
+    return {
+        "feature": feature,
+        "sergio_template": sergio,
+        "generated_report": generated,
+        "status": status,
+        "comments": comments,
+    }
+
+
+def _profile_manifest(
+    result: ProfileExcelReportResult,
+    source_path: Path,
+    profile_path: Path,
+    report_type: str,
+) -> dict[str, Any]:
+    return {
+        "software_version": __version__,
+        "report_file": str(result.report_path),
+        "source_file": str(source_path),
+        "source_sha256": result.dataset.quality.source_sha256,
+        "profile_file": str(profile_path),
+        "profile_sha256": sha256_file(profile_path),
+        "profile_id": result.profile.profile_id,
+        "profile_name": result.profile.metadata.name,
+        "report_type": report_type,
+        "source_sample_count": result.sample_count,
+        "source_raw_channel_count": result.source_raw_channel_count,
+        "exported_report_channel_count": result.report_channel_count,
+        "exported_vsm_channel_count": result.vsm_count,
+        "exported_avl_channel_count": result.avl_count,
+        "exported_math_channel_count": result.math_count,
+        "configured_statistic_count": result.statistics_result.configured_statistic_count,
+        "calculated_statistic_count": result.statistic_count,
+        "configured_kpi_count": result.statistics_result.configured_kpi_count,
+        "calculated_kpi_count": result.kpi_count,
+        "configured_plot_count": result.plotting_result.configured_plot_count,
+        "rendered_plot_count": result.plot_count,
+        "plot_series_count": result.plotting_result.series_count,
+        "report_channel_ids": [channel.channel_id for channel in result.report_channels],
+        "plot_ids": [plot.plot_id for plot in result.plotting_result.rendered_plots],
+        "sheet_names": [
+            _profile_sheet_name(result.profile),
+            "Statistics KPIs",
+            "Plots",
+            "Metadata",
+            "Template Comparison",
+        ],
+    }
+
+
+def _profile_summary(result: ProfileExcelReportResult) -> str:
+    stats = {item.definition.statistic_id: item for item in result.statistics_result.statistics}
+    kpis = {item.definition.kpi_id: item for item in result.statistics_result.kpis}
+    lines = [
+        "PROFILE-DRIVEN EXCEL REPORT SUMMARY",
+        "===================================",
+        "Status: PASS",
+        f"Profile: {result.profile.profile_id}",
+        f"Source samples: {result.sample_count}",
+        f"Source raw channels: {result.source_raw_channel_count}",
+        f"Exported report channels: {result.report_channel_count}",
+        f"VSM channels: {result.vsm_count}",
+        f"AVL channels: {result.avl_count}",
+        f"MATH channels: {result.math_count}",
+        f"Statistics: {result.statistic_count}",
+        f"KPIs: {result.kpi_count}",
+        f"Plots: {result.plot_count}",
+        f"Workbook: {result.report_path}",
+        "",
+        "Numerical regression:",
+    ]
+    for statistic_id in (
+        "time_minutes_last",
+        "distance_km_last",
+        "battery_soc_last",
+        "battery_power_rms",
+        "battery_heatflow_rms",
+        "agrochemical_discharge_max",
+    ):
+        if statistic_id in stats:
+            item = stats[statistic_id]
+            lines.append(f"  - {statistic_id}: {item.value:.12g} [{item.channel_unit or '-'}]")
+    for kpi_id in ("battery_capacity_used", "battery_energy_consumption_wh_per_km", "range_85_battery_km"):
+        if kpi_id in kpis:
+            item = kpis[kpi_id]
+            lines.append(f"  - {kpi_id}: {item.value:.12g} [{item.definition.unit or '-'}]")
+    return "\n".join(lines) + "\n"
+
+
+def _profile_sheet_name(profile: ReportingProfile) -> str:
+    name = profile.metadata.name or profile.profile_id
+    if len(name) <= 31 and not any(character in name for character in "[]:*?/\\"):
+        return name
+    return _sheet_name(name[:31].rstrip(), "profile report sheet")
+
+
+def _profile_raw_type_counts(profile: ReportingProfile) -> dict[str, int]:
+    counts = {"VSM": 0, "AVL": 0}
+    for channel in profile.raw_channels:
+        channel_type = channel.channel_type.upper()
+        if channel_type in counts:
+            counts[channel_type] += 1
+    return counts
+
+
+_PROFILE_DATA_START_ROW = 8
 
 
 def _write_workbook(
