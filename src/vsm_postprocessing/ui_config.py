@@ -10,7 +10,10 @@ import yaml
 
 from .errors import ConfigurationError
 from .duty_cycle import load_duty_cycle_config, validate_source_dataset
+from .excel_report_engine import ProfileExcelReportResult, generate_profile_excel_report
 from .importer import ImportOptions, inspect_data_file, load_data_file
+from .profile_math import calculate_profile_math_channels
+from .report_profile import ReportingProfile, load_reporting_profile, resolve_profile
 
 
 @dataclass(frozen=True)
@@ -54,7 +57,170 @@ class FullDutyCycleScenarioDefinition:
     powerpoint_download_filename: str
 
 
+@dataclass(frozen=True)
+class ReportingProfileDefinition:
+    profile_id: str
+    display_name: str
+    profile_path: Path
+    powertrain: str | None
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class ReportingProfileValidationSummary:
+    profile_id: str
+    profile_name: str
+    source_filename: str
+    sample_count: int
+    source_channel_count: int
+    source_raw_channel_count: int
+    duration_minutes: float | None
+    time_channel_name: str | None
+    required_raw_count: int
+    resolved_raw_count: int
+    missing_required_count: int
+    missing_optional_count: int
+    ambiguous_count: int
+    unit_mismatch_count: int
+    math_count: int
+    statistic_count: int
+    kpi_count: int
+    plot_count: int
+    active_resolved_count: int
+    constant_resolved_count: int
+    all_zero_resolved_count: int
+    missing_required_names: tuple[str, ...]
+    missing_optional_names: tuple[str, ...]
+    ambiguous_names: tuple[str, ...]
+    unit_mismatch_names: tuple[str, ...]
+    all_zero_names: tuple[str, ...]
+
+    @property
+    def is_valid(self) -> bool:
+        return (
+            self.missing_required_count == 0
+            and self.ambiguous_count == 0
+            and self.unit_mismatch_count == 0
+        )
+
+
+SUPPORTED_PROFILE_UPLOAD_EXTENSIONS = (".csv", ".xlsx")
 _PROFILE_VERSION = 1
+
+
+def supported_profile_upload_extensions() -> tuple[str, ...]:
+    return SUPPORTED_PROFILE_UPLOAD_EXTENSIONS
+
+
+def validate_profile_upload_extension(path: str | Path) -> None:
+    suffix = Path(path).suffix.lower()
+    if suffix not in SUPPORTED_PROFILE_UPLOAD_EXTENSIONS:
+        supported = ", ".join(SUPPORTED_PROFILE_UPLOAD_EXTENSIONS)
+        raise ConfigurationError(f"Unsupported upload type '{suffix}'. Supported types are {supported}")
+
+
+def discover_reporting_profiles(project_root: str | Path) -> list[ReportingProfileDefinition]:
+    profile_dir = Path(project_root).expanduser().resolve() / "config" / "report_profiles"
+    if not profile_dir.exists():
+        raise ConfigurationError(f"Reporting profile directory does not exist: {profile_dir}")
+
+    profiles: list[ReportingProfileDefinition] = []
+    for path in sorted(profile_dir.glob("*.yaml")):
+        profile = load_reporting_profile(path)
+        profiles.append(
+            ReportingProfileDefinition(
+                profile_id=profile.profile_id,
+                display_name=profile.metadata.name,
+                profile_path=path.resolve(),
+                powertrain=profile.metadata.powertrain,
+                description=profile.metadata.description,
+            )
+        )
+    return sorted(profiles, key=lambda item: (item.display_name != "RoboSprayer Electric", item.display_name))
+
+
+def get_reporting_profile_definition(
+    project_root: str | Path,
+    profile_id: str,
+) -> ReportingProfileDefinition:
+    for profile in discover_reporting_profiles(project_root):
+        if profile.profile_id == profile_id:
+            return profile
+    raise ConfigurationError(f"Unknown reporting profile: {profile_id}")
+
+
+def validate_reporting_profile_source(
+    source_file: str | Path,
+    profile_file: str | Path,
+    import_options: ImportOptions | None = None,
+) -> ReportingProfileValidationSummary:
+    source = Path(source_file).expanduser().resolve()
+    validate_profile_upload_extension(source)
+    options = import_options or ImportOptions(strict=True)
+    dataset = load_data_file(source, options)
+    profile = load_reporting_profile(profile_file)
+    resolution = resolve_profile(dataset, profile)
+    if resolution.is_valid:
+        # This validates semantic MATH dependencies without exposing formulas in UI.
+        calculate_profile_math_channels(dataset, profile, resolution)
+
+    resolved = list(resolution.resolved.values())
+    required_raw_count = len(profile.raw_channels)
+    return ReportingProfileValidationSummary(
+        profile_id=profile.profile_id,
+        profile_name=profile.metadata.name,
+        source_filename=source.name,
+        sample_count=dataset.quality.sample_count,
+        source_channel_count=dataset.quality.channel_count,
+        source_raw_channel_count=dataset.quality.raw_channel_count,
+        duration_minutes=_duration_minutes(dataset.quality.time_start, dataset.quality.time_end, dataset.quality.time_unit),
+        time_channel_name=dataset.quality.time_channel_name,
+        required_raw_count=required_raw_count,
+        resolved_raw_count=len(resolution.resolved),
+        missing_required_count=len(resolution.missing_required),
+        missing_optional_count=len(resolution.missing_optional),
+        ambiguous_count=len(resolution.ambiguous),
+        unit_mismatch_count=len(resolution.unit_mismatches),
+        math_count=len(profile.math_channels),
+        statistic_count=len(profile.statistics),
+        kpi_count=len(profile.kpis),
+        plot_count=len(profile.plots),
+        active_resolved_count=sum(1 for item in resolved if item.is_active),
+        constant_resolved_count=sum(1 for item in resolved if item.is_constant),
+        all_zero_resolved_count=sum(1 for item in resolved if item.is_all_zero),
+        missing_required_names=tuple(item.definition.report_name for item in resolution.missing_required),
+        missing_optional_names=tuple(item.definition.report_name for item in resolution.missing_optional),
+        ambiguous_names=tuple(item.definition.report_name for item in resolution.ambiguous),
+        unit_mismatch_names=tuple(item.definition.report_name for item in resolution.unit_mismatches),
+        all_zero_names=tuple(item.definition.report_name for item in resolved if item.is_all_zero),
+    )
+
+
+def generate_reporting_profile_excel_report(
+    source_file: str | Path,
+    profile_file: str | Path,
+    output_dir: str | Path,
+    import_options: ImportOptions | None = None,
+) -> ProfileExcelReportResult:
+    validate_profile_upload_extension(source_file)
+    return generate_profile_excel_report(
+        source_file,
+        profile_file,
+        output_dir,
+        import_options or ImportOptions(strict=True),
+    )
+
+
+def _duration_minutes(start: float | None, end: float | None, unit: str | None) -> float | None:
+    if start is None or end is None:
+        return None
+    duration = float(end) - float(start)
+    normalized_unit = (unit or "").strip().lower()
+    if normalized_unit in {"min", "minute", "minutes"}:
+        return duration
+    if normalized_unit in {"s", "sec", "second", "seconds"}:
+        return duration / 60
+    return None
 
 
 def default_full_duty_cycle_scenario(project_root: str | Path) -> FullDutyCycleScenarioDefinition:

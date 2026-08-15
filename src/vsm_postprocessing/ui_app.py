@@ -24,9 +24,15 @@ from vsm_postprocessing.ui_config import (
     build_runtime_bundle,
     default_full_duty_cycle_scenario,
     default_ui_profile,
+    discover_reporting_profiles,
+    generate_reporting_profile_excel_report,
+    get_reporting_profile_definition,
     load_ui_profile,
     load_ui_templates,
+    supported_profile_upload_extensions,
     save_ui_profile,
+    validate_profile_upload_extension,
+    validate_reporting_profile_source,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -56,7 +62,7 @@ def main() -> None:
         return
 
     st.header("Custom Analysis")
-    uploaded = st.file_uploader("1. Load VSM results", type=["xlsx", "xlsm", "csv"])
+    uploaded = st.file_uploader("1. Load VSM results", type=["xlsx", "csv"])
     st.caption("The original file is copied into the local outputs workspace; it is not modified.")
     if uploaded is None:
         st.info("Choose a VSM CSV/XLSX file to inspect its channels and configure the report.")
@@ -305,15 +311,143 @@ def main() -> None:
 
 
 def _render_engineering_report_workflow(st: Any) -> None:
-    scenario = default_full_duty_cycle_scenario(PROJECT_ROOT)
     st.header("Engineering Report")
+    report_path = st.radio(
+        "Report workflow",
+        ["Profile-driven VSM report", "Legacy Caiman duty-cycle report"],
+        horizontal=True,
+        help="Use the profile-driven workflow for RoboSprayer Electric/Hybrid reports. The legacy Caiman path remains available separately.",
+    )
+    if report_path == "Legacy Caiman duty-cycle report":
+        _render_legacy_engineering_report_workflow(st)
+        return
+
+    _render_profile_engineering_report_workflow(st)
+
+
+def _render_profile_engineering_report_workflow(st: Any) -> None:
+    st.write("Generate a validated RoboSprayer Electric or Hybrid Excel engineering report from one VSM result file.")
+    st.info("PowerPoint output is not available yet for the profile-driven RoboSprayer workflow.")
+
+    try:
+        profiles = discover_reporting_profiles(PROJECT_ROOT)
+    except VSMPostProcessingError as exc:
+        st.error("Reporting profiles could not be loaded.")
+        with st.expander("Technical details"):
+            st.write(str(exc))
+        return
+    if not profiles:
+        st.error("No reporting profiles are configured.")
+        return
+
+    uploaded = st.file_uploader(
+        "STEP 1 - Upload VSM Result",
+        type=[suffix.lstrip(".") for suffix in supported_profile_upload_extensions()],
+        help="Supported formats: CSV and XLSX.",
+        key="profile_report_source",
+    )
+    selected_profile_id = st.selectbox(
+        "STEP 2 - Select Report Profile",
+        [profile.profile_id for profile in profiles],
+        format_func=lambda profile_id: next(profile.display_name for profile in profiles if profile.profile_id == profile_id),
+        help="Select explicitly. Do not infer Electric/Hybrid from zero or inactive channels.",
+    )
+    profile_definition = get_reporting_profile_definition(PROJECT_ROOT, selected_profile_id)
+
+    source_path: Path | None = None
+    validation_key: str | None = None
+    if uploaded is None:
+        st.info("Upload a supported VSM CSV or XLSX file to validate it against the selected profile.")
+    else:
+        source_path = _persist_upload(uploaded)
+        validation_key = f"{source_path}:{source_path.stat().st_size}:{profile_definition.profile_id}"
+        try:
+            validate_profile_upload_extension(source_path)
+            inspection = inspect_data_file(source_path, ImportOptions(strict=True))
+        except VSMPostProcessingError as exc:
+            st.error(_friendly_input_error(exc))
+            with st.expander("Diagnostics"):
+                st.write(str(exc))
+            source_path = None
+        else:
+            quality = inspection.quality
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Samples", f"{quality.sample_count:,}")
+            c2.metric("Source channels", f"{quality.channel_count:,}")
+            c3.metric("Raw channels", f"{quality.raw_channel_count:,}")
+            c4.metric("Duration", _format_duration_minutes(quality.time_start, quality.time_end, quality.time_unit))
+            st.caption(f"Time channel: {quality.time_channel_name or quality.time_channel_id or 'not detected'}")
+
+    validate_clicked = st.button(
+        "STEP 3 - Validate",
+        use_container_width=True,
+        disabled=source_path is None,
+    )
+    if validate_clicked and source_path is not None and validation_key is not None:
+        try:
+            with st.spinner("Validating source channels against reporting profile..."):
+                summary = validate_reporting_profile_source(source_path, profile_definition.profile_path, ImportOptions(strict=True))
+        except VSMPostProcessingError as exc:
+            st.error(_friendly_profile_error(exc))
+            with st.expander("Diagnostics"):
+                st.write(str(exc))
+        else:
+            st.session_state["profile_validation_key"] = validation_key
+            st.session_state["profile_validation_summary"] = summary
+
+    summary = st.session_state.get("profile_validation_summary")
+    if summary is not None and st.session_state.get("profile_validation_key") == validation_key:
+        _render_profile_validation_summary(st, summary)
+    elif source_path is not None:
+        st.info("Validate the uploaded file and selected profile before generating the report.")
+
+    can_generate = (
+        source_path is not None
+        and summary is not None
+        and st.session_state.get("profile_validation_key") == validation_key
+        and summary.is_valid
+    )
+    run_clicked = st.button(
+        "STEP 4 - Generate Engineering Report",
+        type="primary",
+        use_container_width=True,
+        disabled=not can_generate,
+    )
+    if run_clicked and source_path is not None:
+        run_dir = UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        try:
+            with st.spinner("Generating profile-driven Excel engineering report..."):
+                result = generate_reporting_profile_excel_report(
+                    source_path,
+                    profile_definition.profile_path,
+                    run_dir / "profile_excel_report",
+                    ImportOptions(strict=True),
+                )
+        except VSMPostProcessingError as exc:
+            st.error(_friendly_profile_error(exc))
+            with st.expander("Diagnostics"):
+                st.write(str(exc))
+            return
+
+        st.session_state["profile_report_result"] = result
+        st.success(f"Engineering report generated: {result.report_path.name}")
+        _render_profile_report_completion(st, result)
+
+    result = st.session_state.get("profile_report_result")
+    if result is not None:
+        st.subheader("STEP 5 - Access Output")
+        _render_profile_report_download(st, result)
+
+
+def _render_legacy_engineering_report_workflow(st: Any) -> None:
+    scenario = default_full_duty_cycle_scenario(PROJECT_ROOT)
     st.write(
         "Generate the complete configured engineering mission report from the VSM source results."
     )
     st.markdown(f"**Selected scenario:**  \n{scenario.display_name}")
     uploaded = st.file_uploader(
         "VSM Results File",
-        type=["csv", "xlsx", "xlsm"],
+        type=["csv", "xlsx"],
         help="Upload one complete VSM simulation results file.",
         key="engineering_report_source",
     )
@@ -370,6 +504,103 @@ def _render_engineering_report_workflow(st: Any) -> None:
     _render_engineering_report_downloads(st)
 
 
+def _render_profile_validation_summary(st: Any, summary: Any) -> None:
+    if summary.is_valid:
+        st.success(f"{summary.profile_name} validation passed.")
+    else:
+        st.error(f"{summary.profile_name} validation did not pass.")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Required raw channels", summary.required_raw_count)
+    c2.metric("Resolved", summary.resolved_raw_count)
+    c3.metric("Missing required", summary.missing_required_count)
+    c4.metric("Missing optional", summary.missing_optional_count)
+    c5, c6, c7, c8 = st.columns(4)
+    c5.metric("MATH channels", summary.math_count)
+    c6.metric("Statistics", summary.statistic_count)
+    c7.metric("KPIs", summary.kpi_count)
+    c8.metric("Plots", summary.plot_count)
+
+    if summary.all_zero_resolved_count:
+        st.info(
+            f"{summary.all_zero_resolved_count} resolved channel(s) are inactive/all-zero. "
+            "This is informational and does not make the profile invalid."
+        )
+    if summary.missing_required_names:
+        st.warning("Missing required channels: " + ", ".join(summary.missing_required_names[:20]))
+    with st.expander("Activity details"):
+        st.write(f"Active resolved channels: {summary.active_resolved_count}")
+        st.write(f"Constant resolved channels: {summary.constant_resolved_count}")
+        st.write(f"All-zero resolved channels: {summary.all_zero_resolved_count}")
+        if summary.all_zero_names:
+            st.write(", ".join(summary.all_zero_names[:40]))
+
+
+def _render_profile_report_completion(st: Any, result: Any) -> None:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Profile", result.profile.metadata.name)
+    c2.metric("Samples", f"{result.sample_count:,}")
+    c3.metric("Report channels", result.report_channel_count)
+    c4.metric("Plots", result.plot_count)
+    c5, c6, c7, c8 = st.columns(4)
+    c5.metric("MATH", result.math_count)
+    c6.metric("Statistics", result.statistic_count)
+    c7.metric("KPIs", result.kpi_count)
+    c8.metric("Output", result.report_path.name)
+
+
+def _render_profile_report_download(st: Any, result: Any) -> None:
+    report_path = result.report_path
+    if report_path.exists():
+        with report_path.open("rb") as handle:
+            report_bytes = handle.read()
+        st.download_button(
+            "Download Excel Engineering Report",
+            data=report_bytes,
+            file_name=report_path.name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+    if result.plotting_result.rendered_plots:
+        with st.expander("Generated plot previews"):
+            columns = st.columns(2)
+            for index, plot in enumerate(result.plotting_result.rendered_plots):
+                columns[index % 2].image(plot.png_file, caption=plot.title, use_container_width=True)
+
+
+def _friendly_input_error(exc: Exception) -> str:
+    text = str(exc)
+    if "Unsupported input type" in text or "Unsupported upload type" in text:
+        return "Unsupported file format. Upload a CSV or XLSX VSM result file."
+    if "No time channel" in text or "time channel" in text:
+        return "No usable time channel was detected in the uploaded file."
+    if "non-finite" in text or "invalid" in text.lower() or "numeric" in text.lower():
+        return "The uploaded file contains invalid or nonnumeric data."
+    return "The uploaded VSM file could not be inspected."
+
+
+def _friendly_profile_error(exc: Exception) -> str:
+    text = str(exc)
+    if "missing" in text.lower() or "unavailable" in text.lower():
+        return "The selected profile requires channels or dependencies that are not available in this file."
+    if "ambiguous" in text.lower():
+        return "The selected profile has ambiguous channel matches in this file."
+    if "math" in text.lower():
+        return "Profile math-channel validation failed."
+    return "Profile-driven report generation failed."
+
+
+def _format_duration_minutes(start: float | None, end: float | None, unit: str | None) -> str:
+    value = None
+    if start is not None and end is not None:
+        duration = float(end) - float(start)
+        normalized = (unit or "").strip().lower()
+        if normalized in {"s", "sec", "second", "seconds"}:
+            value = duration / 60
+        elif normalized in {"min", "minute", "minutes"}:
+            value = duration
+    return f"{value:,.1f} min" if value is not None else "n/a"
+
+
 def _render_full_duty_cycle_workflow(st: Any) -> None:
     scenario = default_full_duty_cycle_scenario(PROJECT_ROOT)
     st.header("Full Duty-Cycle Engineering Report")
@@ -381,7 +612,7 @@ def _render_full_duty_cycle_workflow(st: Any) -> None:
 
     source_upload = st.file_uploader(
         "1. Raw VSM Results",
-        type=["xlsx", "xlsm", "csv"],
+        type=["xlsx", "csv"],
         help="Upload the original VSM simulation workbook containing the base field cycle.",
         key="full_duty_cycle_source",
     )
