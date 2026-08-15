@@ -231,19 +231,53 @@ def test_hybrid_profile_extends_electric_profile() -> None:
     }
 
 
-def test_hybrid_profile_against_electric_csv_reports_missing_and_inactive_hybrid_channels() -> None:
+def test_hybrid_generator_torque_uses_sergio_corrected_source_mapping() -> None:
+    profile = load_reporting_profile(HYBRID_PROFILE)
+    generator_torque = profile.raw_by_semantic_name()["generator_torque_1"]
+
+    assert generator_torque.source_name == "Engine_AuxiliaryTorque_1"
+    assert generator_torque.report_name == "ICE Generator Torque"
+    assert generator_torque.channel_type == "AVL"
+    assert generator_torque.for_plot
+    assert generator_torque.source_name != "Generator Torque_1"
+
+
+def test_hybrid_generator_torque_resolution_is_independent_from_runtime_column_position() -> None:
+    definition = load_reporting_profile(HYBRID_PROFILE).raw_by_semantic_name()["generator_torque_1"]
+    profile = _profile(raw_channels=[definition])
+
+    first = resolve_profile(
+        _dataset([_channel("engine_auxiliarytorque_1__col_133", "Engine_AuxiliaryTorque_1", "Nm", column=133)]),
+        profile,
+    )
+    reordered = resolve_profile(
+        _dataset([_channel("engine_auxiliarytorque_1__col_599", "Engine_AuxiliaryTorque_1", "Nm", column=599)]),
+        profile,
+    )
+
+    assert first.resolved_channel_ids["generator_torque_1"] == "engine_auxiliarytorque_1__col_133"
+    assert reordered.resolved_channel_ids["generator_torque_1"] == "engine_auxiliarytorque_1__col_599"
+
+
+def test_hybrid_profile_against_electric_csv_resolves_inactive_hybrid_channels() -> None:
     dataset = load_data_file(REFERENCE_CSV, ImportOptions())
     result = resolve_profile(dataset, load_reporting_profile(HYBRID_PROFILE))
 
-    assert not result.is_valid
-    assert [(item.definition.semantic_name, item.definition.source_name) for item in result.missing_required] == [
-        ("generator_torque_1", "Generator Torque_1")
+    assert result.is_valid
+    assert len(result.resolved) == 293
+    assert len(result.profile.raw_channels) == 294
+    assert not result.missing_required
+    assert [(item.definition.semantic_name, item.definition.source_name) for item in result.missing_optional] == [
+        ("agrochemical_discharge_force", "Agrochemical Discharge")
     ]
     assert result.resolved["engine_speed"].channel.channel_id == "engine_speed__col_149"
     assert result.resolved["engine_speed"].is_all_zero
     assert result.resolved["engine_torque"].is_all_zero
     assert result.resolved["engine_fuel_consumption"].channel.channel_id == "engine_fuelconsumption_absolut__col_138"
     assert result.resolved["fuel_flow"].channel.channel_id == "engine_fuelconsumption_volumeflow__col_140"
+    assert result.resolved["generator_torque_1"].channel.channel_id == "engine_auxiliarytorque_1__col_133"
+    assert result.resolved["generator_torque_1"].channel.source_name == "Engine_AuxiliaryTorque_1"
+    assert result.resolved["generator_torque_1"].is_all_zero
 
 
 def test_semantic_math_dependency_resolution() -> None:

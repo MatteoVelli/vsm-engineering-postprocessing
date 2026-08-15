@@ -260,14 +260,17 @@ def test_hybrid_engine_power_is_zero_against_electric_reference_csv() -> None:
     np.testing.assert_allclose(result.values_by_semantic_name["engine_energy_delivered_kwh"], 0.0)
 
 
-def test_hybrid_generator_power_unavailable_without_generator_torque() -> None:
+def test_hybrid_generator_power_computes_zero_against_electric_reference_csv() -> None:
     dataset = load_data_file(REFERENCE_CSV, ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(HYBRID_PROFILE))
 
-    assert "generator_power_1" not in result.values_by_semantic_name
-    assert [(item.definition.semantic_name, item.missing_dependencies) for item in result.unavailable_required] == [
-        ("generator_power_1", ("generator_torque_1",))
+    assert result.configured_math_count == 32
+    assert result.calculated_math_count == 31
+    assert [(item.definition.semantic_name, item.missing_dependencies) for item in result.unavailable_optional] == [
+        ("agrochemical_discharge", ("agrochemical_discharge_force",))
     ]
+    assert not result.unavailable_required
+    np.testing.assert_allclose(result.values_by_semantic_name["generator_power_1"], 0.0)
 
 
 def test_legacy_caiman_math_path_remains_unchanged(tmp_path: Path) -> None:

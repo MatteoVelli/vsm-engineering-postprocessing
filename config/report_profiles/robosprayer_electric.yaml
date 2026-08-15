@@ -2328,3 +2328,243 @@ channels:
     - auxiliary_energy_consumption
     formula: =HG5
     expression: cumulative_sum(auxiliary_energy_consumption)
+statistics:
+  - statistic_id: battery_power_rms
+    target: electricsystem_battery_power
+    operation: rms
+    display_name: Battery Power RMS
+    unit: kW
+    placement_group: top_rms
+    notes: Uses ordinary sample RMS over the actual imported samples; does not reproduce Sergio's stale /17417 denominator.
+  - statistic_id: battery_heatflow_rms
+    target: electricsystem_battery_heatflow
+    operation: rms
+    display_name: Battery Heatflow RMS
+    unit: kW
+    placement_group: top_rms
+    notes: Uses ordinary sample RMS over the actual imported samples; dt is 1 s in the supplied CSV.
+  - statistic_id: time_minutes_last
+    target: time_minutes
+    operation: last
+    display_name: Time
+    unit: min
+    placement_group: summary
+  - statistic_id: distance_km_last
+    target: distance_km
+    operation: last
+    display_name: Distance
+    unit: Km
+    placement_group: summary
+  - statistic_id: chassis_speed_max
+    target: chassis_speed
+    operation: max
+    display_name: Max Speed
+    unit: kph
+    placement_group: summary
+  - statistic_id: longitudinal_acceleration_max
+    target: chassis_acceleration_longitudinal
+    operation: max
+    display_name: Max Acceleration
+    unit: m/s^2
+    placement_group: summary
+  - statistic_id: energy_recuperated_last
+    target: electricsystem_em_energy_recuperated
+    operation: last
+    display_name: Recuperated Energy
+    unit: kWh
+    placement_group: summary
+  - statistic_id: energy_released_last
+    target: electricsystem_em_energy_released
+    operation: last
+    display_name: Released Energy
+    unit: kWh
+    placement_group: summary
+  - statistic_id: total_auxiliary_power_max
+    target: total_auxiliary_power
+    operation: max
+    display_name: Max Auxiliaries Power Demand
+    unit: kW
+    placement_group: summary
+  - statistic_id: auxiliary_energy_accumulated_last
+    target: auxiliary_energy_consumption_accumulated
+    operation: last
+    display_name: Auxiliaries Energy Consumption
+    unit: kWh
+    placement_group: summary
+    notes: Uses the accumulated auxiliary energy series rather than Sergio's ambiguous HG3858 summary reference.
+  - statistic_id: tyre_rr_energy_accumulated_last
+    target: tyre_rolling_resistance_energy_accumulated
+    operation: last
+    display_name: Tyre RR Energy Consumption
+    unit: kWh
+    placement_group: summary
+  - statistic_id: battery_energy_first
+    target: electricsystem_battery_energy
+    operation: first
+    display_name: Initial Battery Energy
+    unit: kWh
+    placement_group: kpi_inputs
+  - statistic_id: battery_energy_last
+    target: electricsystem_battery_energy
+    operation: last
+    display_name: Final Battery Energy
+    unit: kWh
+    placement_group: kpi_inputs
+  - statistic_id: battery_power_min
+    target: electricsystem_battery_power
+    operation: min
+    display_name: Min Battery Power
+    unit: kW
+    placement_group: kpi_inputs
+  - statistic_id: battery_power_max
+    target: electricsystem_battery_power
+    operation: max
+    display_name: Max Battery Charging Power
+    unit: kW
+    placement_group: summary
+  - statistic_id: battery_soc_first
+    target: electricsystem_battery_soc
+    operation: first
+    display_name: Battery Initial SOC
+    unit: '%'
+    placement_group: summary
+  - statistic_id: battery_soc_last
+    target: electricsystem_battery_soc
+    operation: last
+    display_name: Battery Final SOC
+    unit: '%'
+    placement_group: summary
+  - statistic_id: battery_heatflow_max
+    target: electricsystem_battery_heatflow
+    operation: max
+    display_name: Battery Max HeatFlow
+    unit: kW
+    placement_group: summary
+  - statistic_id: edu_speed_rl_max
+    target: electricsystem_em3_speed
+    operation: max
+    display_name: EDU Max Speed
+    unit: rpm
+    placement_group: summary
+    notes: Sergio summary references the RL EDU column.
+  - statistic_id: edu_torque_rl_max
+    target: electricsystem_em3_torque
+    operation: max
+    display_name: EDU Max Torque
+    unit: Nm
+    placement_group: summary
+    notes: Sergio summary references the RL EDU column.
+  - statistic_id: edu_mech_power_rl_max
+    target: edu_mech_power_rl
+    operation: max
+    display_name: EDU Max Power
+    unit: kW
+    placement_group: summary
+    notes: Sergio summary references the RL EDU mechanical power column.
+  - statistic_id: total_edu_mech_power_max
+    target: total_edu_mech_power
+    operation: max
+    display_name: Max Total EDU Mechanical Power
+    unit: kW
+    placement_group: sanity
+  - statistic_id: total_edu_elect_power_max
+    target: total_edu_elect_power
+    operation: max
+    display_name: Max Total EDU Electrical Power
+    unit: kW
+    placement_group: sanity
+  - statistic_id: total_edu_elect_power_min
+    target: total_edu_elect_power
+    operation: min
+    display_name: Min Total EDU Electrical Power
+    unit: kW
+    placement_group: sanity
+  - statistic_id: total_rolling_resistance_power_max
+    target: total_rolling_resistance_power
+    operation: max
+    display_name: Max Rolling Resistance Power
+    unit: kW
+    placement_group: sanity
+  - statistic_id: wheel_power_total_max
+    target: wheel_power_total
+    operation: max
+    display_name: Max Wheel Power Total
+    unit: kW
+    placement_group: sanity
+  - statistic_id: agrochemical_discharge_max
+    target: agrochemical_discharge
+    operation: max
+    display_name: Max Agrochemical Discharge
+    unit: Kg
+    placement_group: summary
+    required: false
+    notes: Unavailable until Sergio provides or confirms the raw Agrochemical Discharge source channel.
+kpis:
+  - kpi_id: time_hours
+    expression: time_minutes_last / 60
+    dependencies:
+    - time_minutes_last
+    display_name: Time
+    unit: hrs
+    placement_group: summary
+  - kpi_id: used_energy_edu_i
+    expression: energy_released_last - energy_recuperated_last
+    dependencies:
+    - energy_released_last
+    - energy_recuperated_last
+    display_name: Used Energy (EDU+I)
+    unit: kWh
+    placement_group: summary
+  - kpi_id: total_energy_consumption_tyres_aux
+    expression: tyre_rr_energy_accumulated_last + auxiliary_energy_accumulated_last
+    dependencies:
+    - tyre_rr_energy_accumulated_last
+    - auxiliary_energy_accumulated_last
+    display_name: Total Energy Consumption (Tyres + Aux)
+    unit: kWh
+    placement_group: summary
+  - kpi_id: battery_capacity_used
+    expression: battery_energy_first - battery_energy_last
+    dependencies:
+    - battery_energy_first
+    - battery_energy_last
+    display_name: Battery Capacity Used
+    unit: kWh
+    placement_group: summary
+  - kpi_id: battery_energy_consumption_wh_per_km
+    expression: 1000 * battery_capacity_used / distance_km_last
+    dependencies:
+    - battery_capacity_used
+    - distance_km_last
+    display_name: Battery Energy Consumption
+    unit: Wh/Km
+    placement_group: summary
+  - kpi_id: battery_capacity_100
+    expression: battery_energy_first / 0.95
+    dependencies:
+    - battery_energy_first
+    display_name: 100% Battery Capacity
+    unit: kWh
+    placement_group: summary
+  - kpi_id: usable_battery_capacity_85
+    expression: battery_capacity_100 * 0.85
+    dependencies:
+    - battery_capacity_100
+    display_name: 85% Battery Capacity
+    unit: kWh
+    placement_group: summary
+  - kpi_id: range_85_battery_km
+    expression: 1000 * usable_battery_capacity_85 / battery_energy_consumption_wh_per_km
+    dependencies:
+    - usable_battery_capacity_85
+    - battery_energy_consumption_wh_per_km
+    display_name: Range for 85% Battery + Range Extender
+    unit: Km
+    placement_group: summary
+  - kpi_id: max_battery_discharge_power
+    expression: -1 * battery_power_min
+    dependencies:
+    - battery_power_min
+    display_name: Max Battery Power
+    unit: kW
+    placement_group: summary

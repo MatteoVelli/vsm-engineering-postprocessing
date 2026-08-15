@@ -10,6 +10,12 @@ from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 SOURCE_WORKBOOK = Path(__file__).resolve().parents[1] / "reference_files" / (
     "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
 )
+OLD_HYBRID_WORKBOOK = (
+    Path(__file__).resolve().parents[1] / "reference_files" / "Robo_Sprayer_Electrification_Tamplate_Hybrid.xlsx"
+)
+CORRECTED_HYBRID_WORKBOOK = (
+    Path(__file__).resolve().parents[1] / "reference_files" / "Robo_Sprayer_Electrification_Tamplate_Hybrid_02.xlsx"
+)
 
 
 @pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client reference workbook is not present")
@@ -40,6 +46,33 @@ def test_supplied_source_workbook_acceptance_criteria() -> None:
 
     channel_ids = [channel.channel_id for channel in result.channels]
     assert len(channel_ids) == len(set(channel_ids))
+
+
+@pytest.mark.skipif(
+    not OLD_HYBRID_WORKBOOK.exists() or not CORRECTED_HYBRID_WORKBOOK.exists(),
+    reason="RoboSprayer Hybrid workbooks are not present",
+)
+def test_corrected_hybrid_workbook_generator_torque_mapping_supersedes_old_source() -> None:
+    from openpyxl import load_workbook
+
+    old_book = load_workbook(OLD_HYBRID_WORKBOOK, read_only=True, data_only=False)
+    corrected_book = load_workbook(CORRECTED_HYBRID_WORKBOOK, read_only=True, data_only=False)
+    try:
+        old_mapping = old_book["Sheet1"]
+        corrected_mapping = corrected_book["Rename From VSM to Astauto"]
+        old_data = old_book["Hybrid_1C2G_30-60kph (2)"]
+        corrected_data = corrected_book["Hybrid_1C2G_30-60kph (2)"]
+
+        assert old_mapping.cell(226, 2).value == "Generator Torque_1"
+        assert corrected_mapping.cell(226, 2).value == "Engine_AuxiliaryTorque_1"
+        assert corrected_mapping.cell(226, 3).value == "ICE Generator Torque "
+        assert corrected_mapping.cell(226, 4).value == "AVL"
+        assert corrected_mapping.cell(226, 5).value == "√"
+
+        assert old_data["HQ5"].value == corrected_data["HQ5"].value == "=BX5*HP5/9548.8"
+    finally:
+        old_book.close()
+        corrected_book.close()
 
 
 def test_nonmonotonic_time_fails_strict_validation(tmp_path: Path) -> None:

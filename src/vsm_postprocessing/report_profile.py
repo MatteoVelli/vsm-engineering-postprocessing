@@ -56,11 +56,37 @@ class MathChannelDefinition:
 
 
 @dataclass(frozen=True)
+class StatisticDefinition:
+    statistic_id: str
+    target: str
+    operation: str
+    display_name: str | None = None
+    unit: str | None = None
+    placement_group: str | None = None
+    required: bool = True
+    notes: str | None = None
+
+
+@dataclass(frozen=True)
+class KPIDefinition:
+    kpi_id: str
+    expression: str
+    dependencies: tuple[str, ...] = ()
+    display_name: str | None = None
+    unit: str | None = None
+    placement_group: str | None = None
+    required: bool = True
+    notes: str | None = None
+
+
+@dataclass(frozen=True)
 class ReportingProfile:
     version: int
     metadata: ProfileMetadata
     raw_channels: tuple[RawChannelDefinition, ...]
     math_channels: tuple[MathChannelDefinition, ...]
+    statistics: tuple[StatisticDefinition, ...] = ()
+    kpis: tuple[KPIDefinition, ...] = ()
 
     @property
     def profile_id(self) -> str:
@@ -71,6 +97,12 @@ class ReportingProfile:
 
     def math_by_semantic_name(self) -> dict[str, MathChannelDefinition]:
         return {channel.semantic_name: channel for channel in self.math_channels}
+
+    def statistics_by_id(self) -> dict[str, StatisticDefinition]:
+        return {definition.statistic_id: definition for definition in self.statistics}
+
+    def kpis_by_id(self) -> dict[str, KPIDefinition]:
+        return {definition.kpi_id: definition for definition in self.kpis}
 
 
 @dataclass(frozen=True)
@@ -260,7 +292,7 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
 
     if not isinstance(raw, dict):
         raise ConfigurationError("Reporting profile root must be a YAML mapping")
-    _reject_unknown_keys(raw, {"version", "profile", "channels"}, "root")
+    _reject_unknown_keys(raw, {"version", "profile", "channels", "statistics", "kpis"}, "root")
     version = raw.get("version")
     if version != 1:
         raise ConfigurationError("Reporting profile 'version' must be 1")
@@ -275,12 +307,18 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
     math_channels = tuple(
         _parse_math_channel(item, index) for index, item in enumerate(channels.get("math", []), 1)
     )
+    statistics = tuple(
+        _parse_statistic(item, index) for index, item in enumerate(raw.get("statistics", []), 1)
+    )
+    kpis = tuple(_parse_kpi(item, index) for index, item in enumerate(raw.get("kpis", []), 1))
 
     profile = ReportingProfile(
         version=version,
         metadata=metadata,
         raw_channels=raw_channels,
         math_channels=math_channels,
+        statistics=statistics,
+        kpis=kpis,
     )
     _validate_unique_semantic_names(profile)
 
@@ -381,6 +419,75 @@ def _parse_math_channel(raw: Any, index: int) -> MathChannelDefinition:
     )
 
 
+def _parse_statistic(raw: Any, index: int) -> StatisticDefinition:
+    context = f"statistics[{index}]"
+    if not isinstance(raw, dict):
+        raise ConfigurationError(f"{context} must be a YAML mapping")
+    _reject_unknown_keys(
+        raw,
+        {
+            "statistic_id",
+            "target",
+            "operation",
+            "display_name",
+            "unit",
+            "placement_group",
+            "required",
+            "notes",
+        },
+        context,
+    )
+    statistic_id = _required_string(raw, f"{context}.statistic_id")
+    _validate_identifier(statistic_id, f"{context}.statistic_id")
+    target = _required_string(raw, f"{context}.target")
+    _validate_identifier(target, f"{context}.target")
+    operation = _required_string(raw, f"{context}.operation")
+    if operation not in {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum"}:
+        raise ConfigurationError(f"{context}.operation must be a supported statistics operation")
+    return StatisticDefinition(
+        statistic_id=statistic_id,
+        target=target,
+        operation=operation,
+        display_name=_optional_string(raw.get("display_name"), f"{context}.display_name"),
+        unit=_optional_string(raw.get("unit"), f"{context}.unit"),
+        placement_group=_optional_string(raw.get("placement_group"), f"{context}.placement_group"),
+        required=_optional_bool(raw.get("required", True), f"{context}.required"),
+        notes=_optional_string(raw.get("notes"), f"{context}.notes"),
+    )
+
+
+def _parse_kpi(raw: Any, index: int) -> KPIDefinition:
+    context = f"kpis[{index}]"
+    if not isinstance(raw, dict):
+        raise ConfigurationError(f"{context} must be a YAML mapping")
+    _reject_unknown_keys(
+        raw,
+        {
+            "kpi_id",
+            "expression",
+            "dependencies",
+            "display_name",
+            "unit",
+            "placement_group",
+            "required",
+            "notes",
+        },
+        context,
+    )
+    kpi_id = _required_string(raw, f"{context}.kpi_id")
+    _validate_identifier(kpi_id, f"{context}.kpi_id")
+    return KPIDefinition(
+        kpi_id=kpi_id,
+        expression=_required_string(raw, f"{context}.expression"),
+        dependencies=_parse_string_tuple(raw.get("dependencies", []), f"{context}.dependencies"),
+        display_name=_optional_string(raw.get("display_name"), f"{context}.display_name"),
+        unit=_optional_string(raw.get("unit"), f"{context}.unit"),
+        placement_group=_optional_string(raw.get("placement_group"), f"{context}.placement_group"),
+        required=_optional_bool(raw.get("required", True), f"{context}.required"),
+        notes=_optional_string(raw.get("notes"), f"{context}.notes"),
+    )
+
+
 def _merge_profiles(parent: ReportingProfile, child: ReportingProfile) -> ReportingProfile:
     raw_names = {channel.semantic_name for channel in parent.raw_channels}
     raw_collisions = [channel.semantic_name for channel in child.raw_channels if channel.semantic_name in raw_names]
@@ -392,11 +499,25 @@ def _merge_profiles(parent: ReportingProfile, child: ReportingProfile) -> Report
     if math_collisions:
         raise ConfigurationError("Child profile redefines math channels: " + ", ".join(math_collisions))
 
+    statistic_ids = {definition.statistic_id for definition in parent.statistics}
+    statistic_collisions = [
+        definition.statistic_id for definition in child.statistics if definition.statistic_id in statistic_ids
+    ]
+    if statistic_collisions:
+        raise ConfigurationError("Child profile redefines statistics: " + ", ".join(statistic_collisions))
+
+    kpi_ids = {definition.kpi_id for definition in parent.kpis}
+    kpi_collisions = [definition.kpi_id for definition in child.kpis if definition.kpi_id in kpi_ids]
+    if kpi_collisions:
+        raise ConfigurationError("Child profile redefines KPIs: " + ", ".join(kpi_collisions))
+
     return ReportingProfile(
         version=child.version,
         metadata=child.metadata,
         raw_channels=(*parent.raw_channels, *child.raw_channels),
         math_channels=(*parent.math_channels, *child.math_channels),
+        statistics=(*parent.statistics, *child.statistics),
+        kpis=(*parent.kpis, *child.kpis),
     )
 
 
@@ -463,6 +584,17 @@ def _validate_unique_semantic_names(profile: ReportingProfile) -> None:
     collisions = sorted(set(profile.raw_by_semantic_name()) & set(profile.math_by_semantic_name()))
     if collisions:
         raise ConfigurationError("Raw and math semantic names collide: " + ", ".join(collisions))
+    _reject_duplicates(
+        (definition.statistic_id for definition in profile.statistics),
+        "statistics IDs",
+    )
+    _reject_duplicates(
+        (definition.kpi_id for definition in profile.kpis),
+        "KPI IDs",
+    )
+    statistic_kpi_collisions = sorted(set(profile.statistics_by_id()) & set(profile.kpis_by_id()))
+    if statistic_kpi_collisions:
+        raise ConfigurationError("Statistic and KPI IDs collide: " + ", ".join(statistic_kpi_collisions))
 
 
 def _reject_duplicates(values: Iterable[str], context: str) -> None:

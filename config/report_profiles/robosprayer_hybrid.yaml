@@ -50,13 +50,13 @@ channels:
     for_plot: true
     channel_type: VSM
   - semantic_name: generator_torque_1
-    source_name: Generator Torque_1
+    source_name: Engine_AuxiliaryTorque_1
     report_name: 'ICE Generator Torque '
     unit: Nm
     required: true
     for_plot: true
     channel_type: AVL
-    notes: Required Hybrid channel absent from the supplied Electric CSV; expected to be validated with a genuine Hybrid export.
+    notes: Sergio corrected the Hybrid source mapping; report quantity Generator Torque_1 resolves from raw Engine_AuxiliaryTorque_1.
   math:
   - semantic_name: engine_power_required
     source_name: Engine Power Required
@@ -91,3 +91,59 @@ channels:
     - generator_torque_1
     formula: =BX5*HP5/9548.8
     expression: engine_speed * generator_torque_1 / rpm_nm_to_kw_divisor
+statistics:
+  - statistic_id: engine_fuel_consumption_last
+    target: engine_fuel_consumption
+    operation: last
+    display_name: Engine Fuel Consumption
+    unit: kg
+    placement_group: hybrid_summary
+  - statistic_id: engine_fuelconsumption_specific_max
+    target: engine_fuelconsumption_specific
+    operation: max
+    display_name: Engine_FuelConsumption_specific
+    unit: g/kWh
+    placement_group: hybrid_summary
+  - statistic_id: fuel_flow_max
+    target: fuel_flow
+    operation: max
+    display_name: Fuel Flow
+    unit: l/h
+    placement_group: hybrid_summary
+    notes: Uses explicit alias Engine_FuelConsumption_volumeflow when validating against the supplied Electric CSV.
+  - statistic_id: engine_speed_max
+    target: engine_speed
+    operation: max
+    display_name: Max Engine Speed
+    unit: rpm
+    placement_group: hybrid_summary
+  - statistic_id: engine_torque_max
+    target: engine_torque
+    operation: max
+    display_name: Max Engine Torque Required
+    unit: Nm
+    placement_group: hybrid_summary
+  - statistic_id: engine_power_required_max
+    target: engine_power_required
+    operation: max
+    display_name: Max Engine Power Required
+    unit: kW
+    placement_group: hybrid_summary
+  - statistic_id: engine_energy_delivered_sum
+    target: engine_energy_delivered_kwh
+    operation: sum
+    display_name: Engine Energy Delivered
+    unit: kWh
+    placement_group: hybrid_summary
+  - statistic_id: generator_torque_1_max
+    target: generator_torque_1
+    operation: max
+    display_name: ICE Generator Torque
+    unit: Nm
+    placement_group: hybrid_summary
+  - statistic_id: generator_power_1_max
+    target: generator_power_1
+    operation: max
+    display_name: ICE Generator Power
+    unit: kW
+    placement_group: hybrid_summary
