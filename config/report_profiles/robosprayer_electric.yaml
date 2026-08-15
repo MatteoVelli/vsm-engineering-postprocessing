@@ -2568,3 +2568,202 @@ kpis:
     display_name: Max Battery Power
     unit: kW
     placement_group: summary
+plots:
+  - plot_id: auxiliaries_energy_consumption
+    order: 1
+    reference_chart_number: 1
+    title: Auxiliaries Energy Consumption
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Total Auxiliary Power [kW]
+    secondary_y_label: Auxiliary Energy [kWh]
+    output_filename: 01_auxiliaries_energy_consumption.png
+    status: RECONSTRUCTED
+    evidence: Electric chart 1 contains Total Auxiliary Power only; neighbouring report channel and chart title require accumulated auxiliary energy.
+    series:
+      - semantic_name: total_auxiliary_power
+        axis: primary
+        label: Total Auxiliary Power
+      - semantic_name: auxiliary_energy_consumption_accumulated
+        axis: secondary
+        label: Auxiliary Energy Consumption Accumulated
+  - plot_id: speed_vs_distance
+    order: 2
+    reference_chart_number: 2
+    title: Speed Vs Distance
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Speed [kph]
+    output_filename: 02_speed_vs_distance.png
+    status: PASS
+    evidence: Electric chart 2 plots Speed against Distance.
+    series:
+      - semantic_name: chassis_speed
+        axis: primary
+        label: Speed
+  - plot_id: power_at_wheels_and_edu
+    order: 3
+    reference_chart_number: 3
+    title: Power at Wheels and EDU
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Power [kW]
+    output_filename: 03_power_at_wheels_and_edu.png
+    status: PASS
+    evidence: Electric chart 3 plots Wheel Power RL and EDU Mech Power RL against Distance.
+    series:
+      - semantic_name: wheel_power_rl
+        axis: primary
+        label: Wheel Power RL
+      - semantic_name: edu_mech_power_rl
+        axis: primary
+        label: EDU Mech Power RL
+  - plot_id: battery_power_charge_discharge
+    order: 4
+    reference_chart_number: 4
+    title: Battery Power Charge-Discharge
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Battery Power [kW]
+    output_filename: 04_battery_power_charge_discharge.png
+    status: PASS
+    evidence: Electric chart 4 plots Battery Power against Time; positive and negative values represent charge/discharge.
+    series:
+      - semantic_name: electricsystem_battery_power
+        axis: primary
+        label: Battery Power
+  - plot_id: battery_energy_distance_based
+    order: 5
+    reference_chart_number: 5
+    title: Battery Energy - Distance Based
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Speed [kph]
+    secondary_y_label: Battery Energy [kWh]
+    output_filename: 05_battery_energy_distance_based.png
+    status: RECONSTRUCTED
+    evidence: Electric chart 5 title identifies Battery Energy but the chart object points only to Speed.
+    series:
+      - semantic_name: chassis_speed
+        axis: primary
+        label: Speed
+      - semantic_name: electricsystem_battery_energy
+        axis: secondary
+        label: Battery Energy
+  - plot_id: energy_released
+    order: 6
+    reference_chart_number: 6
+    title: Energy Released
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Energy [kWh]
+    output_filename: 06_energy_released.png
+    status: PASS
+    evidence: Electric chart 6 plots Energy Released and Energy Recuperated against Distance.
+    series:
+      - semantic_name: electricsystem_em_energy_released
+        axis: primary
+        label: Energy Released
+      - semantic_name: electricsystem_em_energy_recuperated
+        axis: primary
+        label: Energy Recuperated
+  - plot_id: speed_vs_time
+    order: 7
+    reference_chart_number: 7
+    title: Speed Vs Time
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Speed [kph]
+    output_filename: 07_speed_vs_time.png
+    status: PASS
+    evidence: Electric chart 7 plots Speed against Time.
+    series:
+      - semantic_name: chassis_speed
+        axis: primary
+        label: Speed
+  - plot_id: battery_soc
+    order: 8
+    reference_chart_number: 8
+    title: Battery SOC
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Speed [kph]
+    secondary_y_label: Battery SOC [%]
+    output_filename: 08_battery_soc.png
+    status: RECONSTRUCTED
+    evidence: Electric chart 8 title identifies Battery SOC but the chart object points only to Speed.
+    series:
+      - semantic_name: chassis_speed
+        axis: primary
+        label: Speed
+      - semantic_name: electricsystem_battery_soc
+        axis: secondary
+        label: Battery SOC
+  - plot_id: agrochemical_discharge_vs_distance
+    order: 9
+    reference_chart_number: 9
+    title: Agrochemical Discharge Vs Distance
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Agrochemical Discharge [kg]
+    output_filename: 09_agrochemical_discharge_vs_distance.png
+    status: UNAVAILABLE
+    evidence: Electric chart 9 points to the profile MATH Agrochemical Discharge output; its required source is unresolved in Sergio's CSV.
+    series:
+      - semantic_name: agrochemical_discharge
+        axis: primary
+        label: Agrochemical Discharge
+  - plot_id: battery_energy_time_based
+    order: 10
+    reference_chart_number: 10
+    title: Battery Energy - Time Based
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Speed [kph]
+    secondary_y_label: Battery Energy [kWh]
+    output_filename: 10_battery_energy_time_based.png
+    status: RECONSTRUCTED
+    evidence: Electric chart 10 title identifies Battery Energy but the chart object points only to Speed.
+    series:
+      - semantic_name: chassis_speed
+        axis: primary
+        label: Speed
+      - semantic_name: electricsystem_battery_energy
+        axis: secondary
+        label: Battery Energy
+  - plot_id: tyres_energy_consumption
+    order: 11
+    reference_chart_number: 11
+    title: Tyres Energy Consumption
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Rolling Resistance Power [kW]
+    secondary_y_label: Accumulated Energy [kWh]
+    output_filename: 11_tyres_energy_consumption.png
+    status: RECONSTRUCTED
+    evidence: Electric chart 11 contains rolling resistance power only; title and neighbouring report channel identify accumulated tyre energy.
+    series:
+      - semantic_name: total_rolling_resistance_power
+        axis: primary
+        label: Total Rolling Resistance Power
+      - semantic_name: tyre_rolling_resistance_energy_accumulated
+        axis: secondary
+        label: Tyre Rolling Resistance Energy Accumulated
+  - plot_id: agrochemical_discharge_and_charge_vs_time
+    order: 12
+    reference_chart_number: 12
+    title: Agrochemical Discharge & Charge Vs Time
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Agrochemical Discharge [kg]
+    secondary_y_label: Battery SOC [%]
+    output_filename: 12_agrochemical_discharge_and_charge_vs_time.png
+    status: UNAVAILABLE
+    evidence: Electric chart 12 points to unresolved Agrochemical Discharge; Battery SOC is included by chart title and neighbouring charge context.
+    series:
+      - semantic_name: agrochemical_discharge
+        axis: primary
+        label: Agrochemical Discharge
+      - semantic_name: electricsystem_battery_soc
+        axis: secondary
+        label: Battery SOC

@@ -147,3 +147,112 @@ statistics:
     display_name: ICE Generator Power
     unit: kW
     placement_group: hybrid_summary
+plots:
+  - plot_id: fuel_consumption
+    order: 13
+    reference_chart_number: 1
+    title: Fuel Consumption
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Fuel Consumption [kg]
+    secondary_y_label: Fuel Flow [l/h]
+    output_filename: 13_fuel_consumption.png
+    status: RECONSTRUCTED
+    evidence: Corrected Hybrid chart 1 contains fuel consumption only; neighbouring fuel-flow channel completes the intended fuel plot.
+    series:
+      - semantic_name: engine_fuel_consumption
+        axis: primary
+        label: Engine Fuel Consumption
+      - semantic_name: fuel_flow
+        axis: secondary
+        label: Fuel Flow
+  - plot_id: generator_power
+    order: 14
+    reference_chart_number: 5
+    title: Generator Power
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Generator Power [kW]
+    secondary_y_label: Fuel Consumption [kg]
+    output_filename: 14_generator_power.png
+    status: RECONSTRUCTED
+    evidence: Corrected Hybrid chart 5 is stale and points to fuel consumption; Sergio's corrected mapping makes Generator Power_1 depend on Engine_AuxiliaryTorque_1.
+    series:
+      - semantic_name: generator_power_1
+        axis: primary
+        label: ICE Generator Power
+      - semantic_name: engine_fuel_consumption
+        axis: secondary
+        label: Engine Fuel Consumption
+  - plot_id: battery_energy_and_fuel_vs_time
+    order: 15
+    reference_chart_number: 14
+    title: Battery Energy & Fuel Consumption Vs Time
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Battery Energy [kWh]
+    secondary_y_label: Fuel Consumption [kg]
+    output_filename: 15_battery_energy_and_fuel_vs_time.png
+    status: RECONSTRUCTED
+    evidence: Corrected Hybrid chart 14 contains Battery Energy only; title and fuel-consumption channel identify the paired secondary series.
+    series:
+      - semantic_name: electricsystem_battery_energy
+        axis: primary
+        label: Battery Energy
+      - semantic_name: engine_fuel_consumption
+        axis: secondary
+        label: Engine Fuel Consumption
+  - plot_id: engine_power_and_fuel_vs_distance
+    order: 16
+    reference_chart_number: 15
+    title: Engine Power Required & Fuel Consumption Vs Distance
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Engine Power [kW]
+    secondary_y_label: Fuel Consumption [kg]
+    output_filename: 16_engine_power_and_fuel_vs_distance.png
+    status: RECONSTRUCTED
+    evidence: Corrected Hybrid chart 15 contains fuel consumption only; title and MATH channel identify Engine Power Required.
+    series:
+      - semantic_name: engine_power_required
+        axis: primary
+        label: Engine Power Required
+      - semantic_name: engine_fuel_consumption
+        axis: secondary
+        label: Engine Fuel Consumption
+  - plot_id: battery_energy_and_fuel_vs_distance
+    order: 17
+    reference_chart_number: 16
+    title: Battery Energy & Fuel Consumption Vs Distance
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Battery Energy [kWh]
+    secondary_y_label: Fuel Consumption [kg]
+    output_filename: 17_battery_energy_and_fuel_vs_distance.png
+    status: RECONSTRUCTED
+    evidence: Corrected Hybrid chart 16 contains Battery Energy only; title and fuel-consumption channel identify the paired secondary series.
+    series:
+      - semantic_name: electricsystem_battery_energy
+        axis: primary
+        label: Battery Energy
+      - semantic_name: engine_fuel_consumption
+        axis: secondary
+        label: Engine Fuel Consumption
+  - plot_id: engine_power_and_fuel_vs_time
+    order: 18
+    reference_chart_number: 17
+    title: Engine Power Required & Fuel Consumption Vs Time
+    x: time_minutes
+    x_label: Time [min]
+    primary_y_label: Engine Power [kW]
+    secondary_y_label: Fuel Consumption [kg]
+    output_filename: 18_engine_power_and_fuel_vs_time.png
+    status: RECONSTRUCTED
+    evidence: Corrected Hybrid chart 17 contains fuel consumption only; title and MATH channel identify Engine Power Required.
+    series:
+      - semantic_name: engine_power_required
+        axis: primary
+        label: Engine Power Required
+      - semantic_name: engine_fuel_consumption
+        axis: secondary
+        label: Engine Fuel Consumption

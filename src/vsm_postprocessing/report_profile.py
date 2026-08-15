@@ -80,6 +80,31 @@ class KPIDefinition:
 
 
 @dataclass(frozen=True)
+class ProfilePlotSeriesDefinition:
+    semantic_name: str
+    axis: str = "primary"
+    label: str | None = None
+    required: bool = True
+
+
+@dataclass(frozen=True)
+class ProfilePlotDefinition:
+    plot_id: str
+    title: str
+    x: str
+    series: tuple[ProfilePlotSeriesDefinition, ...]
+    output_filename: str | None = None
+    x_label: str | None = None
+    primary_y_label: str | None = None
+    secondary_y_label: str | None = None
+    reference_chart_number: int | None = None
+    order: int | None = None
+    status: str = "PASS"
+    evidence: str | None = None
+    notes: str | None = None
+
+
+@dataclass(frozen=True)
 class ReportingProfile:
     version: int
     metadata: ProfileMetadata
@@ -87,6 +112,7 @@ class ReportingProfile:
     math_channels: tuple[MathChannelDefinition, ...]
     statistics: tuple[StatisticDefinition, ...] = ()
     kpis: tuple[KPIDefinition, ...] = ()
+    plots: tuple[ProfilePlotDefinition, ...] = ()
 
     @property
     def profile_id(self) -> str:
@@ -103,6 +129,9 @@ class ReportingProfile:
 
     def kpis_by_id(self) -> dict[str, KPIDefinition]:
         return {definition.kpi_id: definition for definition in self.kpis}
+
+    def plots_by_id(self) -> dict[str, ProfilePlotDefinition]:
+        return {definition.plot_id: definition for definition in self.plots}
 
 
 @dataclass(frozen=True)
@@ -292,7 +321,7 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
 
     if not isinstance(raw, dict):
         raise ConfigurationError("Reporting profile root must be a YAML mapping")
-    _reject_unknown_keys(raw, {"version", "profile", "channels", "statistics", "kpis"}, "root")
+    _reject_unknown_keys(raw, {"version", "profile", "channels", "statistics", "kpis", "plots"}, "root")
     version = raw.get("version")
     if version != 1:
         raise ConfigurationError("Reporting profile 'version' must be 1")
@@ -311,6 +340,7 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
         _parse_statistic(item, index) for index, item in enumerate(raw.get("statistics", []), 1)
     )
     kpis = tuple(_parse_kpi(item, index) for index, item in enumerate(raw.get("kpis", []), 1))
+    plots = tuple(_parse_plot(item, index) for index, item in enumerate(raw.get("plots", []), 1))
 
     profile = ReportingProfile(
         version=version,
@@ -319,6 +349,7 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
         math_channels=math_channels,
         statistics=statistics,
         kpis=kpis,
+        plots=plots,
     )
     _validate_unique_semantic_names(profile)
 
@@ -488,6 +519,80 @@ def _parse_kpi(raw: Any, index: int) -> KPIDefinition:
     )
 
 
+def _parse_plot(raw: Any, index: int) -> ProfilePlotDefinition:
+    context = f"plots[{index}]"
+    if not isinstance(raw, dict):
+        raise ConfigurationError(f"{context} must be a YAML mapping")
+    _reject_unknown_keys(
+        raw,
+        {
+            "plot_id",
+            "title",
+            "x",
+            "x_label",
+            "primary_y_label",
+            "secondary_y_label",
+            "output_filename",
+            "reference_chart_number",
+            "order",
+            "status",
+            "evidence",
+            "notes",
+            "series",
+        },
+        context,
+    )
+    plot_id = _required_string(raw, f"{context}.plot_id")
+    _validate_identifier(plot_id, f"{context}.plot_id")
+    x = _required_string(raw, f"{context}.x")
+    _validate_identifier(x, f"{context}.x")
+    series_raw = raw.get("series")
+    if not isinstance(series_raw, list) or not series_raw:
+        raise ConfigurationError(f"{context}.series must be a non-empty YAML list")
+    series = tuple(_parse_plot_series(item, context, item_index) for item_index, item in enumerate(series_raw, 1))
+    output_filename = _optional_string(raw.get("output_filename"), f"{context}.output_filename")
+    if output_filename is not None and (Path(output_filename).name != output_filename or not output_filename.endswith(".png")):
+        raise ConfigurationError(f"{context}.output_filename must be a plain .png filename without directories")
+    reference_chart_number = _optional_positive_int(raw.get("reference_chart_number"), f"{context}.reference_chart_number")
+    order = _optional_positive_int(raw.get("order"), f"{context}.order")
+    status = _required_string({"status": raw.get("status", "PASS")}, f"{context}.status")
+    if status not in {"PASS", "RECONSTRUCTED", "REVIEW", "UNAVAILABLE", "INACTIVE"}:
+        raise ConfigurationError(f"{context}.status must be PASS, RECONSTRUCTED, REVIEW, UNAVAILABLE, or INACTIVE")
+    return ProfilePlotDefinition(
+        plot_id=plot_id,
+        title=_required_string(raw, f"{context}.title"),
+        x=x,
+        series=series,
+        output_filename=output_filename,
+        x_label=_optional_string(raw.get("x_label"), f"{context}.x_label"),
+        primary_y_label=_optional_string(raw.get("primary_y_label"), f"{context}.primary_y_label"),
+        secondary_y_label=_optional_string(raw.get("secondary_y_label"), f"{context}.secondary_y_label"),
+        reference_chart_number=reference_chart_number,
+        order=order,
+        status=status,
+        evidence=_optional_string(raw.get("evidence"), f"{context}.evidence"),
+        notes=_optional_string(raw.get("notes"), f"{context}.notes"),
+    )
+
+
+def _parse_plot_series(raw: Any, plot_context: str, index: int) -> ProfilePlotSeriesDefinition:
+    context = f"{plot_context}.series[{index}]"
+    if not isinstance(raw, dict):
+        raise ConfigurationError(f"{context} must be a YAML mapping")
+    _reject_unknown_keys(raw, {"semantic_name", "axis", "label", "required"}, context)
+    semantic_name = _required_string(raw, f"{context}.semantic_name")
+    _validate_identifier(semantic_name, f"{context}.semantic_name")
+    axis = _required_string({"axis": raw.get("axis", "primary")}, f"{context}.axis")
+    if axis not in {"primary", "secondary"}:
+        raise ConfigurationError(f"{context}.axis must be primary or secondary")
+    return ProfilePlotSeriesDefinition(
+        semantic_name=semantic_name,
+        axis=axis,
+        label=_optional_string(raw.get("label"), f"{context}.label"),
+        required=_optional_bool(raw.get("required", True), f"{context}.required"),
+    )
+
+
 def _merge_profiles(parent: ReportingProfile, child: ReportingProfile) -> ReportingProfile:
     raw_names = {channel.semantic_name for channel in parent.raw_channels}
     raw_collisions = [channel.semantic_name for channel in child.raw_channels if channel.semantic_name in raw_names]
@@ -511,6 +616,11 @@ def _merge_profiles(parent: ReportingProfile, child: ReportingProfile) -> Report
     if kpi_collisions:
         raise ConfigurationError("Child profile redefines KPIs: " + ", ".join(kpi_collisions))
 
+    plot_ids = {definition.plot_id for definition in parent.plots}
+    plot_collisions = [definition.plot_id for definition in child.plots if definition.plot_id in plot_ids]
+    if plot_collisions:
+        raise ConfigurationError("Child profile redefines plots: " + ", ".join(plot_collisions))
+
     return ReportingProfile(
         version=child.version,
         metadata=child.metadata,
@@ -518,6 +628,7 @@ def _merge_profiles(parent: ReportingProfile, child: ReportingProfile) -> Report
         math_channels=(*parent.math_channels, *child.math_channels),
         statistics=(*parent.statistics, *child.statistics),
         kpis=(*parent.kpis, *child.kpis),
+        plots=(*parent.plots, *child.plots),
     )
 
 
@@ -592,6 +703,10 @@ def _validate_unique_semantic_names(profile: ReportingProfile) -> None:
         (definition.kpi_id for definition in profile.kpis),
         "KPI IDs",
     )
+    _reject_duplicates(
+        (definition.plot_id for definition in profile.plots),
+        "plot IDs",
+    )
     statistic_kpi_collisions = sorted(set(profile.statistics_by_id()) & set(profile.kpis_by_id()))
     if statistic_kpi_collisions:
         raise ConfigurationError("Statistic and KPI IDs collide: " + ", ".join(statistic_kpi_collisions))
@@ -641,6 +756,14 @@ def _optional_string(value: Any, context: str) -> str | None:
 def _optional_bool(value: Any, context: str) -> bool:
     if not isinstance(value, bool):
         raise ConfigurationError(f"{context} must be true or false")
+    return value
+
+
+def _optional_positive_int(value: Any, context: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ConfigurationError(f"{context} must be null or a positive integer")
     return value
 
 
