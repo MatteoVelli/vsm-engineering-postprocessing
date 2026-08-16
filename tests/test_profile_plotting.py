@@ -19,17 +19,25 @@ from vsm_postprocessing.report_profile import (
     load_reporting_profile,
 )
 
-
-REFERENCE_CSV = Path(
-    "reference_files/RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
+from conftest import (
+    CAIMAN_REFERENCE_DESCRIPTION,
+    CAIMAN_REFERENCE_XLSX,
+    ROBOSPRAYER_REFERENCE_CSV,
+    ROBOSPRAYER_REFERENCE_DESCRIPTION,
+    require_private_reference_file,
 )
 ELECTRIC_PROFILE = Path("config/report_profiles/robosprayer_electric.yaml")
 HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
-CAIMAN_SOURCE_WORKBOOK = Path(
-    "reference_files/Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-)
 CAIMAN_PLOTTING_CONFIG = Path("config/plotting_example.yaml")
 CAIMAN_MATH_CONFIG = Path("config/math_channels_example.yaml")
+
+
+def _robosprayer_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
+def _caiman_workbook() -> Path:
+    return require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
 
 
 def test_profile_plotting_resolves_semantic_raw_series(tmp_path: Path) -> None:
@@ -146,7 +154,7 @@ def test_profile_plotting_handles_multiple_series_optional_missing_required_miss
 
 
 def test_electric_profile_plot_loading_count_rendering_and_representative_mappings(tmp_path: Path) -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     profile = load_reporting_profile(ELECTRIC_PROFILE)
 
     result = render_profile_plots(dataset, profile, tmp_path, defaults=_fast_defaults())
@@ -175,7 +183,7 @@ def test_electric_profile_plot_loading_count_rendering_and_representative_mappin
 
 
 def test_hybrid_profile_plot_inheritance_generator_and_agrochemical_zero_inactive_rendering(tmp_path: Path) -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     profile = load_reporting_profile(HYBRID_PROFILE)
 
     result = render_profile_plots(dataset, profile, tmp_path, defaults=_fast_defaults())
@@ -192,10 +200,9 @@ def test_hybrid_profile_plot_inheritance_generator_and_agrochemical_zero_inactiv
     assert generator_summary.source_name == "Generator Power_1"
 
 
-@pytest.mark.skipif(not CAIMAN_SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_legacy_caiman_plotting_path_remains_unchanged(tmp_path: Path) -> None:
     result = render_plots(
-        CAIMAN_SOURCE_WORKBOOK,
+        _caiman_workbook(),
         CAIMAN_PLOTTING_CONFIG,
         tmp_path / "caiman",
         ImportOptions(strict=True),

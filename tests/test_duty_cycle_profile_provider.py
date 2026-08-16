@@ -20,15 +20,20 @@ from vsm_postprocessing.duty_cycle import (
 from vsm_postprocessing.errors import ConfigurationError, DataValidationError, VSMPostProcessingError
 from vsm_postprocessing.importer import load_data_file
 from vsm_postprocessing.utils import sha256_file
+from conftest import (
+    CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
+    CAIMAN_PROFILE_REFERENCE_XLSX,
+    CAIMAN_REFERENCE_DESCRIPTION,
+    CAIMAN_REFERENCE_XLSX,
+    require_private_reference_files,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCENARIO_CONFIG = PROJECT_ROOT / "config" / "duty_cycle_sergio_reference.yaml"
 PROFILE_CONFIG = PROJECT_ROOT / "config" / "duty_cycle_profiles_sergio_reference.yaml"
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / (
-    "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-)
-REFERENCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
+SOURCE_WORKBOOK = CAIMAN_REFERENCE_XLSX
+REFERENCE_WORKBOOK = CAIMAN_PROFILE_REFERENCE_XLSX
 
 
 def _copy_with_different_package_fingerprint(source: Path, destination: Path) -> Path:
@@ -41,8 +46,10 @@ def _copy_with_different_package_fingerprint(source: Path, destination: Path) ->
 
 @pytest.fixture(scope="module")
 def reference_assets():
-    if not (SOURCE_WORKBOOK.exists() and REFERENCE_WORKBOOK.exists()):
-        pytest.skip("Client source/reference workbooks are not present")
+    require_private_reference_files(
+        (SOURCE_WORKBOOK, CAIMAN_REFERENCE_DESCRIPTION),
+        (REFERENCE_WORKBOOK, CAIMAN_PROFILE_REFERENCE_DESCRIPTION),
+    )
     scenario = load_duty_cycle_config(SCENARIO_CONFIG)
     source = load_data_file(SOURCE_WORKBOOK)
     provider = WorkbookRowProfileProvider(load_profile_provider_config(PROFILE_CONFIG), REFERENCE_WORKBOOK)

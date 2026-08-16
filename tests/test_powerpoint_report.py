@@ -11,9 +11,9 @@ from vsm_postprocessing.powerpoint_report_engine import (
     generate_powerpoint_report,
     load_powerpoint_report_config,
 )
+from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
 POWERPOINT_CONFIG = PROJECT_ROOT / "config" / "powerpoint_report_example.yaml"
 STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_excel_report.yaml"
 PLOTTING_CONFIG = PROJECT_ROOT / "config" / "plotting_example.yaml"
@@ -67,10 +67,10 @@ slides:
         load_powerpoint_report_config(path)
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_supplied_source_workbook_powerpoint_acceptance(tmp_path: Path) -> None:
+    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
     result = generate_powerpoint_report(
-        SOURCE_WORKBOOK,
+        source_workbook,
         POWERPOINT_CONFIG,
         STATISTICS_CONFIG,
         PLOTTING_CONFIG,

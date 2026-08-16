@@ -14,6 +14,7 @@ from vsm_postprocessing.math_engine import (
     export_math_channels,
     load_math_config,
 )
+from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 
 def _write_csv(path: Path) -> None:
@@ -233,15 +234,12 @@ math_channels:
         load_math_config(config_path)
 
 
-SOURCE_WORKBOOK = Path(__file__).resolve().parents[1] / "reference_files" / (
-    "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-)
 EXAMPLE_CONFIG = Path(__file__).resolve().parents[1] / "config" / "math_channels_example.yaml"
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client reference workbook is not present")
 def test_supplied_workbook_math_channels_acceptance() -> None:
-    result = calculate_math_channels(SOURCE_WORKBOOK, EXAMPLE_CONFIG, ImportOptions(strict=True))
+    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
+    result = calculate_math_channels(source_workbook, EXAMPLE_CONFIG, ImportOptions(strict=True))
 
     assert result.sample_count == 1866
     assert result.source_channel_count == 70

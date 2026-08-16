@@ -25,14 +25,36 @@ from vsm_postprocessing.ui_config import (
     validate_profile_upload_extension,
     validate_reporting_profile_source,
 )
+from conftest import (
+    CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
+    CAIMAN_PROFILE_REFERENCE_XLSX,
+    CAIMAN_REFERENCE_DESCRIPTION,
+    CAIMAN_REFERENCE_XLSX,
+    ROBOSPRAYER_REFERENCE_CSV,
+    ROBOSPRAYER_REFERENCE_DESCRIPTION,
+    require_private_reference_file,
+    require_private_reference_files,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-PROFILE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
-ROBOSPRAYER_CSV = PROJECT_ROOT / "reference_files" / "RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
 ELECTRIC_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_electric.yaml"
 HYBRID_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_hybrid.yaml"
 CANONICAL_DUTY_CYCLE_PIPELINE = PROJECT_ROOT / "config" / "end_to_end_sergio_duty_cycle.yaml"
+
+
+def _robosprayer_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
+def _caiman_workbook() -> Path:
+    return require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
+
+
+def _caiman_workbooks() -> tuple[Path, Path]:
+    return require_private_reference_files(
+        (CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION),
+        (CAIMAN_PROFILE_REFERENCE_XLSX, CAIMAN_PROFILE_REFERENCE_DESCRIPTION),
+    )
 
 
 def test_default_ui_profile_matches_templates() -> None:
@@ -86,9 +108,8 @@ def test_reporting_profile_discovery_lists_electric_and_hybrid() -> None:
     assert by_id["robosprayer_hybrid"].display_name == "RoboSprayer Hybrid"
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_electric_reporting_profile_validation_summary_matches_reference_csv() -> None:
-    summary = validate_reporting_profile_source(ROBOSPRAYER_CSV, ELECTRIC_PROFILE)
+    summary = validate_reporting_profile_source(_robosprayer_csv(), ELECTRIC_PROFILE)
 
     assert summary.profile_name == "RoboSprayer Electric"
     assert summary.is_valid
@@ -104,9 +125,8 @@ def test_electric_reporting_profile_validation_summary_matches_reference_csv() -
     assert summary.duration_minutes == pytest.approx(64.2)
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_hybrid_reporting_profile_validation_treats_inactive_channels_as_resolved() -> None:
-    summary = validate_reporting_profile_source(ROBOSPRAYER_CSV, HYBRID_PROFILE)
+    summary = validate_reporting_profile_source(_robosprayer_csv(), HYBRID_PROFILE)
 
     assert summary.profile_name == "RoboSprayer Hybrid"
     assert summary.is_valid
@@ -263,17 +283,17 @@ def test_runtime_bundle_writes_loadable_pipeline_config(tmp_path: Path) -> None:
     assert config.output_root == bundle.output_root
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_engineering_report_runtime_bundle_is_single_file_xlsx(tmp_path: Path) -> None:
+    source_workbook = _caiman_workbook()
     bundle = build_engineering_report_runtime_bundle(
-        source_file=SOURCE_WORKBOOK,
+        source_file=source_workbook,
         runtime_dir=tmp_path / "engineering_report",
         project_root=PROJECT_ROOT,
     )
     config = load_pipeline_config(bundle.pipeline_config)
     raw = yaml.safe_load(bundle.pipeline_config.read_text(encoding="utf-8"))
 
-    assert config.input_file == SOURCE_WORKBOOK.resolve()
+    assert config.input_file == source_workbook.resolve()
     assert config.duty_cycle is not None
     assert "duty_cycle" in raw
     assert raw["duty_cycle"]["profile_workbook"].endswith("assets\\scenarios\\caiman_sp_hybrid\\missing_phase_profiles.csv") or raw[
@@ -285,10 +305,10 @@ def test_engineering_report_runtime_bundle_is_single_file_xlsx(tmp_path: Path) -
     assert bundle.powerpoint_report_config.name == "powerpoint_report_duty_cycle.yaml"
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_engineering_report_runtime_bundle_accepts_csv_without_filename_or_sample_count_assumption(tmp_path: Path) -> None:
-    inspection = inspect_data_file(SOURCE_WORKBOOK)
-    dataset = load_data_file(SOURCE_WORKBOOK)
+    source_workbook = _caiman_workbook()
+    inspection = inspect_data_file(source_workbook)
+    dataset = load_data_file(source_workbook)
     csv_path = tmp_path / "new_vsm_simulation.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -349,6 +369,7 @@ def test_full_duty_cycle_runtime_bundle_uses_client_compatible_profile_validatio
 
 
 def test_canonical_duty_cycle_pipeline_keeps_strict_profile_validation() -> None:
+    _caiman_workbooks()
     config = load_pipeline_config(CANONICAL_DUTY_CYCLE_PIPELINE)
 
     assert config.duty_cycle is not None
@@ -356,12 +377,12 @@ def test_canonical_duty_cycle_pipeline_keeps_strict_profile_validation() -> None
     assert config.duty_cycle.profile_original_filename is None
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_ui_default_profile_end_to_end_acceptance(tmp_path: Path) -> None:
+    source_workbook = _caiman_workbook()
     templates = load_ui_templates(PROJECT_ROOT)
     profile = default_ui_profile(templates)
     bundle = build_runtime_bundle(
-        source_file=SOURCE_WORKBOOK,
+        source_file=source_workbook,
         runtime_dir=tmp_path / "ui_run",
         templates=templates,
         time_channel_id="track_time__col_001",
@@ -381,10 +402,10 @@ def test_ui_default_profile_end_to_end_acceptance(tmp_path: Path) -> None:
     assert result.powerpoint_path is not None and result.powerpoint_path.exists()
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_engineering_report_single_file_pipeline_generates_final_reports(tmp_path: Path) -> None:
+    source_workbook = _caiman_workbook()
     bundle = build_engineering_report_runtime_bundle(
-        source_file=SOURCE_WORKBOOK,
+        source_file=source_workbook,
         runtime_dir=tmp_path / "engineering_report_run",
         project_root=PROJECT_ROOT,
     )

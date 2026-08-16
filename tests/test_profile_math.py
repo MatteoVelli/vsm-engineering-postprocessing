@@ -18,12 +18,17 @@ from vsm_postprocessing.report_profile import (
     load_reporting_profile,
 )
 
-
-REFERENCE_CSV = Path(
-    "reference_files/RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
+from conftest import (
+    ROBOSPRAYER_REFERENCE_CSV,
+    ROBOSPRAYER_REFERENCE_DESCRIPTION,
+    require_private_reference_file,
 )
 ELECTRIC_PROFILE = Path("config/report_profiles/robosprayer_electric.yaml")
 HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
+
+
+def _robosprayer_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
 
 
 def test_profile_math_executes_semantic_raw_dependency() -> None:
@@ -227,7 +232,7 @@ def test_profile_math_accumulated_energy() -> None:
 
 
 def test_electric_profile_full_math_execution_against_reference_csv() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
     assert result.configured_math_count == 29
@@ -270,7 +275,7 @@ def test_agrochemical_discharge_math_converts_force_to_mass() -> None:
 
 
 def test_electric_profile_representative_numeric_regression() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
     assert result.values_by_semantic_name["time_minutes"][-1] == pytest.approx(64.2)
@@ -284,7 +289,7 @@ def test_electric_profile_representative_numeric_regression() -> None:
 
 
 def test_hybrid_engine_power_is_zero_against_electric_reference_csv() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(HYBRID_PROFILE))
 
     np.testing.assert_allclose(result.values_by_semantic_name["engine_power_required"], 0.0)
@@ -292,7 +297,7 @@ def test_hybrid_engine_power_is_zero_against_electric_reference_csv() -> None:
 
 
 def test_hybrid_generator_power_computes_zero_against_electric_reference_csv() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(HYBRID_PROFILE))
 
     assert result.configured_math_count == 32

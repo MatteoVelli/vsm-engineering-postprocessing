@@ -19,19 +19,28 @@ from vsm_postprocessing.profile_powerpoint_report_engine import (
 )
 from vsm_postprocessing.ui_config import generate_reporting_profile_engineering_report
 
+from conftest import (
+    ROBOSPRAYER_REFERENCE_CSV,
+    ROBOSPRAYER_REFERENCE_DESCRIPTION,
+    require_private_reference_file,
+)
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ELECTRIC_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "RoboSprayer_Electric_Report_FINAL.pptx"
 HYBRID_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "RoboSprayer_Hybrid_Engineering_Report.pptx"
-ROBOSPRAYER_CSV = PROJECT_ROOT / "reference_files" / "RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
 ELECTRIC_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_electric.yaml"
 HYBRID_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_hybrid.yaml"
+
+
+def _robosprayer_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
 
 
 @pytest.fixture(scope="module")
 def electric_report(tmp_path_factory: pytest.TempPathFactory):
     return generate_reporting_profile_engineering_report(
-        ROBOSPRAYER_CSV,
+        _robosprayer_csv(),
         ELECTRIC_PROFILE,
         tmp_path_factory.mktemp("profile_ppt_electric"),
         ImportOptions(strict=True),
@@ -41,18 +50,16 @@ def electric_report(tmp_path_factory: pytest.TempPathFactory):
 @pytest.fixture(scope="module")
 def hybrid_report(tmp_path_factory: pytest.TempPathFactory):
     return generate_reporting_profile_engineering_report(
-        ROBOSPRAYER_CSV,
+        _robosprayer_csv(),
         HYBRID_PROFILE,
         tmp_path_factory.mktemp("profile_ppt_hybrid"),
         ImportOptions(strict=True),
     )
 
 
-@pytest.mark.skipif(
-    not ELECTRIC_REFERENCE_DECK.exists() or not HYBRID_REFERENCE_DECK.exists(),
-    reason="Final reference PowerPoint decks are not present",
-)
 def test_reference_powerpoint_layout_inspection_matches_final_profile_decks() -> None:
+    assert ELECTRIC_REFERENCE_DECK.exists()
+    assert HYBRID_REFERENCE_DECK.exists()
     electric = inspect_reference_powerpoint_layout(ELECTRIC_REFERENCE_DECK)
     hybrid = inspect_reference_powerpoint_layout(HYBRID_REFERENCE_DECK)
 
@@ -87,7 +94,6 @@ def test_reference_powerpoint_layout_inspection_matches_final_profile_decks() ->
     assert hybrid.slides[3].shapes[25].x_in == pytest.approx(3.419)
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_generates_reopenable_electric_and_hybrid_decks(electric_report, hybrid_report) -> None:
     assert electric_report.presentation_path.name == "RoboSprayer_Electric_Engineering_Report.pptx"
     assert hybrid_report.presentation_path.name == "RoboSprayer_Hybrid_Engineering_Report.pptx"
@@ -104,7 +110,6 @@ def test_profile_powerpoint_generates_reopenable_electric_and_hybrid_decks(elect
         assert len(prs.slides) == 10
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report, hybrid_report) -> None:
     assert _slide_titles(electric_report.presentation_path) == [
         "RoboSprayer Electric",
@@ -132,7 +137,6 @@ def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report
     ]
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_uses_profile_kpis_and_omits_caiman_leakage(electric_report) -> None:
     text = _visible_text(electric_report.presentation_path)
     values = {
@@ -164,7 +168,6 @@ def test_profile_powerpoint_uses_profile_kpis_and_omits_caiman_leakage(electric_
     assert "Desktop\\Agro Project" not in text
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_hybrid_inactive_subsystem_handling(hybrid_report) -> None:
     text = _visible_text(hybrid_report.presentation_path)
 
@@ -175,7 +178,6 @@ def test_profile_powerpoint_hybrid_inactive_subsystem_handling(hybrid_report) ->
     assert "Resolved ICE/generator channels are inactive/all-zero for this run." in text
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_future_active_hybrid_uses_active_slide_copy(hybrid_report) -> None:
     excel_result = copy.copy(hybrid_report.excel_result)
     statistics_result = copy.copy(hybrid_report.excel_result.statistics_result)
@@ -197,7 +199,6 @@ def test_profile_powerpoint_future_active_hybrid_uses_active_slide_copy(hybrid_r
     ]
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_plot_ids_and_manifest_are_deterministic(electric_report, hybrid_report) -> None:
     electric_manifest = json.loads(electric_report.manifest_path.read_text(encoding="utf-8"))
     hybrid_manifest = json.loads(hybrid_report.manifest_path.read_text(encoding="utf-8"))
@@ -220,7 +221,6 @@ def test_profile_powerpoint_plot_ids_and_manifest_are_deterministic(electric_rep
     assert electric_manifest["slides"][7]["title"] == "Agrochemical & Battery Behaviour"
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_preserves_electric_reference_geometry_and_style(electric_report) -> None:
     generated = Presentation(electric_report.presentation_path)
     reference = Presentation(ELECTRIC_REFERENCE_DECK)
@@ -242,7 +242,6 @@ def test_profile_powerpoint_preserves_electric_reference_geometry_and_style(elec
     assert _shape_geometry(reference_slide4[21]) in _picture_geometries(generated_slide4)
 
 
-@pytest.mark.skipif(not ROBOSPRAYER_CSV.exists(), reason="RoboSprayer CSV is not present")
 def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report, hybrid_report) -> None:
     electric = Presentation(electric_report.presentation_path)
     electric_reference = Presentation(ELECTRIC_REFERENCE_DECK)

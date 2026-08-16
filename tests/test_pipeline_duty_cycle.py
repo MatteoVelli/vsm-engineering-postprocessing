@@ -19,20 +19,27 @@ from vsm_postprocessing.duty_cycle import (
 )
 from vsm_postprocessing.importer import ImportOptions, load_data_file
 from vsm_postprocessing.pipeline_engine import load_pipeline_config, run_pipeline
+from conftest import (
+    CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
+    CAIMAN_PROFILE_REFERENCE_XLSX,
+    CAIMAN_REFERENCE_DESCRIPTION,
+    CAIMAN_REFERENCE_XLSX,
+    require_private_reference_files,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-REFERENCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
+SOURCE_WORKBOOK = CAIMAN_REFERENCE_XLSX
+REFERENCE_WORKBOOK = CAIMAN_PROFILE_REFERENCE_XLSX
 SCENARIO_CONFIG = PROJECT_ROOT / "config" / "duty_cycle_sergio_reference.yaml"
 PROVIDER_CONFIG = PROJECT_ROOT / "config" / "duty_cycle_profiles_sergio_reference.yaml"
 PIPELINE_CONFIG = PROJECT_ROOT / "config" / "end_to_end_sergio_duty_cycle.yaml"
 
 
-@pytest.mark.skipif(
-    not SOURCE_WORKBOOK.exists() or not REFERENCE_WORKBOOK.exists(),
-    reason="Sergio reference workbooks are not present",
-)
 def test_pipeline_dataset_export_roundtrips_full_composition(tmp_path: Path) -> None:
+    require_private_reference_files(
+        (SOURCE_WORKBOOK, CAIMAN_REFERENCE_DESCRIPTION),
+        (REFERENCE_WORKBOOK, CAIMAN_PROFILE_REFERENCE_DESCRIPTION),
+    )
     source = load_data_file(SOURCE_WORKBOOK)
     scenario = load_duty_cycle_config(SCENARIO_CONFIG)
     provider = WorkbookRowProfileProvider(load_profile_provider_config(PROVIDER_CONFIG), REFERENCE_WORKBOOK)
@@ -104,11 +111,11 @@ output:
     assert config.duty_cycle.profile_workbook == profile.resolve()
 
 
-@pytest.mark.skipif(
-    not SOURCE_WORKBOOK.exists() or not REFERENCE_WORKBOOK.exists(),
-    reason="Sergio reference workbooks are not present",
-)
 def test_full_duty_cycle_runs_through_normal_reporting_pipeline(tmp_path: Path) -> None:
+    require_private_reference_files(
+        (SOURCE_WORKBOOK, CAIMAN_REFERENCE_DESCRIPTION),
+        (REFERENCE_WORKBOOK, CAIMAN_PROFILE_REFERENCE_DESCRIPTION),
+    )
     raw = PIPELINE_CONFIG.read_text(encoding="utf-8")
     raw = raw.replace(
         "../outputs/end_to_end_sergio_duty_cycle",

@@ -14,18 +14,20 @@ from vsm_postprocessing.duty_cycle import (
 )
 from vsm_postprocessing.errors import ConfigurationError
 from vsm_postprocessing.importer import load_data_file
+from conftest import (
+    CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
+    CAIMAN_PROFILE_REFERENCE_XLSX,
+    CAIMAN_REFERENCE_DESCRIPTION,
+    CAIMAN_REFERENCE_XLSX,
+    require_private_reference_file,
+    require_private_reference_files,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG = PROJECT_ROOT / "config" / "duty_cycle_sergio_reference.yaml"
 FORMAL_SPEC = PROJECT_ROOT / "docs" / "milestone_13A_1" / "proposed_duty_cycle_spec_v2.yaml"
 REFERENCE_MAPPING = PROJECT_ROOT / "docs" / "milestone_13A" / "source_to_report_row_mapping.csv"
-
-
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / (
-    "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-)
-
 
 def test_sergio_duty_cycle_config_loads_and_freezes_12_phase_structure() -> None:
     scenario = load_duty_cycle_config(CONFIG)
@@ -148,10 +150,9 @@ def test_invalid_duty_cycle_config_rejects_sample_count_mismatch(tmp_path: Path)
         load_duty_cycle_config(invalid)
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_sergio_source_workbook_is_compatible_with_duty_cycle_source_alignments() -> None:
     scenario = load_duty_cycle_config(CONFIG)
-    dataset = load_data_file(SOURCE_WORKBOOK)
+    dataset = load_data_file(require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION))
     validation = validate_source_dataset(scenario, dataset)
 
     assert validation.source_sample_count == 1866
@@ -162,12 +163,11 @@ def test_sergio_source_workbook_is_compatible_with_duty_cycle_source_alignments(
     assert validation.scenario_sample_period_s == 1.0
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_supported_prefix_materialises_p01_to_p04_and_stops_before_unresolved_p05() -> None:
     from vsm_postprocessing.duty_cycle import compose_supported_prefix
 
     scenario = load_duty_cycle_config(CONFIG)
-    source = load_data_file(SOURCE_WORKBOOK)
+    source = load_data_file(require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION))
     result = compose_supported_prefix(scenario, source)
     index = {role: source.channel_index(channel_id) for role, channel_id in scenario.channel_roles.items()}
 
@@ -202,18 +202,17 @@ def test_supported_prefix_materialises_p01_to_p04_and_stops_before_unresolved_p0
     assert values[-1, index["battery_soc_pct"]] == pytest.approx(58.7648)
 
 
-@pytest.mark.skipif(
-    not (SOURCE_WORKBOOK.exists() and (PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx").exists()),
-    reason="Client source/reference workbooks are not present",
-)
 def test_supported_prefix_matches_reference_on_resolved_core_logic_with_documented_canonical_differences() -> None:
     import numpy as np
     from vsm_postprocessing.duty_cycle import compose_supported_prefix
     from vsm_postprocessing.importer import ImportOptions
 
-    report_workbook = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
+    source_workbook, report_workbook = require_private_reference_files(
+        (CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION),
+        (CAIMAN_PROFILE_REFERENCE_XLSX, CAIMAN_PROFILE_REFERENCE_DESCRIPTION),
+    )
     scenario = load_duty_cycle_config(CONFIG)
-    source = load_data_file(SOURCE_WORKBOOK)
+    source = load_data_file(source_workbook)
     reference = load_data_file(
         report_workbook,
         ImportOptions(

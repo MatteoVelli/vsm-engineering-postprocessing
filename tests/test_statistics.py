@@ -13,6 +13,13 @@ from vsm_postprocessing.statistics_engine import (
     compute_statistic,
     load_statistics_config,
 )
+from conftest import (
+    CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
+    CAIMAN_PROFILE_REFERENCE_XLSX,
+    CAIMAN_REFERENCE_DESCRIPTION,
+    CAIMAN_REFERENCE_XLSX,
+    require_private_reference_file,
+)
 
 
 def _write_csv(path: Path) -> None:
@@ -186,19 +193,15 @@ def test_invalid_operation_is_rejected(tmp_path: Path) -> None:
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / (
-    "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-)
-REPORT_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
 MATH_CONFIG = PROJECT_ROOT / "config" / "math_channels_example.yaml"
 STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_example.yaml"
 REPORT_STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_reference_report.yaml"
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_supplied_source_workbook_statistics_acceptance() -> None:
+    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
     result = calculate_statistics(
-        SOURCE_WORKBOOK,
+        source_workbook,
         STATISTICS_CONFIG,
         ImportOptions(strict=True),
         math_config_file=MATH_CONFIG,
@@ -214,10 +217,13 @@ def test_supplied_source_workbook_statistics_acceptance() -> None:
     assert values["auxiliary_energy_sum"] == pytest.approx(values["auxiliary_energy_accumulated_last"])
 
 
-@pytest.mark.skipif(not REPORT_WORKBOOK.exists(), reason="Client report workbook is not present")
 def test_supplied_report_statistics_reference_acceptance() -> None:
+    report_workbook = require_private_reference_file(
+        CAIMAN_PROFILE_REFERENCE_XLSX,
+        CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
+    )
     result = calculate_statistics(
-        REPORT_WORKBOOK,
+        report_workbook,
         REPORT_STATISTICS_CONFIG,
         ImportOptions(
             header_row=3,

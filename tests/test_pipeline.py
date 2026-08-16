@@ -7,9 +7,9 @@ import pytest
 
 from vsm_postprocessing.errors import ConfigurationError, PipelineError
 from vsm_postprocessing.pipeline_engine import load_pipeline_config, run_pipeline
+from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
 PIPELINE_CONFIG = PROJECT_ROOT / "config" / "end_to_end_example.yaml"
 
 
@@ -84,8 +84,8 @@ def test_pipeline_failure_writes_diagnostic_manifest(tmp_path: Path) -> None:
     assert manifest["stages"][1]["status"] == "FAIL"
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_supplied_source_workbook_end_to_end_acceptance(tmp_path: Path) -> None:
+    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
     raw = PIPELINE_CONFIG.read_text(encoding="utf-8")
     raw = raw.replace("../outputs/end_to_end", str((tmp_path / "end_to_end").resolve()).replace("\\", "/"))
     config_path = tmp_path / "end_to_end_acceptance.yaml"
@@ -93,7 +93,7 @@ def test_supplied_source_workbook_end_to_end_acceptance(tmp_path: Path) -> None:
     # so replace them with absolute paths for the acceptance test.
     raw = raw.replace(
         "../reference_files/Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx",
-        str(SOURCE_WORKBOOK.resolve()).replace("\\", "/"),
+        str(source_workbook.resolve()).replace("\\", "/"),
     )
     for filename in (
         "channel_selection_example.yaml",

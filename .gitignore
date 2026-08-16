@@ -3,9 +3,17 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .pytest_tmp/
+
 outputs/*
 !outputs/.gitkeep
+
+# Reference/client files are private by default
 reference_files/*
 !reference_files/README.md
+
+# Final runtime PowerPoint templates
+!reference_files/RoboSprayer_Electric_Report_FINAL.pptx
+!reference_files/RoboSprayer_Hybrid_Engineering_Report.pptx
+
 dist/
 .streamlit/secrets.toml

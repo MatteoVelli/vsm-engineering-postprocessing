@@ -23,12 +23,17 @@ from vsm_postprocessing.report_profile import (
 )
 from vsm_postprocessing.statistics_engine import calculate_statistics
 
-
-REFERENCE_CSV = Path(
-    "reference_files/RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
+from conftest import (
+    ROBOSPRAYER_REFERENCE_CSV,
+    ROBOSPRAYER_REFERENCE_DESCRIPTION,
+    require_private_reference_file,
 )
 ELECTRIC_PROFILE = Path("config/report_profiles/robosprayer_electric.yaml")
 HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
+
+
+def _robosprayer_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
 
 
 def test_profile_statistic_uses_semantic_raw_channel() -> None:
@@ -160,7 +165,7 @@ def test_profile_statistics_are_independent_from_runtime_column_position() -> No
 
 
 def test_electric_profile_full_statistics_execution_against_reference_csv() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
     assert result.configured_statistic_count == 27
@@ -173,7 +178,7 @@ def test_electric_profile_full_statistics_execution_against_reference_csv() -> N
 
 
 def test_electric_profile_representative_statistics_regression() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
     stats = {item.definition.statistic_id: item.value for item in result.statistics}
     kpis = {item.definition.kpi_id: item.value for item in result.kpis}
@@ -196,7 +201,7 @@ def test_electric_profile_representative_statistics_regression() -> None:
 
 
 def test_electric_rms_does_not_reproduce_stale_17417_denominator() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
     stats = {item.definition.statistic_id: item.value for item in result.statistics}
 
@@ -207,7 +212,7 @@ def test_electric_rms_does_not_reproduce_stale_17417_denominator() -> None:
 
 
 def test_hybrid_engine_statistics_are_zero_against_electric_reference_csv() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_statistics(dataset, load_reporting_profile(HYBRID_PROFILE))
     stats = {item.definition.statistic_id: item.value for item in result.statistics}
 
@@ -220,7 +225,7 @@ def test_hybrid_engine_statistics_are_zero_against_electric_reference_csv() -> N
 
 
 def test_hybrid_generator_statistics_are_zero_against_electric_reference_csv() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_statistics(dataset, load_reporting_profile(HYBRID_PROFILE))
     stats = {item.definition.statistic_id: item.value for item in result.statistics}
 

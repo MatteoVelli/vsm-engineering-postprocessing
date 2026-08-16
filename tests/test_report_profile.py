@@ -15,12 +15,17 @@ from vsm_postprocessing.report_profile import (
     resolve_profile,
 )
 
-
-REFERENCE_CSV = Path(
-    "reference_files/RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
+from conftest import (
+    ROBOSPRAYER_REFERENCE_CSV,
+    ROBOSPRAYER_REFERENCE_DESCRIPTION,
+    require_private_reference_file,
 )
 ELECTRIC_PROFILE = Path("config/report_profiles/robosprayer_electric.yaml")
 HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
+
+
+def _robosprayer_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
 
 
 def test_exact_semantic_name_resolution() -> None:
@@ -198,7 +203,7 @@ def test_profile_resolution_is_independent_from_runtime_column_positions() -> No
 
 
 def test_electric_robosprayer_profile_resolution_against_reference_csv() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     profile = load_reporting_profile(ELECTRIC_PROFILE)
 
     result = resolve_profile(dataset, profile)
@@ -280,7 +285,7 @@ def test_hybrid_generator_torque_resolution_is_independent_from_runtime_column_p
 
 
 def test_hybrid_profile_against_electric_csv_resolves_inactive_hybrid_channels() -> None:
-    dataset = load_data_file(REFERENCE_CSV, ImportOptions())
+    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = resolve_profile(dataset, load_reporting_profile(HYBRID_PROFILE))
 
     assert result.is_valid

@@ -145,15 +145,17 @@ output:
     with pytest.raises(ConfigurationError, match="without directories"):
         load_selection_config(config_path)
 
-SOURCE_WORKBOOK = Path(__file__).resolve().parents[1] / "reference_files" / (
-    "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
+from conftest import (
+    CAIMAN_REFERENCE_DESCRIPTION,
+    CAIMAN_REFERENCE_XLSX,
+    require_private_reference_file,
 )
 EXAMPLE_CONFIG = Path(__file__).resolve().parents[1] / "config" / "channel_selection_example.yaml"
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client reference workbook is not present")
 def test_supplied_workbook_channel_selection_acceptance() -> None:
-    result = select_channels(SOURCE_WORKBOOK, EXAMPLE_CONFIG)
+    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
+    result = select_channels(source_workbook, EXAMPLE_CONFIG)
 
     assert result.sample_count == 1866
     assert result.channel_count == 12

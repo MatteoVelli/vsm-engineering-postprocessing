@@ -5,11 +5,9 @@ from openpyxl import Workbook
 
 from vsm_postprocessing.errors import DataValidationError
 from vsm_postprocessing.importer import ImportOptions, inspect_data_file
+from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 
-SOURCE_WORKBOOK = Path(__file__).resolve().parents[1] / "reference_files" / (
-    "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-)
 OLD_HYBRID_WORKBOOK = (
     Path(__file__).resolve().parents[1] / "reference_files" / "Robo_Sprayer_Electrification_Tamplate_Hybrid.xlsx"
 )
@@ -18,9 +16,9 @@ CORRECTED_HYBRID_WORKBOOK = (
 )
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client reference workbook is not present")
 def test_supplied_source_workbook_acceptance_criteria() -> None:
-    result = inspect_data_file(SOURCE_WORKBOOK)
+    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
+    result = inspect_data_file(source_workbook)
     quality = result.quality
 
     assert quality.is_valid

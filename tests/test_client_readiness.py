@@ -9,9 +9,9 @@ from vsm_postprocessing.doctor import DoctorCheck, run_doctor
 from vsm_postprocessing.errors import ConfigurationError, PipelineError
 from vsm_postprocessing.pipeline_engine import _prepare_output_root, load_pipeline_config, run_pipeline
 from vsm_postprocessing.utils import atomic_write_text
+from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
 
 
 def _write_pipeline_config(tmp_path: Path, *, input_inside_output: bool = False) -> Path:
@@ -128,8 +128,8 @@ def test_doctor_reports_no_blocking_failure_for_project(monkeypatch: pytest.Monk
     assert any(check.name == "VSM package" and check.status == "PASS" for check in report.checks)
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_doctor_validates_default_pipeline_bundle_when_reference_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
     monkeypatch.setattr(
         "vsm_postprocessing.doctor._check_packages",
         lambda: [DoctorCheck("VSM package", "PASS", "test")],

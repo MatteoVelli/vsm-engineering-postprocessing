@@ -9,19 +9,24 @@ from openpyxl.utils import get_column_letter
 from vsm_postprocessing.excel_report_engine import generate_profile_excel_report
 from vsm_postprocessing.importer import ImportOptions
 
-
-REFERENCE_CSV = Path(
-    "reference_files/RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
+from conftest import (
+    ROBOSPRAYER_REFERENCE_CSV,
+    ROBOSPRAYER_REFERENCE_DESCRIPTION,
+    require_private_reference_file,
 )
 ELECTRIC_PROFILE = Path("config/report_profiles/robosprayer_electric.yaml")
 HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
 DATA_START_ROW = 5
 
 
+def _robosprayer_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
 @pytest.fixture(scope="module")
 def electric_report(tmp_path_factory: pytest.TempPathFactory):
     return generate_profile_excel_report(
-        REFERENCE_CSV,
+        _robosprayer_csv(),
         ELECTRIC_PROFILE,
         tmp_path_factory.mktemp("profile_excel_electric"),
         ImportOptions(),
@@ -150,7 +155,7 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
 
 def test_profile_excel_report_hybrid_dry_run_remains_profile_generic(tmp_path: Path) -> None:
     result = generate_profile_excel_report(
-        REFERENCE_CSV,
+        _robosprayer_csv(),
         HYBRID_PROFILE,
         tmp_path / "profile_excel_hybrid",
         ImportOptions(),

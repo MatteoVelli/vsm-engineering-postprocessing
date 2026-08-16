@@ -8,6 +8,7 @@ from openpyxl import load_workbook
 from vsm_postprocessing.errors import ConfigurationError
 from vsm_postprocessing.excel_report_engine import generate_excel_report, load_excel_report_config
 from vsm_postprocessing.importer import ImportOptions
+from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 
 def _write_config(path: Path, *, channels: str = "  - time__col_001\n", output: str = "report.xlsx", bottom: str = "    - max\n") -> None:
@@ -136,19 +137,16 @@ output:
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WORKBOOK = PROJECT_ROOT / "reference_files" / (
-    "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
-)
 REPORT_CONFIG = PROJECT_ROOT / "config" / "excel_report_example.yaml"
 MATH_CONFIG = PROJECT_ROOT / "config" / "math_channels_example.yaml"
 STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_excel_report.yaml"
 PLOTTING_CONFIG = PROJECT_ROOT / "config" / "plotting_example.yaml"
 
 
-@pytest.mark.skipif(not SOURCE_WORKBOOK.exists(), reason="Client source workbook is not present")
 def test_supplied_source_workbook_excel_report_acceptance(tmp_path: Path) -> None:
+    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
     result = generate_excel_report(
-        SOURCE_WORKBOOK,
+        source_workbook,
         REPORT_CONFIG,
         STATISTICS_CONFIG,
         PLOTTING_CONFIG,
