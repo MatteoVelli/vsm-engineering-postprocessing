@@ -109,11 +109,15 @@ class ProfilePresentationSlideDefinition:
     slide_id: str
     statistics: tuple[str, ...] = ()
     plots: tuple[str, ...] = ()
+    mode: str | None = None
+    fallback_mode: str | None = None
 
 
 @dataclass(frozen=True)
 class ProfilePresentationConfig:
     footer: str | None = None
+    powerpoint_template: str | None = None
+    metadata_pills: tuple[str, ...] = ()
     slides: tuple[ProfilePresentationSlideDefinition, ...] = ()
 
     def slides_by_id(self) -> dict[str, ProfilePresentationSlideDefinition]:
@@ -617,7 +621,7 @@ def _parse_presentation(raw: Any) -> ProfilePresentationConfig | None:
         return None
     if not isinstance(raw, dict):
         raise ConfigurationError("presentation must be a YAML mapping")
-    _reject_unknown_keys(raw, {"footer", "slides"}, "presentation")
+    _reject_unknown_keys(raw, {"footer", "powerpoint_template", "metadata_pills", "slides"}, "presentation")
     slides_raw = raw.get("slides", [])
     if not isinstance(slides_raw, list):
         raise ConfigurationError("presentation.slides must be a YAML list")
@@ -625,6 +629,8 @@ def _parse_presentation(raw: Any) -> ProfilePresentationConfig | None:
     _reject_duplicates((item.slide_id for item in slides), "presentation slide IDs")
     return ProfilePresentationConfig(
         footer=_optional_string(raw.get("footer"), "presentation.footer"),
+        powerpoint_template=_optional_string(raw.get("powerpoint_template"), "presentation.powerpoint_template"),
+        metadata_pills=_parse_string_tuple(raw.get("metadata_pills", []), "presentation.metadata_pills"),
         slides=slides,
     )
 
@@ -633,13 +639,15 @@ def _parse_presentation_slide(raw: Any, index: int) -> ProfilePresentationSlideD
     context = f"presentation.slides[{index}]"
     if not isinstance(raw, dict):
         raise ConfigurationError(f"{context} must be a YAML mapping")
-    _reject_unknown_keys(raw, {"slide_id", "statistics", "plots"}, context)
+    _reject_unknown_keys(raw, {"slide_id", "statistics", "plots", "mode", "fallback_mode"}, context)
     slide_id = _required_string(raw, f"{context}.slide_id")
     _validate_identifier(slide_id, f"{context}.slide_id")
     return ProfilePresentationSlideDefinition(
         slide_id=slide_id,
         statistics=_parse_string_tuple(raw.get("statistics", []), f"{context}.statistics"),
         plots=_parse_string_tuple(raw.get("plots", []), f"{context}.plots"),
+        mode=_optional_string(raw.get("mode"), f"{context}.mode"),
+        fallback_mode=_optional_string(raw.get("fallback_mode"), f"{context}.fallback_mode"),
     )
 
 

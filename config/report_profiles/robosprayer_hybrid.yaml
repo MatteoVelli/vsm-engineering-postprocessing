@@ -258,6 +258,7 @@ plots:
         label: Engine Fuel Consumption
 presentation:
   footer: VSM Engineering Post-Processing Tool
+  powerpoint_template: reference_files/RoboSprayer_Hybrid_Engineering_Report.pptx
   slides:
     - slide_id: cover
       statistics:
@@ -313,6 +314,7 @@ presentation:
         - battery_power_charge_discharge
         - energy_released
     - slide_id: range_extender_generator
+      mode: hybrid_range_extender_generator
       statistics:
         - generator_power_1_max
         - engine_power_required_max
@@ -324,6 +326,8 @@ presentation:
         - generator_power
         - engine_power_and_fuel_vs_time
     - slide_id: agrochemical_battery
+      mode: agrochemical
+      fallback_mode: auxiliary_tyre_energy
       statistics:
         - agrochemical_discharge_max
         - battery_soc_last

@@ -2771,6 +2771,13 @@ plots:
         label: Battery SOC
 presentation:
   footer: VSM Engineering Post-Processing Tool
+  powerpoint_template: reference_files/RoboSprayer_Electric_Report_FINAL.pptx
+  metadata_pills:
+    - GVW 3,500 kg
+    - Electric powertrain
+    - 12 kph field
+    - Battery 50 kW
+    - Motor 63 rpm
   slides:
     - slide_id: cover
       statistics:
@@ -2826,6 +2833,7 @@ presentation:
         - battery_power_charge_discharge
         - energy_released
     - slide_id: profile_energy_range
+      mode: electric_energy_range
       statistics:
         - battery_capacity_used
         - battery_energy_consumption_wh_per_km
@@ -2837,6 +2845,7 @@ presentation:
         - battery_energy_distance_based
         - auxiliaries_energy_consumption
     - slide_id: agrochemical_battery
+      mode: agrochemical
       statistics:
         - agrochemical_discharge_max
         - battery_soc_last
