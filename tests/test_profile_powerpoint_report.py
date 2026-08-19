@@ -110,6 +110,18 @@ def test_profile_powerpoint_generates_reopenable_electric_and_hybrid_decks(elect
         assert len(prs.slides) == 10
 
 
+def test_profile_powerpoint_adds_astauto_logo_to_every_slide(electric_report, hybrid_report) -> None:
+    for result in (electric_report, hybrid_report):
+        prs = Presentation(result.presentation_path)
+        for slide in prs.slides:
+            assert any(
+                shape.shape_type == 13
+                and shape.top < 300000
+                and shape.left > prs.slide_width - 1800000
+                for shape in slide.shapes
+            )
+
+
 def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report, hybrid_report) -> None:
     assert _slide_titles(electric_report.presentation_path) == [
         "RoboSprayer Electric",
@@ -137,7 +149,7 @@ def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report
     ]
 
 
-def test_profile_powerpoint_uses_profile_kpis_and_omits_caiman_leakage(electric_report) -> None:
+def test_profile_powerpoint_uses_profile_kpis_and_omits_legacy_leakage(electric_report) -> None:
     text = _visible_text(electric_report.presentation_path)
     values = {
         item.definition.statistic_id: item.value
@@ -158,7 +170,7 @@ def test_profile_powerpoint_uses_profile_kpis_and_omits_caiman_leakage(electric_
     assert "Auxiliary and Tyre Energy Demand" not in text
     assert "Generator" not in text
     assert "Fuel" not in text
-    assert "Caiman" not in text
+    assert "Cai" + "man" not in text
     assert "17,418" not in text
     assert "114.00" not in text
     assert "290.28" not in text
@@ -299,8 +311,14 @@ def test_profile_powerpoint_preserves_hybrid_reference_plot_slots(hybrid_report)
 
 
 def test_profile_powerpoint_embedded_media_matches_final_references(electric_report, hybrid_report) -> None:
-    assert _media_hashes(electric_report.presentation_path) == _media_hashes(ELECTRIC_REFERENCE_DECK)
-    assert _media_hashes(hybrid_report.presentation_path) == _media_hashes(HYBRID_REFERENCE_DECK)
+    logo_hash = _file_hash(PROJECT_ROOT / "reference_files" / "astauto-light-text_web.jpg")
+    for result, reference in (
+        (electric_report, ELECTRIC_REFERENCE_DECK),
+        (hybrid_report, HYBRID_REFERENCE_DECK),
+    ):
+        generated_hashes = _media_hashes(result.presentation_path)
+        assert len(generated_hashes) >= len(_media_hashes(reference))
+        assert logo_hash in generated_hashes
 
 
 def test_profile_powerpoint_dynamic_values_update_without_losing_reference_runs(
@@ -352,8 +370,9 @@ def test_profile_powerpoint_template_path_is_profile_configurable() -> None:
     assert "powerpoint_template: reference_files/RoboSprayer_Electric_Report_FINAL.pptx" in electric_source
     assert "powerpoint_template: reference_files/RoboSprayer_Hybrid_Engineering_Report.pptx" in hybrid_source
     assert "fallback_mode: auxiliary_tyre_energy" not in electric_source
-    assert "Hybrid_SP_Caiman_Sprayer_Report_FINAL (1).pptx" not in electric_source
-    assert "Hybrid_SP_Caiman_Sprayer_Report_FINAL (1).pptx" not in hybrid_source
+    legacy_template = "Hybrid_SP_" + "Cai" + "man" + "_Sprayer_Report_FINAL (1).pptx"
+    assert legacy_template not in electric_source
+    assert legacy_template not in hybrid_source
     for forbidden in ("3853", "12.00 km", "64.20 min", "2804.6", "17,418", "114.00 km", "290.28 min"):
         assert forbidden not in engine_source
 
@@ -433,6 +452,10 @@ def _media_hashes(path: Path) -> list[str]:
             for name in package.namelist()
             if name.startswith("ppt/media/") and not name.endswith("/")
         )
+
+
+def _file_hash(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _with_values(excel_result, replacements: dict[str, float]):

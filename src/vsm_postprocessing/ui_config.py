@@ -9,9 +9,8 @@ from typing import Any, Iterable, Mapping, Sequence
 import yaml
 
 from .errors import ConfigurationError
-from .duty_cycle import load_duty_cycle_config, validate_source_dataset
 from .excel_report_engine import ProfileExcelReportResult, generate_profile_excel_report
-from .importer import ImportOptions, inspect_data_file, load_data_file
+from .importer import ImportOptions, load_data_file
 from .profile_powerpoint_report_engine import ProfilePowerPointReportResult, build_profile_powerpoint_report
 from .profile_math import calculate_profile_math_channels
 from .report_profile import ReportingProfile, load_reporting_profile, resolve_profile
@@ -40,22 +39,6 @@ class UiRuntimeBundle:
     powerpoint_report_config: Path | None
     output_root: Path
     effective_math_channel_ids: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class FullDutyCycleScenarioDefinition:
-    scenario_id: str
-    display_name: str
-    scenario_config: Path
-    profile_provider_config: Path
-    profile_workbook: Path
-    math_config: Path
-    statistics_config: Path
-    plotting_config: Path
-    excel_report_config: Path
-    powerpoint_report_config: Path
-    excel_download_filename: str
-    powerpoint_download_filename: str
 
 
 @dataclass(frozen=True)
@@ -220,7 +203,7 @@ def validate_reporting_profile_source(
         calculate_profile_math_channels(dataset, profile, resolution)
 
     resolved = list(resolution.resolved.values())
-    required_raw_count = len(profile.raw_channels)
+    required_raw_count = sum(1 for channel in profile.raw_channels if channel.required)
     return ReportingProfileValidationSummary(
         profile_id=profile.profile_id,
         profile_name=profile.metadata.name,
@@ -313,197 +296,6 @@ def _duration_minutes(start: float | None, end: float | None, unit: str | None) 
     return None
 
 
-def default_full_duty_cycle_scenario(project_root: str | Path) -> FullDutyCycleScenarioDefinition:
-    root = Path(project_root).expanduser().resolve()
-    config = root / "config"
-    return FullDutyCycleScenarioDefinition(
-        scenario_id="caiman_sp_hybrid_field_road_duty_cycle",
-        display_name="Caiman SP Hybrid - 6 Field Cycles + Road Transfer",
-        scenario_config=config / "duty_cycle_sergio_reference.yaml",
-        profile_provider_config=root / "assets" / "scenarios" / "caiman_sp_hybrid" / "profile_provider.yaml",
-        profile_workbook=root / "assets" / "scenarios" / "caiman_sp_hybrid" / "missing_phase_profiles.csv",
-        math_config=config / "math_channels_example.yaml",
-        statistics_config=config / "statistics_excel_report.yaml",
-        plotting_config=config / "plotting_example.yaml",
-        excel_report_config=config / "excel_report_duty_cycle.yaml",
-        powerpoint_report_config=config / "powerpoint_report_duty_cycle.yaml",
-        excel_download_filename="Caiman_SP_Hybrid_Engineering_Report.xlsx",
-        powerpoint_download_filename="Caiman_SP_Hybrid_Engineering_Report.pptx",
-    )
-
-
-def build_full_duty_cycle_runtime_bundle(
-    *,
-    source_file: str | Path,
-    profile_workbook: str | Path,
-    profile_original_filename: str | None = None,
-    runtime_dir: str | Path,
-    scenario: FullDutyCycleScenarioDefinition,
-    clean_before_run: bool = True,
-) -> UiRuntimeBundle:
-    source = Path(source_file).expanduser().resolve()
-    profile = Path(profile_workbook).expanduser().resolve()
-    if not source.exists() or not source.is_file():
-        raise ConfigurationError(f"Full duty-cycle source file does not exist: {source}")
-    if not profile.exists() or not profile.is_file():
-        raise ConfigurationError(f"Full duty-cycle profile workbook does not exist: {profile}")
-
-    channel_selection_config = scenario.scenario_config.parent / "channel_selection_example.yaml"
-    for label, path in (
-        ("scenario", scenario.scenario_config),
-        ("Profile Provider", scenario.profile_provider_config),
-        ("channel-selection", channel_selection_config),
-        ("math", scenario.math_config),
-        ("statistics", scenario.statistics_config),
-        ("plotting", scenario.plotting_config),
-        ("Excel report", scenario.excel_report_config),
-        ("PowerPoint report", scenario.powerpoint_report_config),
-    ):
-        if not path.exists() or not path.is_file():
-            raise ConfigurationError(f"Full duty-cycle {label} configuration does not exist: {path}")
-
-    runtime = Path(runtime_dir).expanduser().resolve()
-    config_dir = runtime / "runtime_config"
-    output_root = runtime / "results"
-    config_dir.mkdir(parents=True, exist_ok=True)
-
-    pipeline_path = config_dir / "pipeline.yaml"
-    pipeline = {
-        "version": 1,
-        "input": {"file": str(source), "strict": True},
-        "duty_cycle": {
-            "scenario": str(scenario.scenario_config.resolve()),
-            "profile_provider": str(scenario.profile_provider_config.resolve()),
-            "profile_workbook": str(profile),
-            "profile_validation_mode": "compatible",
-            "profile_original_filename": Path(profile_original_filename).name
-            if profile_original_filename
-            else profile.name,
-        },
-        "configs": {
-            "channel_selection": str(channel_selection_config.resolve()),
-            "math_channels": str(scenario.math_config.resolve()),
-            "statistics": str(scenario.statistics_config.resolve()),
-            "plotting": str(scenario.plotting_config.resolve()),
-            "excel_statistics": str(scenario.statistics_config.resolve()),
-            "excel_report": str(scenario.excel_report_config.resolve()),
-            "powerpoint_report": str(scenario.powerpoint_report_config.resolve()),
-        },
-        "output": {"root_dir": str(output_root), "clean_before_run": bool(clean_before_run)},
-    }
-    _write_yaml(pipeline_path, pipeline)
-
-    return UiRuntimeBundle(
-        config_dir=config_dir,
-        pipeline_config=pipeline_path,
-        channel_selection_config=channel_selection_config.resolve(),
-        math_config=scenario.math_config.resolve(),
-        statistics_config=scenario.statistics_config.resolve(),
-        plotting_config=scenario.plotting_config.resolve(),
-        excel_statistics_config=scenario.statistics_config.resolve(),
-        excel_report_config=scenario.excel_report_config.resolve(),
-        powerpoint_report_config=scenario.powerpoint_report_config.resolve(),
-        output_root=output_root,
-        effective_math_channel_ids=(),
-    )
-
-
-def build_engineering_report_runtime_bundle(
-    *,
-    source_file: str | Path,
-    runtime_dir: str | Path,
-    project_root: str | Path,
-    clean_before_run: bool = True,
-) -> UiRuntimeBundle:
-    """Build the primary single-file Engineering Report runtime configuration."""
-
-    root = Path(project_root).expanduser().resolve()
-    source = Path(source_file).expanduser().resolve()
-    if not source.exists() or not source.is_file():
-        raise ConfigurationError(f"Engineering Report source file does not exist: {source}")
-
-    scenario = default_full_duty_cycle_scenario(root)
-    channel_selection_config = scenario.scenario_config.parent / "channel_selection_example.yaml"
-    for label, path in (
-        ("scenario", scenario.scenario_config),
-        ("profile-provider", scenario.profile_provider_config),
-        ("profile asset", scenario.profile_workbook),
-        ("channel-selection", channel_selection_config),
-        ("math", scenario.math_config),
-        ("statistics", scenario.statistics_config),
-        ("plotting", scenario.plotting_config),
-        ("Excel report", scenario.excel_report_config),
-        ("PowerPoint report", scenario.powerpoint_report_config),
-    ):
-        if not path.exists() or not path.is_file():
-            raise ConfigurationError(f"Engineering Report {label} configuration does not exist: {path}")
-
-    inspection = inspect_data_file(source, ImportOptions(strict=True))
-    source_channel_ids = {channel.channel_id for channel in inspection.channels}
-    required = _engineering_report_required_channel_ids(
-        channel_selection=_read_yaml_mapping(channel_selection_config),
-        math_channels=_read_yaml_mapping(scenario.math_config),
-        statistics=_read_yaml_mapping(scenario.statistics_config),
-        plotting=_read_yaml_mapping(scenario.plotting_config),
-        excel_report=_read_yaml_mapping(scenario.excel_report_config),
-    )
-    missing = sorted(required - source_channel_ids)
-    if missing:
-        preview = ", ".join(missing[:12])
-        extra = "" if len(missing) <= 12 else f" and {len(missing) - 12} more"
-        raise ConfigurationError(
-            "Engineering Report profile requires channel(s) unavailable in the uploaded VSM file: "
-            + preview
-            + extra
-        )
-
-    scenario_config = load_duty_cycle_config(scenario.scenario_config)
-    source_dataset = load_data_file(source, ImportOptions(strict=True))
-    validate_source_dataset(scenario_config, source_dataset)
-
-    runtime = Path(runtime_dir).expanduser().resolve()
-    config_dir = runtime / "runtime_config"
-    output_root = runtime / "results"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    pipeline_path = config_dir / "pipeline.yaml"
-    pipeline = {
-        "version": 1,
-        "input": {"file": str(source), "strict": True},
-        "duty_cycle": {
-            "scenario": str(scenario.scenario_config.resolve()),
-            "profile_provider": str(scenario.profile_provider_config.resolve()),
-            "profile_workbook": str(scenario.profile_workbook.resolve()),
-            "profile_validation_mode": "strict",
-            "profile_original_filename": scenario.profile_workbook.name,
-        },
-        "configs": {
-            "channel_selection": str(channel_selection_config.resolve()),
-            "math_channels": str(scenario.math_config.resolve()),
-            "statistics": str(scenario.statistics_config.resolve()),
-            "plotting": str(scenario.plotting_config.resolve()),
-            "excel_statistics": str(scenario.statistics_config.resolve()),
-            "excel_report": str(scenario.excel_report_config.resolve()),
-            "powerpoint_report": str(scenario.powerpoint_report_config.resolve()),
-        },
-        "output": {"root_dir": str(output_root), "clean_before_run": bool(clean_before_run)},
-    }
-    _write_yaml(pipeline_path, pipeline)
-
-    return UiRuntimeBundle(
-        config_dir=config_dir,
-        pipeline_config=pipeline_path,
-        channel_selection_config=channel_selection_config.resolve(),
-        math_config=scenario.math_config.resolve(),
-        statistics_config=scenario.statistics_config.resolve(),
-        plotting_config=scenario.plotting_config.resolve(),
-        excel_statistics_config=scenario.statistics_config.resolve(),
-        excel_report_config=scenario.excel_report_config.resolve(),
-        powerpoint_report_config=scenario.powerpoint_report_config.resolve(),
-        output_root=output_root,
-        effective_math_channel_ids=(),
-    )
-
-
 def load_ui_templates(project_root: str | Path) -> UiTemplateBundle:
     root = Path(project_root).expanduser().resolve()
     config = root / "config"
@@ -581,43 +373,6 @@ def save_ui_profile(path: str | Path, profile: Mapping[str, Any]) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True)
     _write_yaml(destination, payload)
     return destination
-
-
-def _engineering_report_required_channel_ids(
-    *,
-    channel_selection: Mapping[str, Any],
-    math_channels: Mapping[str, Any],
-    statistics: Mapping[str, Any],
-    plotting: Mapping[str, Any],
-    excel_report: Mapping[str, Any],
-) -> set[str]:
-    math_ids = {str(item["channel_id"]) for item in math_channels.get("math_channels", [])}
-    constants = set(math_channels.get("constants", {}))
-    required: set[str] = set()
-
-    def add(channel_id: str) -> None:
-        if channel_id not in math_ids and channel_id not in constants:
-            required.add(channel_id)
-
-    for channel_id in channel_selection.get("selection", {}).get("export_channels", []):
-        add(str(channel_id))
-    for channel_id in math_channels.get("selection", {}).get("export_source_channels", []):
-        add(str(channel_id))
-    for definition in math_channels.get("math_channels", []):
-        for dependency in _expression_names(str(definition["expression"])):
-            add(dependency)
-        comparison = definition.get("compare_to")
-        if isinstance(comparison, Mapping) and comparison.get("required", True):
-            add(str(comparison["channel_id"]))
-    for definition in statistics.get("statistics", []):
-        add(str(definition["channel_id"]))
-    for plot in plotting.get("plots", []):
-        add(str(plot["x_channel_id"]))
-        for series in plot.get("series", []):
-            add(str(series["channel_id"]))
-    for channel_id in excel_report.get("channels", []):
-        add(str(channel_id))
-    return required
 
 
 def build_runtime_bundle(

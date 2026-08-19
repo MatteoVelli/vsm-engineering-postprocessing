@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import math
 import shutil
-import csv
 from datetime import datetime, timezone
 from dataclasses import replace
 from dataclasses import dataclass
@@ -519,10 +518,13 @@ def generate_profile_excel_report(
     destination.mkdir(parents=True, exist_ok=True)
     plot_assets_dir = destination / "profile_plot_assets"
     plotting_result = render_profile_plots(dataset, profile, plot_assets_dir, resolution, math_result)
-    if plotting_result.unavailable_plots:
+    required_unavailable_plots = [
+        item for item in plotting_result.unavailable_plots if item.missing_semantic_names
+    ]
+    if required_unavailable_plots:
         raise ExcelReportError(
             "Profile plots are unavailable: "
-            + ", ".join(item.definition.plot_id for item in plotting_result.unavailable_plots)
+            + ", ".join(item.definition.plot_id for item in required_unavailable_plots)
         )
 
     channels_by_name = plotting_result.channels_by_semantic_name
@@ -587,9 +589,14 @@ def _profile_template_file(profile: ReportingProfile, template_file: str | Path 
         if not path.exists():
             raise ExcelReportError(f"Profile Excel template file does not exist: {path}")
         return path
-    if profile.profile_id != "robosprayer_electric":
+    template_by_profile = {
+        "robosprayer_electric": "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx",
+        "robosprayer_hybrid": "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx",
+    }
+    template = template_by_profile.get(profile.profile_id)
+    if template is None:
         return None
-    candidate = Path("reference_files/Robo_Sprayer_Electrification_Tamplate_Electric.xlsx").resolve()
+    candidate = Path(template).resolve()
     return candidate if candidate.exists() else None
 
 
@@ -605,6 +612,8 @@ def _profile_report_channels(
     channels: list[ChannelInfo] = []
     for definition in profile.raw_channels:
         if definition.semantic_name not in channels_by_name:
+            if not definition.required:
+                continue
             raise ExcelReportError(f"Resolved raw profile channel is unavailable: {definition.semantic_name}")
         channel = channels_by_name[definition.semantic_name]
         channels.append(
@@ -619,6 +628,8 @@ def _profile_report_channels(
         )
     for definition in profile.math_channels:
         if definition.semantic_name not in channels_by_name:
+            if not definition.required:
+                continue
             raise ExcelReportError(f"Calculated profile MATH channel is unavailable: {definition.semantic_name}")
         channel = channels_by_name[definition.semantic_name]
         channels.append(
@@ -681,6 +692,10 @@ def _profile_report_channels_from_template(
             continue
         seen.add(semantic_name)
         definition = definitions[semantic_name]
+        if semantic_name not in channels_by_name:
+            if getattr(definition, "required", True):
+                raise ExcelReportError(f"Required profile channel from template is unavailable: {semantic_name}")
+            continue
         channel = channels_by_name[semantic_name]
         kind = "math" if channel_type == "MATH" else definition.channel_type.lower()
         channels.append(
@@ -694,14 +709,18 @@ def _profile_report_channels_from_template(
             )
         )
 
-    expected = set(definitions)
+    expected = {
+        semantic_name
+        for semantic_name, definition in definitions.items()
+        if getattr(definition, "required", True) or semantic_name in channels_by_name
+    }
     omitted = sorted(expected - seen)
     if missing or omitted:
         raise ExcelReportError(
             "Sergio template channel order does not match the active profile: "
             f"missing_template_matches={missing[:10]}; omitted_profile_channels={omitted[:10]}"
         )
-    return channels
+    return _move_channel_after(channels, "track_height", "track_gradient")
 
 
 def _consume_template_match(candidates: list[str], seen: set[str]) -> str | None:
@@ -709,6 +728,19 @@ def _consume_template_match(candidates: list[str], seen: set[str]) -> str | None
         if semantic_name not in seen:
             return semantic_name
     return None
+
+
+def _move_channel_after(channels: list[ChannelInfo], channel_id: str, predecessor_id: str) -> list[ChannelInfo]:
+    positions = {channel.channel_id: index for index, channel in enumerate(channels)}
+    channel_index = positions.get(channel_id)
+    predecessor_index = positions.get(predecessor_id)
+    if channel_index is None or predecessor_index is None or channel_index == predecessor_index + 1:
+        return channels
+    channel = channels.pop(channel_index)
+    if channel_index < predecessor_index:
+        predecessor_index -= 1
+    channels.insert(predecessor_index + 1, channel)
+    return channels
 
 
 def _template_channel_order_entries(template_file: Path) -> list[dict[str, str]]:
@@ -1487,7 +1519,7 @@ def _profile_template_comparison_rows(
             "Battery power and heatflow RMS in top region",
             f"{statistics_result.calculated_statistic_count} profile statistics calculated in Python",
             "INTENTIONAL CORRECTION",
-            "RMS values use current Electric sample count, avoiding stale Caiman denominators.",
+            "RMS values use the current Electric sample count, avoiding stale template denominators.",
         ),
         _comparison_row(
             "Statistics and KPIs",
@@ -2124,7 +2156,6 @@ def _write_metadata_sheet(
     metadata_rows = [
         ("Source file", client_display_filename(input_file)),
         ("Source SHA-256", source_hash),
-        *_client_safe_pipeline_provenance(input_file),
         ("Samples", statistics_result.sample_count),
         ("Time channel", statistics_result.dataset.quality.time_channel_id or ""),
         ("Time start", statistics_result.dataset.quality.time_start),
@@ -2204,46 +2235,6 @@ def _write_metadata_sheet(
     for row in sheet.iter_rows():
         for cell in row:
             cell.alignment = Alignment(vertical="top", wrap_text=True)
-
-
-def _client_safe_pipeline_provenance(input_file: Path) -> list[tuple[str, object]]:
-    if input_file.name != "duty_cycle_dataset.csv":
-        return []
-    root = input_file.parent.parent
-    rows: list[tuple[str, object]] = [("Internal pipeline artifact", input_file.name)]
-    inspection_path = root / "01_inspection" / "inspection_result.json"
-    if inspection_path.exists():
-        try:
-            inspection = json.loads(inspection_path.read_text(encoding="utf-8"))
-            source_path = Path(str(inspection.get("source_path", "")))
-            quality = inspection.get("quality", {}) if isinstance(inspection.get("quality"), dict) else {}
-            if source_path.name:
-                rows.append(("Original VSM source workbook", source_path.name))
-            if quality.get("source_sha256"):
-                rows.append(("Original VSM source SHA-256", quality["source_sha256"]))
-        except (OSError, json.JSONDecodeError):
-            pass
-    summary_path = input_file.parent / "duty_cycle_summary.txt"
-    if summary_path.exists():
-        try:
-            for line in summary_path.read_text(encoding="utf-8").splitlines():
-                if line.startswith("Scenario: "):
-                    rows.append(("Duty-cycle scenario ID", line.split(": ", 1)[1]))
-                    break
-        except OSError:
-            pass
-    profile_path = input_file.parent / "profile_provenance.csv"
-    if profile_path.exists():
-        try:
-            with profile_path.open(encoding="utf-8-sig", newline="") as handle:
-                first = next(csv.DictReader(handle), None)
-            if first:
-                rows.append(("External profile provider ID", first.get("provider_id", "")))
-                rows.append(("External profile/reference workbook", first.get("source_file", "")))
-                rows.append(("External profile/reference SHA-256", first.get("source_sha256", "")))
-        except (OSError, csv.Error, StopIteration):
-            pass
-    return [(label, value) for label, value in rows if value not in (None, "")]
 
 
 def _manifest(

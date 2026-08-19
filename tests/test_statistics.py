@@ -7,18 +7,10 @@ import numpy as np
 import pytest
 
 from vsm_postprocessing.errors import ConfigurationError, StatisticsError
-from vsm_postprocessing.importer import ImportOptions
 from vsm_postprocessing.statistics_engine import (
     calculate_statistics,
     compute_statistic,
     load_statistics_config,
-)
-from conftest import (
-    CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
-    CAIMAN_PROFILE_REFERENCE_XLSX,
-    CAIMAN_REFERENCE_DESCRIPTION,
-    CAIMAN_REFERENCE_XLSX,
-    require_private_reference_file,
 )
 
 
@@ -190,57 +182,3 @@ def test_invalid_operation_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigurationError, match="operation must be one of"):
         load_statistics_config(config_path)
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MATH_CONFIG = PROJECT_ROOT / "config" / "math_channels_example.yaml"
-STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_example.yaml"
-REPORT_STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_reference_report.yaml"
-
-
-def test_supplied_source_workbook_statistics_acceptance() -> None:
-    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
-    result = calculate_statistics(
-        source_workbook,
-        STATISTICS_CONFIG,
-        ImportOptions(strict=True),
-        math_config_file=MATH_CONFIG,
-    )
-
-    assert result.sample_count == 1866
-    assert result.statistic_count == 14
-    assert len(result.channels_by_id) == 83
-    values = {item.statistic_id: item.value for item in result.statistics}
-    assert values["chassis_speed_max"] == pytest.approx(30.0717)
-    assert values["battery_power_min"] == pytest.approx(-149.18)
-    assert values["vehicle_distance_last"] == pytest.approx(12000.0)
-    assert values["auxiliary_energy_sum"] == pytest.approx(values["auxiliary_energy_accumulated_last"])
-
-
-def test_supplied_report_statistics_reference_acceptance() -> None:
-    report_workbook = require_private_reference_file(
-        CAIMAN_PROFILE_REFERENCE_XLSX,
-        CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
-    )
-    result = calculate_statistics(
-        report_workbook,
-        REPORT_STATISTICS_CONFIG,
-        ImportOptions(
-            header_row=3,
-            unit_row=4,
-            data_start_row=5,
-            data_end_row=17422,
-            last_channel_column=70,
-            strict=True,
-        ),
-    )
-
-    assert result.sample_count == 17418
-    assert result.statistic_count == 31
-    assert result.comparison_count == 31
-    assert result.required_comparisons_passed
-    assert all(item.comparison is not None and item.comparison.passed for item in result.statistics)
-    rms = {item.statistic_id: item for item in result.statistics}["report_battery_power_rms"]
-    assert rms.value == pytest.approx(55.131048462310204)
-    assert rms.comparison is not None
-    assert rms.comparison.absolute_error == pytest.approx(0.0015826565179608565)

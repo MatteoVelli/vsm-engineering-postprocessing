@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import json
 import platform
 import shutil
@@ -15,17 +14,8 @@ import yaml
 
 from .channel_manager import export_channel_selection, select_channels
 from .errors import ConfigurationError, PipelineError, VSMPostProcessingError
-from .duty_cycle import (
-    WorkbookRowProfileProvider,
-    build_composition_plan,
-    compose_duty_cycle,
-    export_composition_plan,
-    export_pipeline_dataset,
-    load_duty_cycle_config,
-    load_profile_provider_config,
-)
 from .excel_report_engine import ExcelReportResult, generate_excel_report
-from .importer import ImportOptions, export_inspection, inspect_data_file, load_data_file
+from .importer import ImportOptions, export_inspection, inspect_data_file
 from .math_engine import export_math_channels, calculate_math_channels
 from .plotting_engine import PlottingResult, render_plots
 from .powerpoint_report_engine import PowerPointReportResult, build_powerpoint_report
@@ -35,20 +25,10 @@ from .version import __version__
 
 
 @dataclass(frozen=True)
-class PipelineDutyCycleConfig:
-    scenario_config: Path
-    profile_provider_config: Path
-    profile_workbook: Path
-    profile_validation_mode: str = "strict"
-    profile_original_filename: str | None = None
-
-
-@dataclass(frozen=True)
 class PipelineConfig:
     version: int
     input_file: Path
     import_options: ImportOptions
-    duty_cycle: PipelineDutyCycleConfig | None
     channel_selection_config: Path
     math_config: Path
     statistics_config: Path
@@ -107,7 +87,7 @@ class PipelineResult:
         return sum(stage.status == "PASS" for stage in self.stages)
 
 
-_ALLOWED_ROOT_KEYS = {"version", "input", "duty_cycle", "configs", "output"}
+_ALLOWED_ROOT_KEYS = {"version", "input", "configs", "output"}
 _ALLOWED_INPUT_KEYS = {
     "file",
     "sheet_name",
@@ -129,15 +109,6 @@ _ALLOWED_CONFIG_KEYS = {
     "powerpoint_report",
 }
 _ALLOWED_OUTPUT_KEYS = {"root_dir", "clean_before_run"}
-_ALLOWED_DUTY_CYCLE_KEYS = {
-    "scenario",
-    "profile_provider",
-    "profile_workbook",
-    "profile_validation_mode",
-    "profile_original_filename",
-}
-
-
 def load_pipeline_config(path: str | Path) -> PipelineConfig:
     config_path = Path(path).expanduser().resolve()
     if not config_path.exists():
@@ -179,32 +150,6 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
         time_channel=_optional_string(input_raw.get("time_channel"), "input.time_channel"),
         strict=strict,
     )
-
-    duty_cycle_raw = raw.get("duty_cycle")
-    duty_cycle: PipelineDutyCycleConfig | None = None
-    if duty_cycle_raw is not None:
-        if not isinstance(duty_cycle_raw, dict):
-            raise ConfigurationError("duty_cycle must be a YAML mapping")
-        _reject_unknown_keys(duty_cycle_raw, _ALLOWED_DUTY_CYCLE_KEYS, "duty_cycle")
-        profile_validation_mode = str(duty_cycle_raw.get("profile_validation_mode", "strict")).strip()
-        if profile_validation_mode not in {"strict", "compatible"}:
-            raise ConfigurationError("duty_cycle.profile_validation_mode must be 'strict' or 'compatible'")
-        duty_cycle = PipelineDutyCycleConfig(
-            scenario_config=_resolve_required_path(
-                config_path, duty_cycle_raw.get("scenario"), "duty_cycle.scenario"
-            ),
-            profile_provider_config=_resolve_required_path(
-                config_path, duty_cycle_raw.get("profile_provider"), "duty_cycle.profile_provider"
-            ),
-            profile_workbook=_resolve_required_path(
-                config_path, duty_cycle_raw.get("profile_workbook"), "duty_cycle.profile_workbook"
-            ),
-            profile_validation_mode=profile_validation_mode,
-            profile_original_filename=_optional_string(
-                duty_cycle_raw.get("profile_original_filename"),
-                "duty_cycle.profile_original_filename",
-            ),
-        )
 
     configs_raw = raw.get("configs")
     if not isinstance(configs_raw, dict):
@@ -248,7 +193,6 @@ def load_pipeline_config(path: str | Path) -> PipelineConfig:
         version=1,
         input_file=input_file,
         import_options=import_options,
-        duty_cycle=duty_cycle,
         channel_selection_config=required_configs["channel_selection"],
         math_config=required_configs["math_channels"],
         statistics_config=required_configs["statistics"],
@@ -277,34 +221,20 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
     stages: list[PipelineStage] = []
     report_path: Path | None = None
     powerpoint_path: Path | None = None
-    plotting_phase_provenance_path: Path | None = None
     current_stage_name = "initialization"
     current_stage_started_at: str | None = None
     current_stage_started_perf: float | None = None
 
-    if config.duty_cycle is None:
-        stage_specs = [
-            ("inspection", "01_inspection"),
-            ("channel_selection", "02_channel_selection"),
-            ("math_channels", "03_math_channels"),
-            ("statistics", "04_statistics"),
-            ("plotting", "05_plots"),
-            ("excel_report", "06_excel_report"),
-        ]
-        if config.powerpoint_report_config is not None:
-            stage_specs.append(("powerpoint_report", "07_powerpoint_report"))
-    else:
-        stage_specs = [
-            ("inspection", "01_inspection"),
-            ("duty_cycle", "02_duty_cycle"),
-            ("channel_selection", "03_channel_selection"),
-            ("math_channels", "04_math_channels"),
-            ("statistics", "05_statistics"),
-            ("plotting", "06_plots"),
-            ("excel_report", "07_excel_report"),
-        ]
-        if config.powerpoint_report_config is not None:
-            stage_specs.append(("powerpoint_report", "08_powerpoint_report"))
+    stage_specs = [
+        ("inspection", "01_inspection"),
+        ("channel_selection", "02_channel_selection"),
+        ("math_channels", "03_math_channels"),
+        ("statistics", "04_statistics"),
+        ("plotting", "05_plots"),
+        ("excel_report", "06_excel_report"),
+    ]
+    if config.powerpoint_report_config is not None:
+        stage_specs.append(("powerpoint_report", "07_powerpoint_report"))
     stage_dirs = {name: config.output_root / dirname for name, dirname in stage_specs}
 
     def begin_stage(name: str) -> tuple[str, float]:
@@ -359,101 +289,6 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
             started_at,
             started_perf,
         )
-
-        if config.duty_cycle is not None:
-            started_at, started_perf = begin_stage("duty_cycle")
-            source_dataset = load_data_file(config.input_file, config.import_options)
-            scenario = load_duty_cycle_config(config.duty_cycle.scenario_config)
-            provider_config = load_profile_provider_config(config.duty_cycle.profile_provider_config)
-            provider = WorkbookRowProfileProvider(
-                provider_config,
-                config.duty_cycle.profile_workbook,
-                validation_mode=config.duty_cycle.profile_validation_mode,
-                original_filename=config.duty_cycle.profile_original_filename,
-            )
-            composition = compose_duty_cycle(scenario, source_dataset, provider)
-            plan = build_composition_plan(scenario, profile_provider=provider)
-
-            duty_dir = stage_dirs["duty_cycle"]
-            processing_input_file = export_pipeline_dataset(
-                composition, duty_dir / "duty_cycle_dataset.csv"
-            )
-            provenance_path = export_composition_plan(
-                plan, duty_dir / "duty_cycle_provenance.csv"
-            )
-            plotting_phase_provenance_path = provenance_path
-            profile_provenance_path = _export_profile_provenance(
-                composition, duty_dir / "profile_provenance.csv"
-            )
-            duty_summary_path = _write_duty_cycle_summary(
-                composition, source_dataset, duty_dir / "duty_cycle_summary.txt"
-            )
-
-            source_time_name = None
-            if source_dataset.quality.time_channel_id is not None:
-                source_time_name = source_dataset.channels[
-                    source_dataset.channel_index(source_dataset.quality.time_channel_id)
-                ].source_name
-            processing_import_options = ImportOptions(
-                header_row=1,
-                unit_row=2,
-                data_start_row=3,
-                last_channel_column=source_dataset.quality.channel_count,
-                time_channel=source_time_name,
-                strict=True,
-            )
-            composed_inspection = inspect_data_file(
-                processing_input_file, processing_import_options
-            )
-            source_ids = [channel.channel_id for channel in source_dataset.channels]
-            composed_ids = [channel.channel_id for channel in composed_inspection.channels]
-            if composed_ids != source_ids:
-                raise PipelineError(
-                    "Duty-cycle pipeline export changed stable channel IDs and cannot be passed downstream"
-                )
-            if composed_inspection.quality.sample_count != scenario.expected_sample_count:
-                raise PipelineError(
-                    "Duty-cycle pipeline export contains "
-                    f"{composed_inspection.quality.sample_count} samples; expected {scenario.expected_sample_count}"
-                )
-
-            role_indexes = {
-                role: source_dataset.channel_index(channel_id)
-                for role, channel_id in scenario.channel_roles.items()
-                if channel_id in source_ids
-            }
-            values = composition.values
-            metrics = {
-                "scenario": scenario.scenario_id,
-                "samples": composition.sample_count,
-                "phases": len(composition.completed_phase_ids),
-                "external_profile_phases": len(composition.profile_provenance),
-            }
-            for key, role, operation in (
-                ("final_time_min", "time_minutes", "last"),
-                ("final_distance_km", "distance_km", "last"),
-                ("final_soc_pct", "battery_soc_pct", "last"),
-                ("final_fuel_kg", "fuel_consumption_kg", "last"),
-                ("max_speed_kph", "speed_kph", "max"),
-                ("max_generator_kw", "generator_total_power_kw", "max"),
-            ):
-                if role in role_indexes:
-                    column = values[:, role_indexes[role]]
-                    metrics[key] = float(column[-1] if operation == "last" else column.max())
-
-            pass_stage(
-                "duty_cycle",
-                duty_dir,
-                {
-                    "dataset": processing_input_file,
-                    "provenance": provenance_path,
-                    "profile_provenance": profile_provenance_path,
-                    "summary": duty_summary_path,
-                },
-                metrics,
-                started_at,
-                started_perf,
-            )
 
         started_at, started_perf = begin_stage("channel_selection")
         selection = select_channels(
@@ -520,7 +355,6 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
             stage_dirs["plotting"],
             processing_import_options,
             math_config_file=config.math_config,
-            phase_provenance_file=plotting_phase_provenance_path,
         )
         plot_outputs = _plot_outputs(plotting, stage_dirs["plotting"])
         pass_stage(
@@ -533,7 +367,6 @@ def run_pipeline(config_file: str | Path) -> PipelineResult:
                 "series": plotting.series_count,
                 "secondary_axis_plots": plotting.secondary_axis_plot_count,
                 "svg_plots": plotting.svg_count,
-                "phase_aware_plots": plotting.phase_aware_plot_count,
             },
             started_at,
             started_perf,
@@ -723,42 +556,6 @@ def _write_pipeline_metadata(result: PipelineResult) -> None:
     }
     if config.powerpoint_report_config is not None:
         configs["powerpoint_report"] = config.powerpoint_report_config
-    duty_cycle_manifest = None
-    if config.duty_cycle is not None:
-        provider_config = load_profile_provider_config(config.duty_cycle.profile_provider_config)
-        profile_workbook_sha256 = sha256_file(config.duty_cycle.profile_workbook)
-        profile_original_filename = config.duty_cycle.profile_original_filename or config.duty_cycle.profile_workbook.name
-        duty_cycle_manifest = {
-            "scenario_config": {
-                "path": str(config.duty_cycle.scenario_config),
-                "sha256": sha256_file(config.duty_cycle.scenario_config),
-            },
-            "profile_provider_config": {
-                "path": str(config.duty_cycle.profile_provider_config),
-                "sha256": sha256_file(config.duty_cycle.profile_provider_config),
-            },
-            "profile_workbook": {
-                "path": str(config.duty_cycle.profile_workbook),
-                "sha256": profile_workbook_sha256,
-                "original_filename": profile_original_filename,
-                "persisted_filename": config.duty_cycle.profile_workbook.name,
-                "expected_sha256": provider_config.expected_sha256,
-                "reference_sha256_matches": (
-                    None
-                    if provider_config.expected_sha256 is None
-                    else profile_workbook_sha256.lower() == provider_config.expected_sha256.lower()
-                ),
-                "expected_filename": provider_config.expected_filename,
-                "reference_filename_matches": (
-                    None
-                    if provider_config.expected_filename is None
-                    else profile_original_filename == provider_config.expected_filename
-                ),
-                "validation_mode": config.duty_cycle.profile_validation_mode,
-                "profile_provider_id": provider_config.provider_id,
-                "phase_ids": list(provider_config.phase_ids),
-            },
-        }
     manifest = {
         "status": result.status,
         "software": {
@@ -780,7 +577,6 @@ def _write_pipeline_metadata(result: PipelineResult) -> None:
         "processing_input_sha256": (
             sha256_file(result.processing_input_file) if result.processing_input_file.exists() else None
         ),
-        "duty_cycle": duty_cycle_manifest,
         "output_root": str(config.output_root),
         "log_file": str(result.log_path),
         "import_options": {
@@ -834,70 +630,6 @@ def _write_pipeline_metadata(result: PipelineResult) -> None:
     if result.powerpoint_path:
         lines.append(f"Final PowerPoint report: {result.powerpoint_path}")
     atomic_write_text(result.summary_path, "\n".join(lines) + "\n")
-
-def _export_profile_provenance(composition, path: Path) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = [
-        "provider_id",
-        "phase_id",
-        "provider_type",
-        "value_policy",
-        "source_file",
-        "source_sha256",
-        "source_start_row",
-        "source_end_row",
-        "sample_count",
-        "channel_count",
-    ]
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        for item in composition.profile_provenance:
-            writer.writerow({name: getattr(item, name) for name in fieldnames})
-    return path
-
-
-def _write_duty_cycle_summary(composition, source_dataset, path: Path) -> Path:
-    scenario = composition.scenario
-    ids = [channel.channel_id for channel in source_dataset.channels]
-    indexes = {
-        role: ids.index(channel_id)
-        for role, channel_id in scenario.channel_roles.items()
-        if channel_id in ids
-    }
-    values = composition.values
-
-    def last(role: str) -> float | None:
-        return float(values[-1, indexes[role]]) if role in indexes else None
-
-    def maximum(role: str) -> float | None:
-        return float(values[:, indexes[role]].max()) if role in indexes else None
-
-    lines = [
-        "VSM DUTY-CYCLE COMPOSITION",
-        "==========================",
-        f"Scenario: {scenario.scenario_id}",
-        f"Samples: {composition.sample_count}",
-        f"Phases: {len(composition.completed_phase_ids)}",
-        f"Completed phases: {', '.join(composition.completed_phase_ids)}",
-        f"External profile phases: {', '.join(p.phase_id for p in composition.profile_provenance) or 'none'}",
-        f"Final Track_Time [s]: {scenario.last_timestamp_s:.6f}",
-    ]
-    for label, role, fn in (
-        ("Final Time [min]", "time_minutes", last),
-        ("Final Distance [km]", "distance_km", last),
-        ("Final Battery SOC [%]", "battery_soc_pct", last),
-        ("Final Fuel Consumption [kg]", "fuel_consumption_kg", last),
-        ("Max Speed [kph]", "speed_kph", maximum),
-        ("Max Generator Power [kW]", "generator_total_power_kw", maximum),
-    ):
-        value = fn(role)
-        if value is not None:
-            lines.append(f"{label}: {value:.9f}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_text(path, "\n".join(lines) + "\n")
-    return path
-
 
 def _plot_outputs(result: PlottingResult, output_dir: Path) -> dict[str, Path]:
     outputs: dict[str, Path] = {

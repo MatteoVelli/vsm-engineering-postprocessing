@@ -144,29 +144,3 @@ output:
 
     with pytest.raises(ConfigurationError, match="without directories"):
         load_selection_config(config_path)
-
-from conftest import (
-    CAIMAN_REFERENCE_DESCRIPTION,
-    CAIMAN_REFERENCE_XLSX,
-    require_private_reference_file,
-)
-EXAMPLE_CONFIG = Path(__file__).resolve().parents[1] / "config" / "channel_selection_example.yaml"
-
-
-def test_supplied_workbook_channel_selection_acceptance() -> None:
-    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
-    result = select_channels(source_workbook, EXAMPLE_CONFIG)
-
-    assert result.sample_count == 1866
-    assert result.channel_count == 12
-    assert [channel.channel_id for channel in result.selected_channels[:3]] == [
-        "track_time__col_001",
-        "chassis_speed__col_005",
-        "vehicle_distance__col_006",
-    ]
-    assert result.selected_values[0, 0] == 0.0
-    assert result.selected_values[-1, 0] == 1865.0
-    assert result.selected_values[0, 1] == pytest.approx(0.0)
-    assert result.selected_values[1, 1] == pytest.approx(0.793656)
-    assert result.selected_values[0, 5] == pytest.approx(-10.7527)
-    assert result.selected_values[-1, 6] == pytest.approx(23.9383)

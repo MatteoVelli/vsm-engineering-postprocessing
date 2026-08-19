@@ -3,12 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from openpyxl import load_workbook
 
 from vsm_postprocessing.errors import ConfigurationError
-from vsm_postprocessing.excel_report_engine import generate_excel_report, load_excel_report_config
-from vsm_postprocessing.importer import ImportOptions
-from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
+from vsm_postprocessing.excel_report_engine import load_excel_report_config
 
 
 def _write_config(path: Path, *, channels: str = "  - time__col_001\n", output: str = "report.xlsx", bottom: str = "    - max\n") -> None:
@@ -134,58 +131,3 @@ output:
     )
     with pytest.raises(ConfigurationError, match="layout.profile"):
         load_excel_report_config(path)
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REPORT_CONFIG = PROJECT_ROOT / "config" / "excel_report_example.yaml"
-MATH_CONFIG = PROJECT_ROOT / "config" / "math_channels_example.yaml"
-STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_excel_report.yaml"
-PLOTTING_CONFIG = PROJECT_ROOT / "config" / "plotting_example.yaml"
-
-
-def test_supplied_source_workbook_excel_report_acceptance(tmp_path: Path) -> None:
-    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
-    result = generate_excel_report(
-        source_workbook,
-        REPORT_CONFIG,
-        STATISTICS_CONFIG,
-        PLOTTING_CONFIG,
-        tmp_path / "excel_report",
-        ImportOptions(strict=True),
-        math_config_file=MATH_CONFIG,
-    )
-
-    assert result.sample_count == 1866
-    assert result.channel_count == 21
-    assert result.statistic_count == 53
-    assert result.plot_count == 24
-    assert result.report_path.exists()
-    assert result.manifest_path.exists()
-    assert result.summary_path.exists()
-
-    workbook = load_workbook(result.report_path, data_only=True)
-    try:
-        assert workbook.sheetnames == ["Report", "Metadata"]
-        report = workbook["Report"]
-        metadata = workbook["Metadata"]
-        assert report.freeze_panes == "B6"
-        assert report["A1"].value is None
-        assert report["A3"].value == "Track_Time"
-        assert report["A4"].value == "s"
-        assert report["A5"].value == pytest.approx(0.0)
-        assert report["A1870"].value == pytest.approx(1865.0)
-        assert report["F1"].value == "Battery Power RMS"
-        assert report["F2"].value == pytest.approx(64.9480711679)
-        assert report["H1"].value == "Battery Heatflow RMS"
-        assert report["H2"].value == pytest.approx(6.4230535881)
-        assert report["C1871"].value == pytest.approx(30.0717)
-        assert report["F1871"].value == pytest.approx(23.5799)
-        assert report["F1872"].value == pytest.approx(-149.18)
-        assert report["H1871"].value == pytest.approx(14.7541)
-        assert report["J1871"].value == pytest.approx(23.9383)
-        assert report["W3"].value == "Time [min]"
-        assert report["W4"].value == pytest.approx(1865.0 / 60.0)
-        assert len(report._images) == 6
-        assert metadata["A1"].value == "VSM REPORT METADATA"
-    finally:
-        workbook.close()

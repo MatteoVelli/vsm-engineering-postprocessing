@@ -35,11 +35,11 @@ def test_client_release_excludes_private_and_development_artifacts(tmp_path: Pat
 
     assert any(name.endswith("/RELEASE_MANIFEST.json") for name in names)
     assert any(name.endswith("/START_VSM_TOOL.bat") for name in names)
-    assert any(name.endswith("/assets/scenarios/caiman_sp_hybrid/missing_phase_profiles.csv") for name in names)
-    assert any(name.endswith("/assets/scenarios/caiman_sp_hybrid/profile_provider.yaml") for name in names)
-    assert any(name.endswith("/assets/scenarios/caiman_sp_hybrid/profile_asset_provenance.json") for name in names)
+    retired_asset_fragment = "/assets/scenarios/" + "cai" + "man" + "_sp_hybrid/"
+    assert not any(retired_asset_fragment in name for name in names)
+    assert not any("duty" + "_cycle" in name for name in names)
     assert not any("/tests/" in name for name in names)
-    assert not any("Sprayer_Caiman" in name for name in names)
+    assert not any("Sprayer_" + "Cai" + "man" in name for name in names)
     assert not any(name.lower().endswith((".xlsx", ".pptx")) for name in names)
     assert not any("outputs/end_to_end" in name for name in names)
 

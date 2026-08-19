@@ -16,6 +16,8 @@ from vsm_postprocessing.report_profile import (
 )
 
 from conftest import (
+    ROBOSPRAYER_LATEST_ELECTRIC_CSV,
+    ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION,
     ROBOSPRAYER_REFERENCE_CSV,
     ROBOSPRAYER_REFERENCE_DESCRIPTION,
     require_private_reference_file,
@@ -26,6 +28,10 @@ HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
 
 def _robosprayer_csv() -> Path:
     return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
+def _latest_electric_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_LATEST_ELECTRIC_CSV, ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION)
 
 
 def test_exact_semantic_name_resolution() -> None:
@@ -210,15 +216,29 @@ def test_electric_robosprayer_profile_resolution_against_reference_csv() -> None
 
     assert result.is_valid
     assert len(result.resolved) == 288
-    assert len(result.profile.raw_channels) == 288
+    assert len(result.profile.raw_channels) == 289
     assert not result.missing_required
-    assert not result.missing_optional
+    assert [item.definition.semantic_name for item in result.missing_optional] == ["track_height"]
     assert result.resolved_channel_ids["chassis_speed"] == "chassis_speed__col_039"
     assert result.resolved_channel_ids["electricsystem_battery_soc"] == "electricsystem_battery_soc__col_091"
     assert result.resolved_channel_ids["agrochemical_discharge_force"] == "hitchrear_force_z_vehiclecoordinates__col_167"
     assert result.resolved["agrochemical_discharge_force"].definition.source_name == "HitchRear_Force_Z_VehicleCoordinates"
     assert result.resolved["agrochemical_discharge_force"].definition.unit == "N"
     assert result.resolved["agrochemical_discharge_force"].is_all_zero
+
+
+def test_latest_electric_profile_resolves_optional_track_height() -> None:
+    dataset = load_data_file(_latest_electric_csv(), ImportOptions())
+    profile = load_reporting_profile(ELECTRIC_PROFILE)
+
+    result = resolve_profile(dataset, profile)
+
+    assert result.is_valid
+    assert not result.missing_required
+    assert "track_height" in result.resolved_channel_ids
+    assert result.resolved["track_height"].definition.source_name == "Track_Height"
+    assert result.resolved["track_height"].definition.report_name == "Road Height"
+    assert result.resolved["track_height"].definition.required is False
 
 
 def test_agrochemical_force_mapping_is_independent_from_runtime_column_position() -> None:
@@ -242,9 +262,9 @@ def test_hybrid_profile_extends_electric_profile() -> None:
     electric = load_reporting_profile(ELECTRIC_PROFILE)
     hybrid = load_reporting_profile(HYBRID_PROFILE)
 
-    assert len(electric.raw_channels) == 288
+    assert len(electric.raw_channels) == 289
     assert len(electric.math_channels) == 29
-    assert len(hybrid.raw_channels) == 294
+    assert len(hybrid.raw_channels) == 295
     assert len(hybrid.math_channels) == 32
     assert {channel.semantic_name for channel in hybrid.raw_channels} >= {
         "engine_fuel_consumption",
@@ -290,9 +310,9 @@ def test_hybrid_profile_against_electric_csv_resolves_inactive_hybrid_channels()
 
     assert result.is_valid
     assert len(result.resolved) == 294
-    assert len(result.profile.raw_channels) == 294
+    assert len(result.profile.raw_channels) == 295
     assert not result.missing_required
-    assert not result.missing_optional
+    assert [item.definition.semantic_name for item in result.missing_optional] == ["track_height"]
     assert result.resolved["engine_speed"].channel.channel_id == "engine_speed__col_149"
     assert result.resolved["engine_speed"].is_all_zero
     assert result.resolved["engine_torque"].is_all_zero

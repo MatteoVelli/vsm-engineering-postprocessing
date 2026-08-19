@@ -31,8 +31,6 @@ vsm-pptx = "vsm_postprocessing.powerpoint_report_cli:main"
 vsm-run = "vsm_postprocessing.pipeline_cli:main"
 vsm-doctor = "vsm_postprocessing.doctor_cli:main"
 vsm-release = "vsm_postprocessing.release_cli:main"
-vsm-duty-cycle-plan = "vsm_postprocessing.duty_cycle_cli:main"
-vsm-duty-cycle = "vsm_postprocessing.duty_cycle_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

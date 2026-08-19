@@ -241,7 +241,7 @@ def test_hybrid_generator_statistics_are_zero_against_electric_reference_csv() -
     assert stats["generator_power_1_max"] == pytest.approx(0.0)
 
 
-def test_legacy_caiman_statistics_path_remains_unchanged(tmp_path: Path) -> None:
+def test_generic_statistics_path_remains_available(tmp_path: Path) -> None:
     data_path = tmp_path / "data.csv"
     config_path = tmp_path / "statistics.yaml"
     data_path.write_text("Time,Power\ns,kW\n0,1\n1,3\n2,2\n", encoding="utf-8")
@@ -263,7 +263,7 @@ def test_legacy_caiman_statistics_path_remains_unchanged(tmp_path: Path) -> None
     assert result.statistics[0].value == pytest.approx(3.0)
 
 
-def test_legacy_caiman_math_path_still_available_for_statistics(tmp_path: Path) -> None:
+def test_generic_math_path_still_available_for_statistics(tmp_path: Path) -> None:
     data_path = tmp_path / "data.csv"
     math_path = tmp_path / "math.yaml"
     stats_path = tmp_path / "statistics.yaml"

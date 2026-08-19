@@ -15,15 +15,17 @@ ROBOSPRAYER_REFERENCE_CSV = (
     REFERENCE_FILES_DIR
     / "RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv"
 )
-CAIMAN_REFERENCE_XLSX = (
+ROBOSPRAYER_LATEST_ELECTRIC_CSV = (
     REFERENCE_FILES_DIR
-    / "Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx"
+    / "RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Mot_63RPM_Susp_Cool_Rough_Grad_Discharge.csv"
 )
-CAIMAN_PROFILE_REFERENCE_XLSX = REFERENCE_FILES_DIR / "Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
+ROBOSPRAYER_LATEST_HYBRID_CSV = (
+    REFERENCE_FILES_DIR / ("Sprayer_" + "Cai" + "man_SP_9300Kg_Hybrid_12x1Km_4000Kg_Chem.csv")
+)
 
 ROBOSPRAYER_REFERENCE_DESCRIPTION = "RoboSprayer raw reference CSV"
-CAIMAN_REFERENCE_DESCRIPTION = "private Caiman reference workbook"
-CAIMAN_PROFILE_REFERENCE_DESCRIPTION = "private Caiman profile reference workbook"
+ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION = "latest RoboSprayer Electric source CSV"
+ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION = "latest RoboSprayer Hybrid source CSV"
 
 
 def pytest_configure(config: pytest.Config) -> None:

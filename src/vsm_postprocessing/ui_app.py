@@ -1,28 +1,18 @@
 from __future__ import annotations
 
 import hashlib
-import csv
 import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from vsm_postprocessing.errors import VSMPostProcessingError
-from vsm_postprocessing.duty_cycle import (
-    WorkbookRowProfileProvider,
-    load_duty_cycle_config,
-    load_profile_provider_config,
-    validate_source_dataset,
-)
-from vsm_postprocessing.importer import ImportOptions, inspect_data_file, load_data_file
+from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 from vsm_postprocessing.pipeline_engine import run_pipeline
 from vsm_postprocessing.version import __version__
 from vsm_postprocessing.ui_config import (
     available_math_channel_ids,
-    build_engineering_report_runtime_bundle,
-    build_full_duty_cycle_runtime_bundle,
     build_runtime_bundle,
-    default_full_duty_cycle_scenario,
     default_ui_profile,
     discover_reporting_profiles,
     generate_reporting_profile_engineering_report,
@@ -312,16 +302,6 @@ def main() -> None:
 
 def _render_engineering_report_workflow(st: Any) -> None:
     st.header("Engineering Report")
-    report_path = st.radio(
-        "Report workflow",
-        ["Profile-driven VSM report", "Legacy Caiman duty-cycle report"],
-        horizontal=True,
-        help="Use the profile-driven workflow for RoboSprayer Electric/Hybrid reports. The legacy Caiman path remains available separately.",
-    )
-    if report_path == "Legacy Caiman duty-cycle report":
-        _render_legacy_engineering_report_workflow(st)
-        return
-
     _render_profile_engineering_report_workflow(st)
 
 
@@ -438,71 +418,6 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         _render_profile_report_download(st, result)
 
 
-def _render_legacy_engineering_report_workflow(st: Any) -> None:
-    scenario = default_full_duty_cycle_scenario(PROJECT_ROOT)
-    st.write(
-        "Generate the complete configured engineering mission report from the VSM source results."
-    )
-    st.markdown(f"**Selected scenario:**  \n{scenario.display_name}")
-    uploaded = st.file_uploader(
-        "VSM Results File",
-        type=["csv", "xlsx"],
-        help="Upload one complete VSM simulation results file.",
-        key="engineering_report_source",
-    )
-    source_path: Path | None = None
-    if uploaded is None:
-        st.info("Upload one VSM CSV/XLSX file to generate the engineering report.")
-    else:
-        source_path = _persist_upload(uploaded)
-        try:
-            inspection = inspect_data_file(source_path, ImportOptions(strict=True))
-        except VSMPostProcessingError as exc:
-            st.error("The uploaded VSM results file could not be inspected.")
-            with st.expander("Technical details", expanded=True):
-                st.write(str(exc))
-            inspection = None
-        if inspection is not None:
-            st.success("VSM results file inspected.")
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Samples", f"{inspection.quality.sample_count:,}")
-            c2.metric("Channels", f"{inspection.quality.channel_count:,}")
-            c3.metric("Raw", f"{inspection.quality.raw_channel_count:,}")
-            c4.metric("Imported math", f"{inspection.quality.math_channel_count:,}")
-
-    run_clicked = st.button(
-        "Generate Engineering Report",
-        type="primary",
-        use_container_width=True,
-        disabled=source_path is None,
-    )
-    if run_clicked and source_path is not None:
-        run_dir = UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        try:
-            bundle = build_engineering_report_runtime_bundle(
-                source_file=source_path,
-                runtime_dir=run_dir,
-                project_root=PROJECT_ROOT,
-            )
-            with st.spinner("Running deterministic engineering report pipeline..."):
-                result = run_pipeline(bundle.pipeline_config)
-        except VSMPostProcessingError as exc:
-            st.error("Engineering report generation failed. Check the uploaded VSM file and close any open output reports.")
-            with st.expander("Technical details", expanded=True):
-                st.write(str(exc))
-            return
-
-        st.session_state["engineering_report"] = str(result.report_path) if result.report_path else None
-        st.session_state["engineering_powerpoint"] = str(result.powerpoint_path) if result.powerpoint_path else None
-        st.session_state["engineering_manifest"] = str(result.manifest_path)
-        st.session_state["engineering_run_dir"] = str(run_dir)
-        st.success(f"Engineering Report completed: {result.completed_stage_count}/{len(result.stages)} stages PASS")
-        _render_pipeline_status_table(st, result.stages, friendly=True)
-        _render_full_duty_cycle_summary(st, result)
-
-    _render_engineering_report_downloads(st)
-
-
 def _render_profile_validation_summary(st: Any, summary: Any) -> None:
     if summary.is_valid:
         st.success(f"{summary.profile_name} validation passed.")
@@ -611,150 +526,6 @@ def _format_duration_minutes(start: float | None, end: float | None, unit: str |
     return f"{value:,.1f} min" if value is not None else "n/a"
 
 
-def _render_full_duty_cycle_workflow(st: Any) -> None:
-    scenario = default_full_duty_cycle_scenario(PROJECT_ROOT)
-    st.header("Full Duty-Cycle Engineering Report")
-    st.write(
-        "Compose the configured multi-phase vehicle mission and generate the complete engineering Excel and PowerPoint reports."
-    )
-    st.write("This scenario requires two input workbooks.")
-    st.markdown(f"**Selected scenario:**  \n{scenario.display_name}")
-
-    source_upload = st.file_uploader(
-        "1. Raw VSM Results",
-        type=["xlsx", "csv"],
-        help="Upload the original VSM simulation workbook containing the base field cycle.",
-        key="full_duty_cycle_source",
-    )
-    profile_upload = st.file_uploader(
-        "2. Full-Mission Profile Workbook",
-        type=["xlsx", "xlsm"],
-        help="Upload the workbook containing the validated road and generator-enabled profiles required by this duty-cycle scenario.",
-        key="full_duty_cycle_profile",
-    )
-    if source_upload is not None:
-        st.caption(f"Raw VSM Results: {Path(source_upload.name).name}")
-    if profile_upload is not None:
-        st.caption(f"Full-Mission Profile Workbook: {Path(profile_upload.name).name}")
-
-    source_path: Path | None = None
-    profile_path: Path | None = None
-    validation_error: str | None = None
-    validation_warning: str | None = None
-    technical_details: list[str] = [
-        f"Scenario ID: {scenario.scenario_id}",
-        f"Tool version: v{__version__}",
-    ]
-
-    if source_upload is not None:
-        source_path = _persist_upload(source_upload)
-    if profile_upload is not None:
-        profile_path = _persist_upload(profile_upload)
-
-    if source_path is None or profile_path is None:
-        validation_error = "Upload both required workbooks to generate the full duty-cycle report."
-    else:
-        try:
-            scenario_config = load_duty_cycle_config(scenario.scenario_config)
-            provider_config = load_profile_provider_config(scenario.profile_provider_config)
-            source_dataset = load_data_file(source_path, ImportOptions(strict=True))
-            source_validation = validate_source_dataset(scenario_config, source_dataset)
-            provider = WorkbookRowProfileProvider(
-                provider_config,
-                profile_path,
-                validation_mode="compatible",
-                original_filename=profile_upload.name,
-            )
-            provider_validation = provider.validate(scenario_config, source_dataset)
-        except VSMPostProcessingError as exc:
-            message = str(exc)
-            if "required" in message and "channel" in message:
-                validation_error = "The source VSM workbook does not contain all channels required by this duty-cycle scenario."
-            elif "Profile-provider" in message:
-                validation_error = "The selected mission profile workbook is not compatible with this duty-cycle scenario."
-            else:
-                validation_error = "The selected files could not be validated for the full duty-cycle report."
-            technical_details.append(message)
-        else:
-            if provider_validation.reference_sha256_matches is False:
-                validation_warning = (
-                    "Mission profile workbook is compatible with this scenario. Its file fingerprint differs "
-                    "from the original validated reference and will be recorded for traceability."
-                )
-            if provider_validation.reference_filename_matches is False:
-                validation_warning = (
-                    "Mission profile workbook is compatible with this scenario. Its uploaded filename differs "
-                    "from the original validated reference and will be recorded for traceability."
-                )
-            technical_details.extend(
-                [
-                    f"Source samples: {source_dataset.quality.sample_count}",
-                    f"Source channels: {source_dataset.quality.channel_count}",
-                    f"Composed samples: {scenario_config.expected_sample_count}",
-                    f"Phase count: {len(scenario_config.phases)}",
-                    f"Provider phases: {', '.join(provider_validation.supported_phase_ids)}",
-                    f"Provider ID: {provider_validation.provider_id}",
-                    f"Profile validation mode: {provider_validation.validation_mode}",
-                    f"Profile expected filename: {provider_validation.expected_filename or 'not configured'}",
-                    f"Profile original filename: {provider_validation.source_file}",
-                    f"Profile persisted filename: {profile_path.name}",
-                    f"Profile exact filename match: {provider_validation.reference_filename_matches}",
-                    f"Profile reference SHA-256: {provider_validation.expected_sha256 or 'not configured'}",
-                    f"Profile actual SHA-256: {provider_validation.source_sha256}",
-                    f"Profile exact fingerprint match: {provider_validation.reference_sha256_matches}",
-                    f"Source max required index: {source_validation.required_max_source_sample_index}",
-                    f"Source filename: {Path(source_upload.name).name}",
-                    f"Profile filename: {Path(profile_upload.name).name}",
-                ]
-            )
-
-    if validation_error is None:
-        if validation_warning is None:
-            st.success("Mission profile workbook validated.")
-        else:
-            st.warning(validation_warning)
-    else:
-        st.info(validation_error)
-
-    with st.expander("Technical details"):
-        for line in technical_details:
-            st.write(line)
-
-    run_clicked = st.button(
-        "Generate Engineering Report",
-        type="primary",
-        use_container_width=True,
-        disabled=validation_error is not None,
-    )
-    if run_clicked and source_path is not None and profile_path is not None:
-        run_dir = UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        try:
-            bundle = build_full_duty_cycle_runtime_bundle(
-                source_file=source_path,
-                profile_workbook=profile_path,
-                profile_original_filename=profile_upload.name,
-                runtime_dir=run_dir,
-                scenario=scenario,
-            )
-            with st.spinner("Running deterministic full duty-cycle pipeline..."):
-                result = run_pipeline(bundle.pipeline_config)
-        except VSMPostProcessingError as exc:
-            st.error("Full duty-cycle report generation failed. Check the selected files and close any open output reports.")
-            with st.expander("Technical details", expanded=True):
-                st.write(str(exc))
-            return
-
-        st.session_state["full_duty_cycle_report"] = str(result.report_path) if result.report_path else None
-        st.session_state["full_duty_cycle_powerpoint"] = str(result.powerpoint_path) if result.powerpoint_path else None
-        st.session_state["full_duty_cycle_manifest"] = str(result.manifest_path)
-        st.session_state["full_duty_cycle_run_dir"] = str(run_dir)
-        st.success(f"Full duty-cycle pipeline completed: {result.completed_stage_count}/{len(result.stages)} stages PASS")
-        _render_pipeline_status_table(st, result.stages, friendly=True)
-        _render_full_duty_cycle_summary(st, result)
-
-    _render_full_duty_cycle_downloads(st, scenario)
-
-
 def _persist_upload(uploaded: Any) -> Path:
     UI_WORKSPACE.mkdir(parents=True, exist_ok=True)
     data = uploaded.getvalue()
@@ -764,163 +535,6 @@ def _persist_upload(uploaded: Any) -> Path:
     if not destination.exists() or destination.stat().st_size != len(data):
         destination.write_bytes(data)
     return destination
-
-
-def _render_pipeline_status_table(st: Any, stages: list[Any], *, friendly: bool) -> None:
-    friendly_names = {
-        "inspection": "Source data inspection",
-        "duty_cycle": "Duty-cycle composition",
-        "channel_selection": "Report channel selection",
-        "math_channels": "Math-channel calculation",
-        "statistics": "Statistics calculation",
-        "plotting": "Engineering plot generation",
-        "excel_report": "Excel report generation",
-        "powerpoint_report": "PowerPoint report generation",
-    }
-    st.dataframe(
-        [
-            {
-                "stage": friendly_names.get(stage.name, stage.name) if friendly else stage.name,
-                "status": stage.status,
-                **stage.metrics,
-            }
-            for stage in stages
-        ],
-        use_container_width=True,
-        hide_index=True,
-    )
-
-
-def _render_full_duty_cycle_summary(st: Any, result: Any) -> None:
-    stats = _read_statistics_by_id(result)
-    duty_metrics = next((stage.metrics for stage in result.stages if stage.name == "duty_cycle"), {})
-    statistics_metrics = next((stage.metrics for stage in result.stages if stage.name == "statistics"), {})
-    inspection_metrics = next((stage.metrics for stage in result.stages if stage.name == "inspection"), {})
-    sample_count = duty_metrics.get("samples") or statistics_metrics.get("samples") or inspection_metrics.get("samples")
-    st.subheader("Mission result summary")
-    values = [
-        ("Samples", _format_integer(sample_count)),
-        ("Total Time", _format_value(stats.get("report_time_last"), "min")),
-        ("Distance", _format_value(stats.get("report_distance_last"), "km")),
-        ("Max Speed", _format_value(stats.get("report_speed_max"), "kph")),
-        ("Initial Battery SOC", _format_value(stats.get("report_battery_initial_soc"), "%")),
-        ("Final Battery SOC", _format_value(stats.get("report_battery_soc_last"), "%")),
-        ("Fuel Consumption", _format_value(stats.get("report_fuel_last"), "kg")),
-        ("Max Generator Power", _format_value(stats.get("report_total_generator_power_max"), "kW")),
-    ]
-    columns = st.columns(4)
-    for index, (label, value) in enumerate(values):
-        columns[index % 4].metric(label, value)
-
-
-def _render_engineering_report_downloads(st: Any) -> None:
-    report_path_text = st.session_state.get("engineering_report")
-    powerpoint_path_text = st.session_state.get("engineering_powerpoint")
-    if not report_path_text and not powerpoint_path_text:
-        return
-    st.subheader("Final reports")
-    if report_path_text:
-        report_path = Path(report_path_text)
-        if report_path.exists():
-            st.markdown("**Excel engineering report generated successfully.**")
-            with report_path.open("rb") as handle:
-                report_bytes = handle.read()
-            col_a, col_b = st.columns(2)
-            col_a.download_button(
-                "Download Excel Engineering Report",
-                data=report_bytes,
-                file_name=report_path.name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-            )
-            if os.name == "nt" and col_b.button("Open report in Excel", use_container_width=True):
-                os.startfile(report_path)  # type: ignore[attr-defined]
-    if powerpoint_path_text:
-        powerpoint_path = Path(powerpoint_path_text)
-        if powerpoint_path.exists():
-            st.markdown("**PowerPoint engineering report generated successfully.**")
-            with powerpoint_path.open("rb") as handle:
-                powerpoint_bytes = handle.read()
-            col_c, col_d = st.columns(2)
-            col_c.download_button(
-                "Download PowerPoint Engineering Report",
-                data=powerpoint_bytes,
-                file_name=powerpoint_path.name,
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                use_container_width=True,
-            )
-            if os.name == "nt" and col_d.button("Open report in PowerPoint", use_container_width=True):
-                os.startfile(powerpoint_path)  # type: ignore[attr-defined]
-
-
-def _render_full_duty_cycle_downloads(st: Any, scenario: Any) -> None:
-    report_path_text = st.session_state.get("full_duty_cycle_report")
-    powerpoint_path_text = st.session_state.get("full_duty_cycle_powerpoint")
-    if not report_path_text and not powerpoint_path_text:
-        return
-    st.subheader("Final reports")
-    if report_path_text:
-        report_path = Path(report_path_text)
-        if report_path.exists():
-            st.markdown("**Excel engineering report generated successfully.**")
-            with report_path.open("rb") as handle:
-                report_bytes = handle.read()
-            col_a, col_b = st.columns(2)
-            col_a.download_button(
-                "Download Excel Engineering Report",
-                data=report_bytes,
-                file_name=scenario.excel_download_filename,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-            )
-            if os.name == "nt" and col_b.button("Open report in Excel", use_container_width=True):
-                os.startfile(report_path)  # type: ignore[attr-defined]
-    if powerpoint_path_text:
-        powerpoint_path = Path(powerpoint_path_text)
-        if powerpoint_path.exists():
-            st.markdown("**PowerPoint engineering report generated successfully.**")
-            with powerpoint_path.open("rb") as handle:
-                powerpoint_bytes = handle.read()
-            col_c, col_d = st.columns(2)
-            col_c.download_button(
-                "Download PowerPoint Engineering Report",
-                data=powerpoint_bytes,
-                file_name=scenario.powerpoint_download_filename,
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                use_container_width=True,
-            )
-            if os.name == "nt" and col_d.button("Open report in PowerPoint", use_container_width=True):
-                os.startfile(powerpoint_path)  # type: ignore[attr-defined]
-
-
-def _read_statistics_by_id(result: Any) -> dict[str, float]:
-    statistics_stage = next((stage for stage in result.stages if stage.name == "statistics"), None)
-    if statistics_stage is None:
-        return {}
-    statistics_path = statistics_stage.outputs.get("statistics_results")
-    if statistics_path is None or not Path(statistics_path).exists():
-        return {}
-    values: dict[str, float] = {}
-    with Path(statistics_path).open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            try:
-                values[row["statistic_id"]] = float(row["value"])
-            except (KeyError, TypeError, ValueError):
-                continue
-    return values
-
-
-def _format_value(value: float | None, unit: str) -> str:
-    if value is None:
-        return "n/a"
-    return f"{value:,.2f} {unit}"
-
-
-def _format_integer(value: Any) -> str:
-    try:
-        return f"{int(value):,}"
-    except (TypeError, ValueError):
-        return "n/a"
 
 
 def _valid_defaults(values: Any, allowed: list[str]) -> list[str]:

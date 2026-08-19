@@ -150,7 +150,6 @@ plots:
     x_label: Distance [km]
     primary_y_label: Speed [kph]
     output_filename: report_03_speed_vs_distance.png
-    show_phase_boundaries: true
     series:
       - channel_id: chassis_speed__col_005
         axis: primary
@@ -179,7 +178,6 @@ plots:
     primary_y_label: Generator Power [kW]
     secondary_y_label: Fuel / Energy [kg, kWh]
     output_filename: report_05_generator_power.png
-    show_phase_boundaries: true
     series:
       - channel_id: total_generator_power__col_070
         axis: primary
@@ -257,7 +255,6 @@ plots:
     primary_y_label: Speed [kph]
     secondary_y_label: Battery SOC [%]
     output_filename: report_10_battery_soc.png
-    show_phase_boundaries: true
     series:
       - channel_id: chassis_speed__col_005
         axis: primary

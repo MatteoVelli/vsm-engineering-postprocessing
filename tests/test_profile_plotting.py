@@ -20,24 +20,16 @@ from vsm_postprocessing.report_profile import (
 )
 
 from conftest import (
-    CAIMAN_REFERENCE_DESCRIPTION,
-    CAIMAN_REFERENCE_XLSX,
     ROBOSPRAYER_REFERENCE_CSV,
     ROBOSPRAYER_REFERENCE_DESCRIPTION,
     require_private_reference_file,
 )
 ELECTRIC_PROFILE = Path("config/report_profiles/robosprayer_electric.yaml")
 HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
-CAIMAN_PLOTTING_CONFIG = Path("config/plotting_example.yaml")
-CAIMAN_MATH_CONFIG = Path("config/math_channels_example.yaml")
 
 
 def _robosprayer_csv() -> Path:
     return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
-
-
-def _caiman_workbook() -> Path:
-    return require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
 
 
 def test_profile_plotting_resolves_semantic_raw_series(tmp_path: Path) -> None:
@@ -200,17 +192,33 @@ def test_hybrid_profile_plot_inheritance_generator_and_agrochemical_zero_inactiv
     assert generator_summary.source_name == "Generator Power_1"
 
 
-def test_legacy_caiman_plotting_path_remains_unchanged(tmp_path: Path) -> None:
-    result = render_plots(
-        _caiman_workbook(),
-        CAIMAN_PLOTTING_CONFIG,
-        tmp_path / "caiman",
-        ImportOptions(strict=True),
-        math_config_file=CAIMAN_MATH_CONFIG,
+def test_generic_plotting_path_remains_available(tmp_path: Path) -> None:
+    data_path = tmp_path / "data.csv"
+    config_path = tmp_path / "plots.yaml"
+    data_path.write_text("Time,Speed,Power\ns,kph,kW\n0,1,10\n1,2,20\n2,3,30\n", encoding="utf-8")
+    config_path.write_text(
+        "version: 1\n"
+        "plots:\n"
+        "  - plot_id: speed_power\n"
+        "    title: Speed and Power\n"
+        "    x_channel_id: time__col_001\n"
+        "    output_filename: speed_power.png\n"
+        "    series:\n"
+        "      - channel_id: speed__col_002\n"
+        "      - channel_id: power__col_003\n"
+        "        axis: secondary\n",
+        encoding="utf-8",
     )
 
-    assert result.plot_count == 24
-    assert result.series_count == 45
+    result = render_plots(
+        data_path,
+        config_path,
+        tmp_path / "plots",
+    )
+
+    assert result.plot_count == 1
+    assert result.series_count == 2
+    assert result.secondary_axis_plot_count == 1
 
 
 def _fast_defaults() -> PlotDefaults:

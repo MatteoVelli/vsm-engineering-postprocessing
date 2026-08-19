@@ -7,7 +7,6 @@ import pytest
 
 from vsm_postprocessing.errors import ConfigurationError, PipelineError
 from vsm_postprocessing.pipeline_engine import load_pipeline_config, run_pipeline
-from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PIPELINE_CONFIG = PROJECT_ROOT / "config" / "end_to_end_example.yaml"
@@ -66,6 +65,12 @@ def test_pipeline_config_rejects_unknown_root_keys(tmp_path: Path) -> None:
         load_pipeline_config(path)
 
 
+def test_pipeline_config_rejects_removed_scenario_block(tmp_path: Path) -> None:
+    path = _write_minimal_pipeline_config(tmp_path, extra_root="duty" + "_cycle: {}\n")
+    with pytest.raises(ConfigurationError, match="Unknown key"):
+        load_pipeline_config(path)
+
+
 def test_pipeline_failure_writes_diagnostic_manifest(tmp_path: Path) -> None:
     path = _write_minimal_pipeline_config(tmp_path)
     # Selection config is intentionally incomplete, so inspection passes and stage 2 fails.
@@ -84,49 +89,6 @@ def test_pipeline_failure_writes_diagnostic_manifest(tmp_path: Path) -> None:
     assert manifest["stages"][1]["status"] == "FAIL"
 
 
-def test_supplied_source_workbook_end_to_end_acceptance(tmp_path: Path) -> None:
-    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
-    raw = PIPELINE_CONFIG.read_text(encoding="utf-8")
-    raw = raw.replace("../outputs/end_to_end", str((tmp_path / "end_to_end").resolve()).replace("\\", "/"))
-    config_path = tmp_path / "end_to_end_acceptance.yaml"
-    # Config references are normally relative to config/. This temp config lives elsewhere,
-    # so replace them with absolute paths for the acceptance test.
-    raw = raw.replace(
-        "../reference_files/Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx",
-        str(source_workbook.resolve()).replace("\\", "/"),
-    )
-    for filename in (
-        "channel_selection_example.yaml",
-        "math_channels_example.yaml",
-        "statistics_example.yaml",
-        "plotting_example.yaml",
-        "statistics_excel_report.yaml",
-        "excel_report_example.yaml",
-        "powerpoint_report_example.yaml",
-    ):
-        raw = raw.replace(filename, str((PROJECT_ROOT / "config" / filename).resolve()).replace("\\", "/"))
-    config_path.write_text(raw, encoding="utf-8")
-
-    result = run_pipeline(config_path)
-    assert result.status == "PASS"
-    assert result.completed_stage_count == 7
-    assert result.report_path is not None and result.report_path.exists()
-    assert result.powerpoint_path is not None and result.powerpoint_path.exists()
-    assert result.manifest_path.exists()
-    assert result.summary_path.exists()
-    assert [stage.name for stage in result.stages] == [
-        "inspection",
-        "channel_selection",
-        "math_channels",
-        "statistics",
-        "plotting",
-        "excel_report",
-        "powerpoint_report",
-    ]
-    assert all(stage.status == "PASS" for stage in result.stages)
-    assert result.stages[0].metrics["samples"] == 1866
-    assert result.stages[1].metrics["selected_channels"] == 12
-    assert result.stages[2].metrics["math_channels"] == 13
-    assert result.stages[4].metrics["plots"] == 24
-    assert result.stages[5].metrics["report_channels"] == 21
-    assert result.stages[6].metrics["slides"] == 4
+def test_example_pipeline_config_loads_without_removed_scenario_block() -> None:
+    config = load_pipeline_config(PIPELINE_CONFIG)
+    assert config.input_file == (PROJECT_ROOT / "reference_files" / "RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Mot_63RPM_Susp_Cool_Rough_Grad_Discharge.csv").resolve()

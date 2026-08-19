@@ -11,7 +11,7 @@ import yaml
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
-from pptx.util import Pt
+from pptx.util import Inches, Pt
 
 from .errors import PowerPointReportError
 from .excel_report_engine import ProfileExcelReportResult, generate_profile_excel_report
@@ -57,6 +57,10 @@ _HYBRID_ACTIVITY_IDS = (
     "generator_power_1_max",
 )
 _DEFAULT_REFERENCE_TEMPLATE: str | None = None
+_ASTAUTO_LOGO_PATH = Path("reference_files/astauto-light-text_web.jpg")
+_ASTAUTO_LOGO_WIDTH = Inches(1.45)
+_ASTAUTO_LOGO_TOP = Inches(0.16)
+_ASTAUTO_LOGO_RIGHT_MARGIN = Inches(0.28)
 
 
 @dataclass(frozen=True)
@@ -484,6 +488,7 @@ def _build_template_profile_powerpoint_report(
             excel_result,
             layout,
         )
+        _add_astauto_logo(slide, prs)
 
     presentation_path = output_dir / config.output_filename
     try:
@@ -718,9 +723,33 @@ def _replace_kpi_slots(
 ) -> None:
     for index, slot in enumerate(layout.kpi_slots.get(slide_number, ())):
         if index >= len(statistics):
+            _set_shape_text(shapes[slot.label], "")
             _set_shape_text(shapes[slot.value], "")
             continue
+        _set_shape_text(shapes[slot.label], _statistic_label(statistics[index]))
         _set_value_text_preserve_runs(shapes[slot.value], _format_statistic_value(statistics[index]))
+
+
+def _add_astauto_logo(slide: Any, prs: Presentation) -> None:
+    logo_path = _resolve_astauto_logo_path()
+    if logo_path is None:
+        return
+    left = prs.slide_width - _ASTAUTO_LOGO_RIGHT_MARGIN - _ASTAUTO_LOGO_WIDTH
+    slide.shapes.add_picture(str(logo_path), left, _ASTAUTO_LOGO_TOP, width=_ASTAUTO_LOGO_WIDTH)
+
+
+def _resolve_astauto_logo_path() -> Path | None:
+    candidates = []
+    if _ASTAUTO_LOGO_PATH.is_absolute():
+        candidates.append(_ASTAUTO_LOGO_PATH)
+    else:
+        project_root = Path(__file__).resolve().parents[2]
+        candidates.append(project_root / _ASTAUTO_LOGO_PATH)
+        candidates.append(Path.cwd() / _ASTAUTO_LOGO_PATH)
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate.resolve()
+    return None
 
 
 def _replace_plot_slots(
@@ -1196,7 +1225,7 @@ def _slide_8_title(definition: Any, is_hybrid: bool) -> str:
 def _slide_8_subtitle(definition: Any, is_hybrid: bool) -> str:
     if definition.plots == ("auxiliaries_energy_consumption", "tyres_energy_consumption"):
         return "Fallback profile view selected because agrochemical discharge is inactive"
-    return "Profile-supported system interaction without reconstructed charging assumptions"
+    return "Profile-supported system interaction from the active source data"
 
 
 def _slide_8_body(definition: Any, is_hybrid: bool) -> str:

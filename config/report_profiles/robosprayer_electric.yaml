@@ -49,6 +49,14 @@ channels:
     required: true
     for_plot: true
     channel_type: VSM
+  - semantic_name: track_height
+    source_name: Track_Height
+    report_name: Road Height
+    unit: m
+    required: false
+    for_plot: true
+    channel_type: VSM
+    notes: Added from Sergio's latest Electric_03/Hybrid_04 profile clarification. Optional because older/raw datasets may omit Track_Height.
   - semantic_name: track_referenceposition_x
     source_name: Track_ReferencePosition_X
     report_name: Road ReferencePosition X
@@ -450,7 +458,7 @@ channels:
     channel_type: VSM
     aliases:
     - Agrochemical Discharge
-    notes: Original Caiman mapping proves HitchRear_Force_Z_VehicleCoordinates is the raw VSM source for the Agrochemical Discharge force report channel.
+    notes: Sergio mapping evidence proves HitchRear_Force_Z_VehicleCoordinates is the raw VSM source for the Agrochemical Discharge force report channel.
   - semantic_name: differential_torquevectoringdeltatorque_center
     source_name: Differential_TorqueVectoringDeltaTorque_Center
     report_name: Torque Vectoring Delta Torque Center
@@ -2710,7 +2718,7 @@ plots:
     primary_y_label: Agrochemical Discharge [kg]
     output_filename: 09_agrochemical_discharge_vs_distance.png
     status: PASS
-    evidence: Electric chart 9 points to the profile MATH Agrochemical Discharge output; original Caiman evidence confirms the raw source as HitchRear_Force_Z_VehicleCoordinates.
+    evidence: Electric chart 9 points to the profile MATH Agrochemical Discharge output; Sergio mapping evidence confirms the raw source as HitchRear_Force_Z_VehicleCoordinates.
     series:
       - semantic_name: agrochemical_discharge
         axis: primary

@@ -308,7 +308,7 @@ def test_hybrid_generator_power_computes_zero_against_electric_reference_csv() -
     np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
 
 
-def test_legacy_caiman_math_path_remains_unchanged(tmp_path: Path) -> None:
+def test_generic_math_path_remains_available(tmp_path: Path) -> None:
     data_path = tmp_path / "data.csv"
     config_path = tmp_path / "math.yaml"
     data_path.write_text("Track_Time,Power\ns,kW\n0,10\n1,20\n2,30\n", encoding="utf-8")

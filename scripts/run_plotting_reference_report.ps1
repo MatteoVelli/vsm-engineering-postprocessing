@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$ReportFile = ".\reference_files\Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
+$ReportFile = ".\reference_files\Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx"
 $PlotConfig = ".\config\plotting_reference_report.yaml"
 $OutputDir = ".\outputs\plots_reference_report"
 

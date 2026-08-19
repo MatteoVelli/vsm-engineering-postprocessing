@@ -78,8 +78,6 @@ class PlotDefinition:
     primary_y_label: str | None = None
     secondary_y_label: str | None = None
     reference_chart_number: int | None = None
-    show_phase_boundaries: bool = False
-    show_phase_labels: bool = False
 
 
 @dataclass(frozen=True)
@@ -108,7 +106,6 @@ class RenderedPlot:
     axes_count: int
     png_file: str
     svg_file: str | None = None
-    phase_boundary_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -129,16 +126,7 @@ class RenderedPlot:
             "axes_count": self.axes_count,
             "png_file": self.png_file,
             "svg_file": self.svg_file,
-            "phase_boundary_count": self.phase_boundary_count,
         }
-
-
-@dataclass(frozen=True)
-class PhaseBoundary:
-    phase_id: str
-    phase_type: str
-    start_index: int
-    end_index: int
 
 
 @dataclass
@@ -150,7 +138,6 @@ class PlottingResult:
     values_by_id: dict[str, np.ndarray]
     rendered_plots: list[RenderedPlot]
     math_result: MathChannelsResult | None = None
-    phase_boundaries: tuple[PhaseBoundary, ...] = ()
 
     @property
     def sample_count(self) -> int:
@@ -174,10 +161,6 @@ class PlottingResult:
     @property
     def svg_count(self) -> int:
         return sum(1 for item in self.rendered_plots if item.svg_file is not None)
-
-    @property
-    def phase_aware_plot_count(self) -> int:
-        return sum(1 for item in self.rendered_plots if item.phase_boundary_count)
 
 
 def load_plotting_config(path: str | Path) -> PlottingConfig:
@@ -328,8 +311,6 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
             "secondary_y_label",
             "output_filename",
             "reference_chart_number",
-            "show_phase_boundaries",
-            "show_phase_labels",
             "series",
         },
         context,
@@ -354,15 +335,6 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
         or reference_chart_number < 1
     ):
         raise ConfigurationError(f"{context}.reference_chart_number must be null or a positive integer")
-    show_phase_boundaries = raw.get("show_phase_boundaries", False)
-    show_phase_labels = raw.get("show_phase_labels", False)
-    if not isinstance(show_phase_boundaries, bool):
-        raise ConfigurationError(f"{context}.show_phase_boundaries must be true or false")
-    if not isinstance(show_phase_labels, bool):
-        raise ConfigurationError(f"{context}.show_phase_labels must be true or false")
-    if show_phase_labels and not show_phase_boundaries:
-        raise ConfigurationError(f"{context}.show_phase_labels requires show_phase_boundaries")
-
     series_raw = raw.get("series")
     if not isinstance(series_raw, list) or not series_raw:
         raise ConfigurationError(f"{context}.series must be a non-empty YAML list")
@@ -378,8 +350,6 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
         primary_y_label=primary_y_label,
         secondary_y_label=secondary_y_label,
         reference_chart_number=reference_chart_number,
-        show_phase_boundaries=show_phase_boundaries,
-        show_phase_labels=show_phase_labels,
     )
 
 
@@ -402,7 +372,6 @@ def render_plots(
     output_dir: str | Path,
     import_options: ImportOptions | None = None,
     math_config_file: str | Path | None = None,
-    phase_provenance_file: str | Path | None = None,
 ) -> PlottingResult:
     config_path = Path(config_file).expanduser().resolve()
     config = load_plotting_config(config_path)
@@ -434,7 +403,6 @@ def render_plots(
 
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    phase_boundaries = _load_phase_boundaries(phase_provenance_file, dataset.quality.sample_count)
 
     rendered: list[RenderedPlot] = []
     for definition in config.plots:
@@ -446,7 +414,6 @@ def render_plots(
                 channels_by_id,
                 values_by_id,
                 dataset.quality.sample_count,
-                phase_boundaries,
             )
         )
 
@@ -458,7 +425,6 @@ def render_plots(
         values_by_id=values_by_id,
         rendered_plots=rendered,
         math_result=math_result,
-        phase_boundaries=phase_boundaries,
     )
     _write_metadata(result, destination)
     return result
@@ -471,7 +437,6 @@ def _render_one_plot(
     channels_by_id: Mapping[str, ChannelInfo],
     values_by_id: Mapping[str, np.ndarray],
     sample_count: int,
-    phase_boundaries: Sequence[PhaseBoundary],
 ) -> RenderedPlot:
     x_channel = channels_by_id[definition.x_channel_id]
     x_values = np.asarray(values_by_id[definition.x_channel_id], dtype=np.float64)
@@ -558,15 +523,6 @@ def _render_one_plot(
             _draw_zero_line(primary_axis)
             if secondary_axis is not None:
                 _draw_zero_line(secondary_axis)
-        phase_boundary_count = 0
-        if definition.show_phase_boundaries:
-            phase_boundary_count = _draw_phase_boundaries(
-                primary_axis,
-                x_values,
-                phase_boundaries,
-                show_labels=definition.show_phase_labels,
-                fontsize=style.tick_fontsize,
-            )
         if defaults.legend:
             handles, labels = primary_axis.get_legend_handles_labels()
             if secondary_axis is not None:
@@ -631,7 +587,6 @@ def _render_one_plot(
         axes_count=2 if secondary_axis is not None else 1,
         png_file=str(output_path.resolve()),
         svg_file=str(svg_path.resolve()) if svg_path is not None else None,
-        phase_boundary_count=phase_boundary_count,
     )
 
 
@@ -657,7 +612,6 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
             "axes_count",
             "png_file",
             "svg_file",
-            "phase_boundary_count",
         ]
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -679,7 +633,6 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
                     "axes_count": item.axes_count,
                     "png_file": item.png_file,
                     "svg_file": item.svg_file or "",
-                    "phase_boundary_count": item.phase_boundary_count,
                 }
             )
 
@@ -718,8 +671,6 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
         },
         "secondary_axis_plot_count": result.secondary_axis_plot_count,
         "svg_count": result.svg_count,
-        "phase_aware_plot_count": result.phase_aware_plot_count,
-        "phase_boundary_count": len(result.phase_boundaries),
         "plots": [item.to_dict() for item in result.rendered_plots],
     }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -737,7 +688,6 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
         f"Series rendered: {result.series_count}",
         f"Secondary-axis plots: {result.secondary_axis_plot_count}",
         f"SVG plots: {result.svg_count}",
-        f"Phase-aware plots: {result.phase_aware_plot_count}",
         "",
         "Plots:",
     ]
@@ -749,52 +699,6 @@ def _write_metadata(result: PlottingResult, output_dir: Path) -> None:
             f"secondary={','.join(item.secondary_series_ids) or '-'}{reference}"
         )
     summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def _load_phase_boundaries(path: str | Path | None, sample_count: int) -> tuple[PhaseBoundary, ...]:
-    if path is None:
-        return ()
-    provenance_path = Path(path).expanduser().resolve()
-    if not provenance_path.exists():
-        raise PlottingError(f"Phase provenance file does not exist: {provenance_path}")
-    with provenance_path.open(newline="", encoding="utf-8") as handle:
-        rows = list(csv.DictReader(handle))
-    if not rows:
-        return ()
-    required = {"output_sample_index", "phase_id", "phase_type"}
-    missing = required - set(rows[0])
-    if missing:
-        raise PlottingError("Phase provenance is missing required column(s): " + ", ".join(sorted(missing)))
-    phases: list[PhaseBoundary] = []
-    current_id = ""
-    current_type = ""
-    start_index = 0
-    previous_index = -1
-    for row in rows:
-        try:
-            sample_index = int(row["output_sample_index"])
-        except ValueError as exc:
-            raise PlottingError("Phase provenance contains a non-integer output_sample_index") from exc
-        if sample_index != previous_index + 1:
-            raise PlottingError("Phase provenance output_sample_index values must be contiguous")
-        phase_id = row["phase_id"]
-        phase_type = row["phase_type"]
-        if sample_index == 0:
-            current_id = phase_id
-            current_type = phase_type
-            start_index = sample_index
-        elif phase_id != current_id:
-            phases.append(PhaseBoundary(current_id, current_type, start_index, sample_index - 1))
-            current_id = phase_id
-            current_type = phase_type
-            start_index = sample_index
-        previous_index = sample_index
-    if previous_index + 1 != sample_count:
-        raise PlottingError(
-            f"Phase provenance contains {previous_index + 1} samples but plotted data contains {sample_count}"
-        )
-    phases.append(PhaseBoundary(current_id, current_type, start_index, previous_index))
-    return tuple(phases)
 
 
 def _apply_axis_format(plot_axis, label: str, *, axis_name: str) -> None:
@@ -815,48 +719,6 @@ def _draw_zero_line(axis) -> None:
     ymin, ymax = axis.get_ylim()
     if ymin < 0.0 < ymax:
         axis.axhline(0.0, color="#4D5963", linewidth=0.75, alpha=0.55, zorder=0)
-
-
-def _draw_phase_boundaries(
-    axis,
-    x_values: np.ndarray,
-    phase_boundaries: Sequence[PhaseBoundary],
-    *,
-    show_labels: bool,
-    fontsize: float,
-) -> int:
-    if not phase_boundaries:
-        return 0
-    drawn = 0
-    y_top = axis.get_ylim()[1]
-    for phase in phase_boundaries[1:]:
-        if phase.start_index >= x_values.size:
-            continue
-        axis.axvline(
-            float(x_values[phase.start_index]),
-            color="#6E7781",
-            linewidth=0.65,
-            linestyle=":",
-            alpha=0.45,
-            zorder=0,
-        )
-        drawn += 1
-    if show_labels:
-        for phase in phase_boundaries:
-            midpoint = int((phase.start_index + phase.end_index) / 2)
-            if midpoint >= x_values.size:
-                continue
-            axis.text(
-                float(x_values[midpoint]),
-                y_top,
-                phase.phase_id,
-                ha="center",
-                va="bottom",
-                fontsize=fontsize,
-                color="#4D5963",
-                clip_on=True,
-            )
-    return drawn
 
 
 def _clean_visible_text(value: str) -> str:

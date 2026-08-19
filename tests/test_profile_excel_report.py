@@ -10,6 +10,10 @@ from vsm_postprocessing.excel_report_engine import generate_profile_excel_report
 from vsm_postprocessing.importer import ImportOptions
 
 from conftest import (
+    ROBOSPRAYER_LATEST_ELECTRIC_CSV,
+    ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION,
+    ROBOSPRAYER_LATEST_HYBRID_CSV,
+    ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION,
     ROBOSPRAYER_REFERENCE_CSV,
     ROBOSPRAYER_REFERENCE_DESCRIPTION,
     require_private_reference_file,
@@ -21,6 +25,14 @@ DATA_START_ROW = 5
 
 def _robosprayer_csv() -> Path:
     return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
+def _latest_electric_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_LATEST_ELECTRIC_CSV, ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION)
+
+
+def _latest_hybrid_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_LATEST_HYBRID_CSV, ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION)
 
 
 @pytest.fixture(scope="module")
@@ -176,6 +188,42 @@ def test_profile_excel_report_hybrid_dry_run_remains_profile_generic(tmp_path: P
     assert workbook["Rename From VSM to Astauto"].sheet_state == "visible"
     assert workbook["Metadata"].sheet_state == "hidden"
     assert len(workbook["RoboSprayer Hybrid"]._images) == 18
+
+
+def test_profile_excel_report_exports_latest_electric_road_height(tmp_path: Path) -> None:
+    result = generate_profile_excel_report(
+        _latest_electric_csv(),
+        ELECTRIC_PROFILE,
+        tmp_path / "latest_electric",
+        ImportOptions(),
+    )
+    workbook = load_workbook(result.report_path, data_only=True)
+    sheet = workbook["RoboSprayer Electric"]
+    by_semantic = {channel.channel_id: index + 1 for index, channel in enumerate(result.report_channels)}
+
+    assert result.report_channel_count == 318
+    assert get_column_letter(result.report_channel_count) == "LF"
+    assert by_semantic["track_height"] == by_semantic["track_gradient"] + 1
+    assert sheet.cell(3, by_semantic["track_height"]).value == "Road Height"
+    assert sheet.cell(4, by_semantic["track_height"]).value == "m"
+    assert sheet.cell(DATA_START_ROW, by_semantic["track_height"]).value == pytest.approx(0.0)
+    assert sheet.cell(DATA_START_ROW + 100, by_semantic["track_height"]).value > 0.0
+
+
+def test_profile_excel_report_exports_latest_hybrid_road_height(tmp_path: Path) -> None:
+    result = generate_profile_excel_report(
+        _latest_hybrid_csv(),
+        HYBRID_PROFILE,
+        tmp_path / "latest_hybrid",
+        ImportOptions(),
+    )
+    workbook = load_workbook(result.report_path, data_only=True)
+    sheet = workbook["RoboSprayer Hybrid"]
+    by_semantic = {channel.channel_id: index + 1 for index, channel in enumerate(result.report_channels)}
+
+    assert result.report_channel_count == 326
+    assert "track_height" not in by_semantic
+    assert "Road Height" not in [sheet.cell(3, col).value for col in range(1, result.report_channel_count + 1)]
 
 
 def test_profile_excel_report_uses_dynamic_geometry_for_short_profile(tmp_path: Path) -> None:

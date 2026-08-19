@@ -9,7 +9,11 @@ from vsm_postprocessing.doctor import DoctorCheck, run_doctor
 from vsm_postprocessing.errors import ConfigurationError, PipelineError
 from vsm_postprocessing.pipeline_engine import _prepare_output_root, load_pipeline_config, run_pipeline
 from vsm_postprocessing.utils import atomic_write_text
-from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
+from conftest import (
+    ROBOSPRAYER_LATEST_ELECTRIC_CSV,
+    ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION,
+    require_private_reference_file,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -129,7 +133,7 @@ def test_doctor_reports_no_blocking_failure_for_project(monkeypatch: pytest.Monk
 
 
 def test_doctor_validates_default_pipeline_bundle_when_reference_present(monkeypatch: pytest.MonkeyPatch) -> None:
-    require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
+    require_private_reference_file(ROBOSPRAYER_LATEST_ELECTRIC_CSV, ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION)
     monkeypatch.setattr(
         "vsm_postprocessing.doctor._check_packages",
         lambda: [DoctorCheck("VSM package", "PASS", "test")],
@@ -149,8 +153,8 @@ def test_client_display_filename_strips_ui_hash_prefix() -> None:
 
     assert (
         client_display_filename(
-            r"C:\project\outputs\ui_workspace\176a68563304_Sprayer_Caiman_SP.xlsx"
+            r"C:\project\outputs\ui_workspace\176a68563304_RoboSprayer_Source.csv"
         )
-        == "Sprayer_Caiman_SP.xlsx"
+        == "RoboSprayer_Source.csv"
     )
-    assert client_display_filename("Sprayer_Caiman_SP.xlsx") == "Sprayer_Caiman_SP.xlsx"
+    assert client_display_filename("RoboSprayer_Source.csv") == "RoboSprayer_Source.csv"

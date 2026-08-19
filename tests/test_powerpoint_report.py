@@ -3,21 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pptx import Presentation
 
-from vsm_postprocessing.errors import ConfigurationError, PowerPointReportError
-from vsm_postprocessing.importer import ImportOptions
-from vsm_postprocessing.powerpoint_report_engine import (
-    generate_powerpoint_report,
-    load_powerpoint_report_config,
-)
-from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
+from vsm_postprocessing.errors import ConfigurationError
+from vsm_postprocessing.powerpoint_report_engine import load_powerpoint_report_config
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 POWERPOINT_CONFIG = PROJECT_ROOT / "config" / "powerpoint_report_example.yaml"
-STATISTICS_CONFIG = PROJECT_ROOT / "config" / "statistics_excel_report.yaml"
-PLOTTING_CONFIG = PROJECT_ROOT / "config" / "plotting_example.yaml"
-MATH_CONFIG = PROJECT_ROOT / "config" / "math_channels_example.yaml"
 
 
 def test_powerpoint_config_loads() -> None:
@@ -66,30 +57,3 @@ slides:
     with pytest.raises(ConfigurationError, match="one or two"):
         load_powerpoint_report_config(path)
 
-
-def test_supplied_source_workbook_powerpoint_acceptance(tmp_path: Path) -> None:
-    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
-    result = generate_powerpoint_report(
-        source_workbook,
-        POWERPOINT_CONFIG,
-        STATISTICS_CONFIG,
-        PLOTTING_CONFIG,
-        tmp_path / "powerpoint",
-        ImportOptions(strict=True),
-        math_config_file=MATH_CONFIG,
-    )
-    assert result.presentation_path.exists()
-    assert result.manifest_path.exists()
-    assert result.summary_path.exists()
-    assert result.slide_count == 4
-    assert result.plot_count == 6
-    assert result.statistic_count >= 10
-
-    prs = Presentation(result.presentation_path)
-    assert len(prs.slides) == 4
-    titles = []
-    for slide in prs.slides:
-        texts = [getattr(shape, "text", "") for shape in slide.shapes]
-        titles.append(next(text for text in texts if text.strip()))
-    assert titles[0] == "Hybrid SP Caiman – Engineering Summary"
-    assert titles[1] == "Caiman SP Hybrid – Source 74 ha Field Cycle"

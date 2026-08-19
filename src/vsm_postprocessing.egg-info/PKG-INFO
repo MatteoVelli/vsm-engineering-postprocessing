@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vsm-postprocessing
-Version: 1.2.4
+Version: 1.2.10
 Summary: Deterministic end-to-end VSM post-processing and engineering reporting
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
@@ -17,27 +17,29 @@ Requires-Dist: pytest<9,>=8; extra == "dev"
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.2.4 - Duty-Cycle External Profile Provider
+## Current release: 1.2.10 - Profile Reporting
 
 The validated workflow is:
 
 ```text
 VSM CSV/XLSX
-    ↓
+    ->
 Inspection
-    ↓
-Channel selection
-    ↓
+    ->
+Profile channel mapping
+    ->
 Math channels
-    ↓
-Statistics
-    ↓
+    ->
+Statistics and KPIs
+    ->
 Plots
-    ↓
+    ->
 Excel report
-    ↓
+    ->
 Optional PowerPoint report
 ```
+
+The production client workflow uses the RoboSprayer Electric and Hybrid reporting profiles in `config/report_profiles/`. Those profiles are synced to Sergio's latest Electric_03 and Hybrid_04 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
 
 A local Streamlit UI exposes the workflow without requiring Python or YAML editing.
 
@@ -79,7 +81,7 @@ Launch the UI:
 .\scripts\run_ui.ps1
 ```
 
-Run the complete configured pipeline:
+Run the configured pipeline:
 
 ```powershell
 .\scripts\run_end_to_end.ps1
@@ -87,7 +89,7 @@ Run the complete configured pipeline:
 
 ## Traceability and diagnostics
 
-Each complete pipeline run now writes:
+Each complete pipeline run writes:
 
 ```text
 pipeline_manifest.json
@@ -95,40 +97,30 @@ pipeline_summary.txt
 pipeline.log
 ```
 
-The manifest records:
-
-- source SHA-256;
-- configuration SHA-256 values;
-- software version;
-- Python version and executable;
-- operating-system/platform information;
-- UTC start/end timestamps;
-- total and per-stage durations;
-- stage outputs/metrics/status;
-- final Excel and optional PowerPoint paths.
+The manifest records source/config hashes, software version, Python/runtime details, timestamps, per-stage durations, stage outputs/metrics/status, and final report paths.
 
 A failed run retains completed-stage outputs and diagnostic metadata. Unexpected Python/runtime exceptions are also captured in the pipeline diagnostics before the error is returned to the user.
 
 ## Safe output handling
 
-When `clean_before_run: true`, the pipeline removes only known generated VSM artifacts such as `01_inspection`, `02_channel_selection`, etc. It **does not delete the whole output directory**, so unrelated/user-created files at the output root are preserved.
+When `clean_before_run: true`, the pipeline removes only known generated VSM artifacts such as `01_inspection`, `02_channel_selection`, etc. It does not delete the whole output directory, so unrelated/user-created files at the output root are preserved.
 
 ## Repository structure
 
 ```text
 vsm-post-processing/
-├── .streamlit/
-├── config/
-├── docs/
-├── reference_files/
-├── outputs/
-├── scripts/
-├── src/vsm_postprocessing/
-├── tests/
-├── START_VSM_TOOL.bat
-├── CHANGELOG.md
-├── pyproject.toml
-└── README.md
+  .streamlit/
+  config/
+  docs/
+  reference_files/
+  outputs/
+  scripts/
+  src/vsm_postprocessing/
+  tests/
+  START_VSM_TOOL.bat
+  CHANGELOG.md
+  pyproject.toml
+  README.md
 ```
 
 ## Individual engineering commands
@@ -138,9 +130,7 @@ vsm-post-processing/
 .\scripts\run_channel_selection.ps1
 .\scripts\run_math_channels.ps1
 .\scripts\run_statistics.ps1
-.\scripts\run_statistics_reference_validation.ps1
 .\scripts\run_plotting.ps1
-.\scripts\run_plotting_reference_report.ps1
 .\scripts\run_excel_report.ps1
 .\scripts\run_powerpoint_report.ps1
 ```
@@ -151,7 +141,7 @@ vsm-post-processing/
 pytest
 ```
 
-The acceptance tests use Sergio's original reference files when they are present in `reference_files/`. Client/reference data are intentionally excluded from release ZIPs and Git.
+The acceptance tests use reference files when they are present in `reference_files/`. Client/reference data are intentionally excluded from release ZIPs and Git.
 
 Build the deterministic client release package with:
 
@@ -163,7 +153,7 @@ This creates a clean client ZIP plus a SHA-256 checksum in `dist/`. The ZIP cont
 
 ## Engineering safeguards
 
-- stable `channel_id` values instead of ambiguous display-name matching;
+- stable semantic profile mappings instead of ambiguous display-name matching;
 - explicit RAW/MATH provenance;
 - deterministic formulas/statistics;
 - strict dependency and numeric validation;
@@ -173,89 +163,3 @@ This creates a clean client ZIP plus a SHA-256 checksum in `dist/`. The ZIP cont
 - client-readable stage diagnostics and run log;
 - safe output cleanup that preserves unrelated files;
 - AI is not part of engineering calculation or selection logic.
-
-## Milestone status
-
-- Phase 1 - reverse engineering: complete
-- Milestone 01 - data import: complete
-- Milestone 02 - channel management: complete
-- Milestone 03 - math channels: complete
-- Milestone 04 - statistics: complete
-- Milestone 05 - plotting: complete
-- Milestone 06 - Excel report generation: complete
-- Milestone 07 - report layout/template fidelity: complete
-- Milestone 08 - end-to-end processing pipeline: complete
-- Milestone 09 - simple user UI: complete
-- Milestone 10 - deterministic PowerPoint report: complete
-- Milestone 11 - hardening/client readiness: complete
-- Milestone 12 - final release/package: complete
-- Milestone 13A - Sergio reference duty-cycle reverse engineering: complete
-- Milestone 13A.1 - reference conflict resolution & formal KPI specification: complete
-- Milestone 13B.0 - duty-cycle composition/provenance foundation: complete
-- Milestone 13B.1 - deterministic native/synthetic prefix P01-P04: complete
-- Milestone 13B.2 - external phase Profile Provider + complete 17,418-row fidelity composition: complete
-- Milestone 13B - full composer integration/independent-profile acceptance: in progress
-- Milestone 13C - full Sergio report fidelity: not started
-
-## Milestone 13A - Sergio reference duty-cycle reconstruction
-
-The repository now includes the reverse-engineering evidence required before implementing the optional duty-cycle composer. The analysis is intentionally separated from the validated deterministic core. Milestone 13A.1 adds specification clarifications and safe source-report fidelity fixes without implementing the mission composer.
-
-Files are in `docs/milestone_13A/`:
-
-- `duty_cycle_reverse_engineering_report.md`
-- `duty_cycle_phase_inventory.csv`
-- `cumulative_channel_logic.csv`
-- `source_to_report_row_mapping.csv`
-- `unresolved_ambiguities.md`
-- `proposed_duty_cycle_spec.yaml`
-
-The analysis accounts for all 17,418 Sergio reference samples as a 12-phase mission with six field-work sections, one separate road-travel section, and five 900 s agrochemical-loading/opportunity-charging sections. The future composer must remain optional and must not modify or replace the existing validated deterministic calculations.
-
-
-## Milestone 13A.1 - reference conflict resolution
-
-`docs/milestone_13A_1/` freezes the reference hierarchy and definitions required before implementation:
-
-- Sergio Excel is the primary full-mission numerical reference;
-- Sergio PowerPoint is presentation/scenario-intent evidence where it does not conflict with Excel;
-- source-only reports are explicitly labelled as a 74 ha field cycle rather than the complete duty cycle;
-- the top RMS pair is Battery Power RMS + Battery Heatflow RMS;
-- Sergio's `Max Battery Power` is defined as discharge magnitude `-MIN(Battery Power)`;
-- default drive range-extender control is 40–80% SOC, with a 5–80% final-cycle override;
-- 100.0 kWh mission scaling is separated from the 100.77 kWh physical pack reference;
-- sample count, timestamp span, event duration and integration semantics are distinct;
-- unexplained legacy formulas such as `Fuel Energy = 80 * 12` remain compatibility-only.
-
-The missing road and generator-on field profile provenance remains an explicit input dependency for exact 70-channel reconstruction.
-
-
-## Milestone 13B.2 - external phase Profile Provider
-
-The duty-cycle subsystem can now materialise the complete 17,418-sample Sergio mission **when an explicit validated provider is supplied for the four phases whose dynamics are absent from the source field workbook**.
-
-Native/synthetic composition remains responsible for P01-P04, P07, P09, P11 and P12. The external provider supplies P05, P06, P08 and P10. The Sergio fidelity provider is configured in:
-
-```text
-config/duty_cycle_profiles_sergio_reference.yaml
-```
-
-The current Sergio provider is deliberately a **reference-fidelity bridge**: it replays only the missing phase rows from the authoritative Sergio Excel workbook, with filename and SHA-256 validation. It is not a guessed generator overlay or a replacement for independent VSM road/range-extender simulations.
-
-The provider interface is separate from the composer so independent phase workbooks can replace the reference provider later. Full row- and phase-level provenance records which samples came from the external provider.
-
-Example developer command:
-
-```powershell
-python -m vsm_postprocessing.duty_cycle_cli config/duty_cycle_sergio_reference.yaml `
-  --source reference_files/Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx `
-  --profile-config config/duty_cycle_profiles_sergio_reference.yaml `
-  --profile-workbook reference_files/Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx `
-  --materialize-full
-```
-
-This produces a complete 17,418-row numerical CSV plus the row-level composition/provenance plan. The main Streamlit/end-to-end report pipeline is not yet switched to the composed mission; that integration is the next duty-cycle step before 13C report fidelity.
-
-## Scope boundary
-
-A general-purpose formula builder, free-form plot designer and AI-assisted report recommendations remain outside the deterministic core. AI, if investigated later, must never replace deterministic engineering calculations.

@@ -2,7 +2,7 @@ version: 1
 
 report:
   title: VSM Engineering Post-Processing Report
-  subtitle: Hybrid Caiman SP - source 74 ha field-cycle report
+  subtitle: RoboSprayer source simulation report
   report_sheet: Report
   metadata_sheet: Metadata
 

@@ -8,13 +8,11 @@ import numpy as np
 import pytest
 
 from vsm_postprocessing.errors import ConfigurationError, MathChannelError
-from vsm_postprocessing.importer import ImportOptions
 from vsm_postprocessing.math_engine import (
     calculate_math_channels,
     export_math_channels,
     load_math_config,
 )
-from conftest import CAIMAN_REFERENCE_DESCRIPTION, CAIMAN_REFERENCE_XLSX, require_private_reference_file
 
 
 def _write_csv(path: Path) -> None:
@@ -232,24 +230,3 @@ math_channels:
 
     with pytest.raises(ConfigurationError, match="Unknown key"):
         load_math_config(config_path)
-
-
-EXAMPLE_CONFIG = Path(__file__).resolve().parents[1] / "config" / "math_channels_example.yaml"
-
-
-def test_supplied_workbook_math_channels_acceptance() -> None:
-    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
-    result = calculate_math_channels(source_workbook, EXAMPLE_CONFIG, ImportOptions(strict=True))
-
-    assert result.sample_count == 1866
-    assert result.source_channel_count == 70
-    assert result.math_channel_count == 13
-    assert result.output_channel_count == 83
-    assert len(result.comparisons) == 11
-    assert all(comparison.passed for comparison in result.comparisons)
-    assert result.output_channels[0].channel_id == "track_time__col_001"
-    assert result.calculated_channels[-2].channel_id == "calc_total_generator_power"
-    assert result.calculated_channels[-1].channel_id == "calc_battery_discharge_power_magnitude"
-    assert result.calculated_values[0, 0] == pytest.approx(0.0)
-    assert result.calculated_values[-1, 0] == pytest.approx(1865 / 60)
-    assert result.calculated_values[-1, 8] > result.calculated_values[0, 8]

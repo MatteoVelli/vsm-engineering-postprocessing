@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import json
 import struct
 from pathlib import Path
@@ -9,15 +8,7 @@ import matplotlib.pyplot as plt
 import pytest
 
 from vsm_postprocessing.errors import ConfigurationError, PlottingError
-from vsm_postprocessing.importer import ImportOptions
 from vsm_postprocessing.plotting_engine import load_plotting_config, render_plots
-from conftest import (
-    CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
-    CAIMAN_PROFILE_REFERENCE_XLSX,
-    CAIMAN_REFERENCE_DESCRIPTION,
-    CAIMAN_REFERENCE_XLSX,
-    require_private_reference_file,
-)
 
 
 def _write_csv(path: Path) -> None:
@@ -139,39 +130,6 @@ plots:
     assert item.legend_labels == ("Speed", "power")
     assert "__col_" not in item.title
     assert all("__col_" not in label for label in item.legend_labels)
-
-
-def test_optional_phase_boundaries_are_rendered_from_provenance(tmp_path: Path) -> None:
-    data_path = tmp_path / "data.csv"
-    config_path = tmp_path / "plots.yaml"
-    provenance_path = tmp_path / "duty_cycle_provenance.csv"
-    _write_csv(data_path)
-    provenance_path.write_text(
-        "output_sample_index,phase_id,phase_type\n"
-        "0,P01,field\n"
-        "1,P01,field\n"
-        "2,P02,road\n",
-        encoding="utf-8",
-    )
-    _write_plot_config(
-        config_path,
-        """  - plot_id: phase_plot
-    title: Speed
-    x_channel_id: time__col_001
-    output_filename: speed.png
-    show_phase_boundaries: true
-    show_phase_labels: true
-    series:
-      - channel_id: speed__col_002
-        axis: primary
-""",
-    )
-
-    result = render_plots(data_path, config_path, tmp_path / "out", phase_provenance_file=provenance_path)
-
-    assert len(result.phase_boundaries) == 2
-    assert result.phase_aware_plot_count == 1
-    assert result.rendered_plots[0].phase_boundary_count == 1
 
 
 def test_repeated_generation_does_not_accumulate_open_figures(tmp_path: Path) -> None:
@@ -358,71 +316,3 @@ def test_unknown_configuration_keys_are_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigurationError, match="Unknown key"):
         load_plotting_config(config_path)
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MATH_CONFIG = PROJECT_ROOT / "config" / "math_channels_example.yaml"
-PLOTTING_CONFIG = PROJECT_ROOT / "config" / "plotting_example.yaml"
-REPORT_PLOTTING_CONFIG = PROJECT_ROOT / "config" / "plotting_reference_report.yaml"
-CHART_INVENTORY = PROJECT_ROOT / "docs" / "phase_1" / "excel_chart_inventory.csv"
-
-
-def test_reference_plot_config_maps_all_meaningful_excel_charts() -> None:
-    config = load_plotting_config(REPORT_PLOTTING_CONFIG)
-    with CHART_INVENTORY.open(newline="", encoding="utf-8-sig") as handle:
-        meaningful = [row for row in csv.DictReader(handle) if row["status"] == "meaningful"]
-
-    assert len(config.plots) == 18
-    assert {item.reference_chart_number for item in config.plots} == {
-        int(row["chart_number"]) for row in meaningful
-    }
-    by_number = {item.reference_chart_number: item for item in config.plots}
-    for row in meaningful:
-        definition = by_number[int(row["chart_number"])]
-        assert definition.title.strip() == row["title"].strip()
-        assert len(definition.series) == int(row["series_count"])
-
-
-def test_supplied_source_workbook_plotting_acceptance(tmp_path: Path) -> None:
-    source_workbook = require_private_reference_file(CAIMAN_REFERENCE_XLSX, CAIMAN_REFERENCE_DESCRIPTION)
-    result = render_plots(
-        source_workbook,
-        PLOTTING_CONFIG,
-        tmp_path / "plots",
-        ImportOptions(strict=True),
-        math_config_file=MATH_CONFIG,
-    )
-
-    assert result.sample_count == 1866
-    assert len(result.channels_by_id) == 83
-    assert result.plot_count == 24
-    assert result.series_count == 45
-    assert all(Path(item.output_file).exists() for item in result.rendered_plots)
-
-
-def test_supplied_report_plotting_config_channels_are_resolvable(tmp_path: Path) -> None:
-    report_workbook = require_private_reference_file(
-        CAIMAN_PROFILE_REFERENCE_XLSX,
-        CAIMAN_PROFILE_REFERENCE_DESCRIPTION,
-    )
-    # Render just the full configured reference set to prove every mapped source range is resolvable.
-    result = render_plots(
-        report_workbook,
-        REPORT_PLOTTING_CONFIG,
-        tmp_path / "reference_plots",
-        ImportOptions(
-            header_row=3,
-            unit_row=4,
-            data_start_row=5,
-            data_end_row=17422,
-            last_channel_column=70,
-            strict=True,
-        ),
-    )
-
-    assert result.sample_count == 17418
-    assert result.plot_count == 18
-    assert result.series_count == 34
-    assert {item.reference_chart_number for item in result.rendered_plots} == {
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20
-    }

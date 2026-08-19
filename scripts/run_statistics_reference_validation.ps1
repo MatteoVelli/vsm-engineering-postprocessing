@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$report = ".\reference_files\Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx"
+$report = ".\reference_files\Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx"
 $config = ".\config\statistics_reference_report.yaml"
 $output = ".\outputs\statistics_reference_validation"
 

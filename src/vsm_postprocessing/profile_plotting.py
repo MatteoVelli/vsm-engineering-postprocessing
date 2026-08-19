@@ -127,7 +127,6 @@ def render_profile_plots(
                 channels_by_name,
                 values_by_name,
                 dataset.quality.sample_count,
-                (),
             )
         )
         summaries[definition.plot_id] = series_summaries
