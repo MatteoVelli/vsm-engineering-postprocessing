@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from vsm_postprocessing.pipeline_engine import load_pipeline_config, run_pipelin
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PIPELINE_CONFIG = PROJECT_ROOT / "config" / "end_to_end_example.yaml"
+TINY_INPUT = PROJECT_ROOT / "tests" / "fixtures" / "tiny_vsm_input.csv"
 
 
 def _write_minimal_pipeline_config(tmp_path: Path, *, extra_root: str = "") -> Path:
@@ -89,6 +91,32 @@ def test_pipeline_failure_writes_diagnostic_manifest(tmp_path: Path) -> None:
     assert manifest["stages"][1]["status"] == "FAIL"
 
 
-def test_example_pipeline_config_loads_without_removed_scenario_block() -> None:
-    config = load_pipeline_config(PIPELINE_CONFIG)
-    assert config.input_file == (PROJECT_ROOT / "reference_files" / "RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Mot_63RPM_Susp_Cool_Rough_Grad_Discharge.csv").resolve()
+def test_example_pipeline_config_loads_without_removed_scenario_block(tmp_path: Path) -> None:
+    config_dir = tmp_path / "config"
+    fixture_dir = tmp_path / "tests" / "fixtures"
+    config_dir.mkdir()
+    fixture_dir.mkdir(parents=True)
+    shutil.copy2(TINY_INPUT, fixture_dir / TINY_INPUT.name)
+    for name in (
+        "channel_selection_example.yaml",
+        "math_channels_example.yaml",
+        "statistics_example.yaml",
+        "plotting_example.yaml",
+        "statistics_excel_report.yaml",
+        "excel_report_example.yaml",
+        "powerpoint_report_example.yaml",
+    ):
+        shutil.copy2(PROJECT_ROOT / "config" / name, config_dir / name)
+
+    portable_config = config_dir / "end_to_end_example.yaml"
+    source = PIPELINE_CONFIG.read_text(encoding="utf-8")
+    source = source.replace(
+        "../reference_files/RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Mot_63RPM_Susp_Cool_Rough_Grad_Discharge.csv",
+        "../tests/fixtures/tiny_vsm_input.csv",
+    )
+    portable_config.write_text(source, encoding="utf-8")
+
+    config = load_pipeline_config(portable_config)
+
+    assert config.input_file == (fixture_dir / TINY_INPUT.name).resolve()
+    assert config.channel_selection_config == (config_dir / "channel_selection_example.yaml").resolve()
