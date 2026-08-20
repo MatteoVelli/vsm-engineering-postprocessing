@@ -9,6 +9,7 @@ from typing import Any
 from vsm_postprocessing.errors import VSMPostProcessingError
 from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 from vsm_postprocessing.pipeline_engine import run_pipeline
+from vsm_postprocessing.report_metadata import resolve_report_metadata
 from vsm_postprocessing.version import __version__
 from vsm_postprocessing.ui_config import (
     available_math_channel_ids,
@@ -306,7 +307,7 @@ def _render_engineering_report_workflow(st: Any) -> None:
 
 
 def _render_profile_engineering_report_workflow(st: Any) -> None:
-    st.write("Generate validated RoboSprayer Electric or Hybrid Excel and PowerPoint engineering reports from one VSM result file.")
+    st.write("Generate validated Electric or Hybrid Excel and PowerPoint engineering reports from one VSM result file.")
 
     try:
         profiles = discover_reporting_profiles(PROJECT_ROOT)
@@ -335,10 +336,18 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
 
     source_path: Path | None = None
     validation_key: str | None = None
+    machine_name_override: str | None = None
     if uploaded is None:
         st.info("Upload a supported VSM CSV or XLSX file to validate it against the selected profile.")
     else:
         source_path = _persist_upload(uploaded)
+        detected_metadata = resolve_report_metadata(source_path, profile_definition)
+        st.caption(f"Detected machine: {detected_metadata.machine_name}")
+        machine_name_override = st.text_input(
+            "Machine / Vehicle Name",
+            value=detected_metadata.machine_name,
+            help="This display name is used in report titles and output filenames. The Electric/Hybrid profile remains separate.",
+        )
         validation_key = f"{source_path}:{source_path.stat().st_size}:{profile_definition.profile_id}"
         try:
             validate_profile_upload_extension(source_path)
@@ -393,6 +402,9 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         disabled=not can_generate,
     )
     if run_clicked and source_path is not None:
+        if not machine_name_override or not machine_name_override.strip():
+            st.error("Enter a machine / vehicle name before generating reports.")
+            return
         run_dir = UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         try:
             with st.spinner("Generating profile-driven Excel and PowerPoint engineering reports..."):
@@ -401,6 +413,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
                     profile_definition.profile_path,
                     run_dir,
                     ImportOptions(strict=True),
+                    machine_name_override=machine_name_override,
                 )
         except VSMPostProcessingError as exc:
             st.error(_friendly_profile_error(exc))
@@ -427,18 +440,27 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
     c1.metric("Required raw channels", summary.required_raw_count)
     c2.metric("Resolved", summary.resolved_raw_count)
     c3.metric("Missing required", summary.missing_required_count)
-    c4.metric("Missing optional", summary.missing_optional_count)
+    c4.metric("Optional channels unavailable", summary.missing_optional_count)
     c5, c6, c7, c8 = st.columns(4)
     c5.metric("MATH channels", summary.math_count)
     c6.metric("Statistics", summary.statistic_count)
     c7.metric("KPIs", summary.kpi_count)
-    c8.metric("Plots", summary.plot_count)
+    c8.metric("Profile plots", summary.plot_count)
 
     if summary.all_zero_resolved_count:
         st.info(
             f"{summary.all_zero_resolved_count} resolved channel(s) are inactive/all-zero. "
             "This is informational and does not make the profile invalid."
         )
+    if summary.missing_optional_names:
+        st.info(
+            "Optional channels are not required for profile validation. "
+            "Associated optional outputs are skipped when unavailable."
+        )
+        with st.expander("Optional channel details"):
+            st.write("Unavailable optional channels:")
+            for name in summary.missing_optional_names:
+                st.write(f"- {name}")
     if summary.missing_required_names:
         st.warning("Missing required channels: " + ", ".join(summary.missing_required_names[:20]))
     with st.expander("Activity details"):
@@ -451,7 +473,7 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
 
 def _render_profile_report_completion(st: Any, result: Any) -> None:
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Profile", result.profile.metadata.name)
+    c1.metric("Machine", result.report_metadata.machine_name)
     c2.metric("Samples", f"{result.sample_count:,}")
     c3.metric("Report channels", result.report_channel_count)
     c4.metric("Plots", result.plot_count)

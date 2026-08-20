@@ -20,6 +20,10 @@ from vsm_postprocessing.profile_powerpoint_report_engine import (
 from vsm_postprocessing.ui_config import generate_reporting_profile_engineering_report
 
 from conftest import (
+    ROBOSPRAYER_LATEST_ELECTRIC_CSV,
+    ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION,
+    ROBOSPRAYER_LATEST_HYBRID_CSV,
+    ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION,
     ROBOSPRAYER_REFERENCE_CSV,
     ROBOSPRAYER_REFERENCE_DESCRIPTION,
     require_private_reference_file,
@@ -35,6 +39,14 @@ HYBRID_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_hybr
 
 def _robosprayer_csv() -> Path:
     return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
+def _latest_electric_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_LATEST_ELECTRIC_CSV, ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION)
+
+
+def _latest_hybrid_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_LATEST_HYBRID_CSV, ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION)
 
 
 @pytest.fixture(scope="module")
@@ -114,12 +126,16 @@ def test_profile_powerpoint_adds_astauto_logo_to_every_slide(electric_report, hy
     for result in (electric_report, hybrid_report):
         prs = Presentation(result.presentation_path)
         for slide in prs.slides:
-            assert any(
+            logos = [
+                shape
+                for shape in slide.shapes
+                if (
                 shape.shape_type == 13
                 and shape.top < 300000
                 and shape.left > prs.slide_width - 1800000
-                for shape in slide.shapes
-            )
+                )
+            ]
+            assert len(logos) == 1
 
 
 def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report, hybrid_report) -> None:
@@ -207,7 +223,7 @@ def test_profile_powerpoint_future_active_hybrid_uses_active_slide_copy(hybrid_r
     assert slide_7["title"] == "Range Extender and Generator"
     assert slide_7["subtitle"] == "Engine demand, fuel consumption and generator behavior"
     assert slide_7["body"] == [
-        "Range-extender activity is derived from non-zero resolved engine/generator statistics."
+        "The range extender becomes active at approximately the resolved activation point, with generator power reaching 0 kW."
     ]
 
 
@@ -286,8 +302,10 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
         "2,804.6 Wh/km",
     ]
     assert len({style[3] for style in _run_styles(slide_10_banner)}) >= 3
-    assert list(electric.slides[9].shapes)[31].text == list(electric_reference.slides[9].shapes)[31].text
-    assert list(hybrid.slides[9].shapes)[35].text == list(hybrid_reference.slides[9].shapes)[35].text
+    assert "post-processing tool" in list(electric.slides[9].shapes)[31].text.lower()
+    assert list(electric.slides[9].shapes)[31].text.endswith("v1.3.0")
+    assert "post-processing tool" in list(hybrid.slides[9].shapes)[35].text.lower()
+    assert list(hybrid.slides[9].shapes)[35].text.endswith("v1.3.0")
 
     hybrid_notice = _find_text_shape(hybrid.slides[6], "RANGE EXTENDER INACTIVE")
     reference_notice = _find_text_shape(hybrid_reference.slides[6], "RANGE EXTENDER INACTIVE")
@@ -360,6 +378,57 @@ def test_profile_powerpoint_dynamic_values_update_without_losing_reference_runs(
     assert "42.00 kW" in hybrid_text
     assert "55.00 kW" in hybrid_text
     assert "RANGE EXTENDER INACTIVE IN THIS SIMULATION" not in hybrid_text
+
+
+def test_profile_powerpoint_latest_electric_uses_corrected_range_85(tmp_path: Path) -> None:
+    report = generate_reporting_profile_engineering_report(
+        _latest_electric_csv(),
+        ELECTRIC_PROFILE,
+        tmp_path / "latest_electric",
+        ImportOptions(strict=True),
+    )
+    text = _visible_text(report.presentation_path)
+    kpis = {item.definition.kpi_id: item.value for item in report.excel_result.statistics_result.kpis}
+    stats = {item.definition.statistic_id: item.value for item in report.excel_result.statistics_result.statistics}
+
+    assert report.report_path.name == "RoboSprayer_Electric_Engineering_Report.xlsx"
+    assert report.presentation_path.name == "RoboSprayer_Electric_Engineering_Report.pptx"
+    assert stats["battery_power_max"] == pytest.approx(0.0)
+    assert kpis["battery_capacity_100"] == pytest.approx(50.0)
+    assert kpis["range_85_battery_km"] == pytest.approx(11.24909139072848)
+    assert "RANGE @ 85%" in text
+    assert "11.25 km" in text
+    assert "9.47 km" not in text
+
+
+def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path: Path) -> None:
+    report = generate_reporting_profile_engineering_report(
+        _latest_hybrid_csv(),
+        HYBRID_PROFILE,
+        tmp_path / "caiman_hybrid",
+        ImportOptions(strict=True),
+    )
+    text = _visible_text(report.presentation_path)
+
+    assert report.report_path.name == "Caiman_SP_Hybrid_Engineering_Report.xlsx"
+    assert report.presentation_path.name == "Caiman_SP_Hybrid_Engineering_Report.pptx"
+    assert report.excel_result.report_metadata.report_title == "Caiman SP Hybrid"
+    assert _slide_titles(report.presentation_path)[0] == "Caiman SP Hybrid"
+    assert "RoboSprayer Hybrid" not in text
+    assert "Caiman SP Hybrid" in text
+    assert "v1.3.0" in text
+    assert "The range extender becomes active at approximately 15 min, with generator power reaching 80 kW." in text
+    assert "Range-extender activity is derived from non-zero resolved engine/generator statistics." not in text
+    values = {item.definition.statistic_id: item.value for item in report.excel_result.statistics_result.statistics}
+    assert values["wheel_power_total_max"] > 100.0
+    assert "WHEEL POWER" in text
+
+    prs = Presentation(report.presentation_path)
+    assert len(prs.slides) == 10
+    slide_8_text = [shape.text.strip() for shape in prs.slides[7].shapes if getattr(shape, "text", "").strip()]
+    for label in ("AGRO DISCHARGE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "MISSION TIME"):
+        assert label in slide_8_text
+    assert "FUEL\nCONSUMPTION" not in text
 
 
 def test_profile_powerpoint_template_path_is_profile_configurable() -> None:

@@ -24,9 +24,10 @@ from .plotting_engine import PlottingResult, load_plotting_config, render_plots
 from .profile_math import ProfileMathResult, calculate_profile_math_channels
 from .profile_plotting import ProfilePlottingResult, render_profile_plots
 from .profile_statistics import ProfileStatisticsResult, calculate_profile_statistics
+from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ProfileResolutionResult, ReportingProfile, load_reporting_profile, resolve_profile
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
-from .utils import client_display_filename, normalized_name, sha256_file
+from .utils import client_display_filename, normalize_display_unit, normalized_name, sha256_file
 from .version import __version__
 
 _ALLOWED_BOTTOM_OPERATIONS = ("max", "min", "last", "sum", "rms", "time_weighted_rms")
@@ -117,6 +118,7 @@ class ProfileExcelReportResult:
     plotting_result: ProfilePlottingResult
     report_channels: list[ChannelInfo]
     template_comparison: list[dict[str, str]]
+    report_metadata: ReportMetadata
 
     @property
     def sample_count(self) -> int:
@@ -132,17 +134,15 @@ class ProfileExcelReportResult:
 
     @property
     def vsm_count(self) -> int:
-        raw_by_name = self.profile.raw_by_semantic_name()
-        return sum(1 for channel in self.report_channels if raw_by_name.get(channel.channel_id) and raw_by_name[channel.channel_id].channel_type == "VSM")
+        return _report_channel_type_counts(self.report_channels)["VSM"]
 
     @property
     def avl_count(self) -> int:
-        raw_by_name = self.profile.raw_by_semantic_name()
-        return sum(1 for channel in self.report_channels if raw_by_name.get(channel.channel_id) and raw_by_name[channel.channel_id].channel_type == "AVL")
+        return _report_channel_type_counts(self.report_channels)["AVL"]
 
     @property
     def math_count(self) -> int:
-        return len(self.math_result.calculated_channels)
+        return _report_channel_type_counts(self.report_channels)["MATH"]
 
     @property
     def statistic_count(self) -> int:
@@ -476,8 +476,10 @@ def generate_profile_excel_report(
     output_filename: str | None = None,
     report_type: str | None = None,
     template_file: str | Path | None = None,
+    report_metadata: ReportMetadata | None = None,
+    machine_name_override: str | None = None,
 ) -> ProfileExcelReportResult:
-    """Generate a profile-driven RoboSprayer engineering workbook.
+    """Generate a profile-driven engineering workbook.
 
     This adapter uses the validated profile processing layers as numerical
     authority and writes semantic raw/math report channels, statistics, KPIs,
@@ -487,6 +489,11 @@ def generate_profile_excel_report(
     source_path = Path(input_file).expanduser().resolve()
     profile_path = Path(profile_file).expanduser().resolve()
     profile = load_reporting_profile(profile_path)
+    report_metadata = report_metadata or resolve_report_metadata(
+        source_path,
+        profile,
+        machine_name_override=machine_name_override,
+    )
     dataset = load_data_file(source_path, import_options)
     resolution = resolve_profile(dataset, profile)
     if not resolution.is_valid:
@@ -534,7 +541,7 @@ def generate_profile_excel_report(
         template_file=_profile_template_file(profile, template_file),
     )
     comparison = _profile_template_comparison_rows(profile, dataset, report_channels, statistics_result, plotting_result)
-    report_path = destination / _profile_output_filename(profile, output_filename)
+    report_path = destination / _profile_output_filename(profile, output_filename, report_metadata)
     manifest_path = destination / "profile_excel_report_manifest.json"
     summary_path = destination / "profile_excel_report_summary.txt"
     report_type = report_type or (profile.metadata.powertrain or profile.profile_id)
@@ -544,6 +551,7 @@ def generate_profile_excel_report(
         source_path=source_path,
         profile_path=profile_path,
         report_type=report_type,
+        report_metadata=report_metadata,
         profile=profile,
         dataset=dataset,
         resolution=resolution,
@@ -568,6 +576,7 @@ def generate_profile_excel_report(
         plotting_result=plotting_result,
         report_channels=report_channels,
         template_comparison=comparison,
+        report_metadata=report_metadata,
     )
     manifest_path.write_text(
         json.dumps(_profile_manifest(result, source_path, profile_path, report_type), indent=2),
@@ -577,10 +586,15 @@ def generate_profile_excel_report(
     return result
 
 
-def _profile_output_filename(profile: ReportingProfile, output_filename: str | None) -> str:
+def _profile_output_filename(
+    profile: ReportingProfile,
+    output_filename: str | None,
+    report_metadata: ReportMetadata | None = None,
+) -> str:
     if output_filename is not None:
         return _plain_xlsx_filename(output_filename, "output_filename")
-    return f"{profile.profile_id}_profile_report.xlsx"
+    stem = report_metadata.safe_output_stem if report_metadata is not None else profile.profile_id
+    return _plain_xlsx_filename(f"{stem}_Engineering_Report.xlsx", "output_filename")
 
 
 def _profile_template_file(profile: ReportingProfile, template_file: str | Path | None) -> Path | None:
@@ -622,7 +636,7 @@ def _profile_report_channels(
                 channel_id=definition.semantic_name,
                 source_name=definition.source_name,
                 display_name=definition.report_name,
-                unit=definition.unit,
+                unit=normalize_display_unit(definition.unit),
                 kind=definition.channel_type.lower(),
             )
         )
@@ -632,14 +646,15 @@ def _profile_report_channels(
                 continue
             raise ExcelReportError(f"Calculated profile MATH channel is unavailable: {definition.semantic_name}")
         channel = channels_by_name[definition.semantic_name]
+        kind = channel.kind if channel.kind.lower() in {"vsm", "avl"} else "math"
         channels.append(
             replace(
                 channel,
                 channel_id=definition.semantic_name,
                 source_name=definition.source_name,
                 display_name=definition.report_name,
-                unit=definition.unit,
-                kind="math",
+                unit=normalize_display_unit(definition.unit),
+                kind=kind,
             )
         )
     return channels
@@ -697,14 +712,16 @@ def _profile_report_channels_from_template(
                 raise ExcelReportError(f"Required profile channel from template is unavailable: {semantic_name}")
             continue
         channel = channels_by_name[semantic_name]
-        kind = "math" if channel_type == "MATH" else definition.channel_type.lower()
+        kind = channel.kind if channel.kind.lower() in {"vsm", "avl"} else (
+            "math" if channel_type == "MATH" else definition.channel_type.lower()
+        )
         channels.append(
             replace(
                 channel,
                 channel_id=semantic_name,
                 source_name=definition.source_name,
                 display_name=definition.report_name,
-                unit=definition.unit,
+                unit=normalize_display_unit(definition.unit),
                 kind=kind,
             )
         )
@@ -782,6 +799,7 @@ def _write_profile_workbook(
     source_path: Path,
     profile_path: Path,
     report_type: str,
+    report_metadata: ReportMetadata,
     profile: ReportingProfile,
     dataset: Any,
     resolution: ProfileResolutionResult,
@@ -794,7 +812,7 @@ def _write_profile_workbook(
 ) -> None:
     workbook = Workbook()
     report = workbook.active
-    report.title = _profile_sheet_name(profile)
+    report.title = _profile_sheet_name(profile, report_metadata)
     mapping_sheet = workbook.create_sheet("Rename From VSM to Astauto")
     metadata_sheet = workbook.create_sheet("Metadata")
     metadata_sheet.sheet_state = "hidden"
@@ -806,12 +824,14 @@ def _write_profile_workbook(
     avl_fill = PatternFill("solid", fgColor="375623")
     math_fill = PatternFill("solid", fgColor="C65911")
     label_fill = PatternFill("solid", fgColor="D9EAF7")
+    plot_header_fill = PatternFill("solid", fgColor="1F4E78")
     kpi_fill = PatternFill("solid", fgColor="548235")
     white_bold = Font(color="FFFFFF", bold=True)
 
     _write_profile_report_sheet(
         report,
         profile=profile,
+        report_metadata=report_metadata,
         source_path=source_path,
         report_type=report_type,
         statistics_result=statistics_result,
@@ -824,12 +844,14 @@ def _write_profile_workbook(
         avl_fill=avl_fill,
         math_fill=math_fill,
         label_fill=label_fill,
+        plot_header_fill=plot_header_fill,
         kpi_fill=kpi_fill,
         white_bold=white_bold,
     )
     _write_profile_channel_mapping_sheet(
         mapping_sheet,
         profile=profile,
+        report_metadata=report_metadata,
         report_channels=report_channels,
         border=border,
         label_fill=label_fill,
@@ -840,6 +862,7 @@ def _write_profile_workbook(
         source_path=source_path,
         profile_path=profile_path,
         profile=profile,
+        report_metadata=report_metadata,
         report_type=report_type,
         dataset=dataset,
         resolution=resolution,
@@ -860,6 +883,7 @@ def _write_profile_report_sheet(
     sheet: Any,
     *,
     profile: ReportingProfile,
+    report_metadata: ReportMetadata,
     source_path: Path,
     report_type: str,
     statistics_result: ProfileStatisticsResult,
@@ -872,6 +896,7 @@ def _write_profile_report_sheet(
     avl_fill: PatternFill,
     math_fill: PatternFill,
     label_fill: PatternFill,
+    plot_header_fill: PatternFill,
     kpi_fill: PatternFill,
     white_bold: Font,
 ) -> None:
@@ -883,7 +908,7 @@ def _write_profile_report_sheet(
 
     summary_start_col = channel_count + 2
 
-    title = sheet.cell(1, 1, profile.metadata.name)
+    title = sheet.cell(1, 1, report_metadata.report_title)
     title.fill = title_fill
     title.font = Font(color="FFFFFF", bold=True, size=13)
     title.border = border
@@ -902,7 +927,7 @@ def _write_profile_report_sheet(
         statistics_result,
         start_col=summary_start_col,
         border=border,
-        label_fill=label_fill,
+        label_fill=plot_header_fill,
         white_bold=white_bold,
     )
 
@@ -952,7 +977,7 @@ def _write_profile_report_sheet(
         start_row=6,
         start_col=summary_start_col,
         border=border,
-        label_fill=label_fill,
+        label_fill=plot_header_fill,
         white_bold=white_bold,
     )
 
@@ -1158,12 +1183,12 @@ def _write_profile_plots_on_report_sheet(
         title = _client_plot_title(plot.plot_id, plot.title)
         label = sheet.cell(row, col, title)
         label.fill = label_fill
-        label.font = Font(bold=True)
+        label.font = white_bold
         label.border = border
         label.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         image = XLImage(plot.png_file)
-        image.width = 300
-        image.height = 180
+        image.width = _PROFILE_REPORT_PLOT_IMAGE_WIDTH
+        image.height = _PROFILE_REPORT_PLOT_IMAGE_HEIGHT
         sheet.add_image(image, f"{get_column_letter(col)}{row + 1}")
 
 
@@ -1171,6 +1196,7 @@ def _ordered_profile_plots(rendered_plots: list[Any]) -> list[Any]:
     preferred = [
         "speed_vs_distance",
         "speed_vs_time",
+        "road_profile",
         "battery_energy_distance_based",
         "battery_energy_time_based",
         "power_at_wheels_and_edu",
@@ -1192,6 +1218,7 @@ def _write_profile_channel_mapping_sheet(
     sheet: Any,
     *,
     profile: ReportingProfile,
+    report_metadata: ReportMetadata,
     report_channels: list[ChannelInfo],
     border: Border,
     label_fill: PatternFill,
@@ -1200,7 +1227,7 @@ def _write_profile_channel_mapping_sheet(
     raw_by_name = profile.raw_by_semantic_name()
     math_by_name = profile.math_by_semantic_name()
     sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=8)
-    sheet.cell(1, 1, f"{profile.metadata.name} - Rename From VSM to Astauto")
+    sheet.cell(1, 1, f"{report_metadata.report_title} - Rename From VSM to Astauto")
     sheet.cell(1, 1).fill = label_fill
     sheet.cell(1, 1).font = white_bold
     headers = [
@@ -1225,17 +1252,22 @@ def _write_profile_channel_mapping_sheet(
         for_plot = "yes" if definition and definition.for_plot else ""
         formula = ""
         if math_definition is not None:
-            formula = math_definition.formula or math_definition.expression or ""
-            if formula:
-                formula = f"Formula: {formula}"
+            if math_definition.fallback_when_raw_missing and channel.kind.lower() in {"vsm", "avl"}:
+                formula = f"Raw {channel.kind.upper()} channel used when available; fallback = {math_definition.expression or math_definition.formula or 'unavailable'} when raw channel is unavailable."
+            else:
+                formula = math_definition.formula or math_definition.expression or ""
+                if formula:
+                    formula = f"Formula: {formula}"
+                if math_definition.fallback_when_raw_missing:
+                    formula = f"{formula} | raw channel unavailable; deterministic fallback used"
             if math_definition.dependencies:
                 formula = f"{formula} | dependencies: {', '.join(math_definition.dependencies)}"
         values = [
             definition.source_name if definition else channel.source_name,
             definition.report_name if definition else channel.display_name,
-            definition.channel_type if definition else channel.kind.upper(),
+            channel.kind.upper(),
             for_plot,
-            definition.unit or "-" if definition else channel.unit or "-",
+            normalize_display_unit(definition.unit) or "-" if definition else normalize_display_unit(channel.unit) or "-",
             channel.channel_id,
             row - 2,
             formula,
@@ -1384,6 +1416,7 @@ def _write_profile_metadata_sheet(
     source_path: Path,
     profile_path: Path,
     profile: ReportingProfile,
+    report_metadata: ReportMetadata,
     report_type: str,
     dataset: Any,
     resolution: ProfileResolutionResult,
@@ -1395,12 +1428,18 @@ def _write_profile_metadata_sheet(
     label_fill: PatternFill,
     white_bold: Font,
 ) -> None:
-    raw_counts = _profile_raw_type_counts(profile)
+    channel_counts = _report_channel_type_counts(report_channels)
+    exported_raw_count = channel_counts["VSM"] + channel_counts["AVL"]
     metadata = [
         ("Software version", __version__),
         ("Generated UTC", datetime.now(timezone.utc).isoformat()),
         ("Source file", client_display_filename(source_path)),
         ("Source display filename", client_display_filename(source_path)),
+        ("Machine / Vehicle name", report_metadata.machine_name),
+        ("Powertrain", report_metadata.powertrain_name),
+        ("Report title", report_metadata.report_title),
+        ("Output stem", report_metadata.safe_output_stem),
+        ("Machine detection source", report_metadata.detection_source),
         ("Source SHA-256", dataset.quality.source_sha256),
         ("Source format", dataset.quality.file_type),
         ("Source raw channel count", dataset.quality.raw_channel_count),
@@ -1414,21 +1453,22 @@ def _write_profile_metadata_sheet(
         ("Profile SHA-256", sha256_file(profile_path)),
         ("Profile ID", profile.profile_id),
         ("Profile name", profile.metadata.name),
-        ("Powertrain", profile.metadata.powertrain or "-"),
+        ("Profile powertrain", profile.metadata.powertrain or "-"),
         ("Report type", report_type),
-        ("Resolved raw profile channels", len(resolution.resolved)),
+        ("Resolved raw profile channels", exported_raw_count),
         ("Exported report channels", len(report_channels)),
-        ("Exported VSM raw channels", raw_counts["VSM"]),
-        ("Exported AVL raw channels", raw_counts["AVL"]),
-        ("Exported MATH channels", len(math_result.calculated_channels)),
+        ("Exported VSM raw channels", channel_counts["VSM"]),
+        ("Exported AVL raw channels", channel_counts["AVL"]),
+        ("Exported MATH channels", channel_counts["MATH"]),
         ("Configured statistics", statistics_result.configured_statistic_count),
         ("Calculated statistics", statistics_result.calculated_statistic_count),
         ("Configured KPIs", statistics_result.configured_kpi_count),
         ("Calculated KPIs", statistics_result.calculated_kpi_count),
+        ("Diagnostics", " | ".join(statistics_result.diagnostics) if statistics_result.diagnostics else "-"),
         ("Configured plots", plotting_result.configured_plot_count),
         ("Rendered plots", plotting_result.rendered_plot_count),
         ("Plot series", plotting_result.series_count),
-        ("Visible sheets", f"{_profile_sheet_name(profile)}, Rename From VSM to Astauto"),
+        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto"),
         ("Hidden sheets", "Metadata"),
     ]
     sheet.cell(1, 1, "Field").fill = label_fill
@@ -1477,11 +1517,11 @@ def _profile_template_comparison_rows(
     statistics_result: ProfileStatisticsResult,
     plotting_result: ProfilePlottingResult,
 ) -> list[dict[str, str]]:
-    raw_counts = _profile_raw_type_counts(profile)
+    channel_counts = _report_channel_type_counts(report_channels)
     return [
         _comparison_row(
             "Channel selection",
-            "Selected RoboSprayer Electric engineering channels",
+            "Selected profile engineering channels",
             f"{len(profile.raw_channels)} raw + {len(profile.math_channels)} MATH channels",
             "PASS",
             "Selection is profile-owned and independent of runtime column IDs.",
@@ -1510,7 +1550,7 @@ def _profile_template_comparison_rows(
         _comparison_row(
             "Powertrain split",
             "VSM, AVL, and MATH regions",
-            f"{raw_counts['VSM']} VSM, {raw_counts['AVL']} AVL, {len(profile.math_channels)} MATH",
+            f"{channel_counts['VSM']} VSM, {channel_counts['AVL']} AVL, {channel_counts['MATH']} MATH",
             "PASS",
             "Channel type is color-coded on row 3/4 and documented on Rename From VSM to Astauto.",
         ),
@@ -1571,6 +1611,11 @@ def _profile_manifest(
     return {
         "software_version": __version__,
         "report_file": str(result.report_path),
+        "report_title": result.report_metadata.report_title,
+        "machine_name": result.report_metadata.machine_name,
+        "powertrain": result.report_metadata.powertrain_name,
+        "safe_output_stem": result.report_metadata.safe_output_stem,
+        "machine_detection_source": result.report_metadata.detection_source,
         "source_file": str(source_path),
         "source_sha256": result.dataset.quality.source_sha256,
         "profile_file": str(profile_path),
@@ -1588,12 +1633,13 @@ def _profile_manifest(
         "calculated_statistic_count": result.statistic_count,
         "configured_kpi_count": result.statistics_result.configured_kpi_count,
         "calculated_kpi_count": result.kpi_count,
+        "diagnostics": list(result.statistics_result.diagnostics),
         "configured_plot_count": result.plotting_result.configured_plot_count,
         "rendered_plot_count": result.plot_count,
         "plot_series_count": result.plotting_result.series_count,
         "report_channel_ids": [channel.channel_id for channel in result.report_channels],
         "plot_ids": [plot.plot_id for plot in result.plotting_result.rendered_plots],
-        "visible_sheet_names": [_profile_sheet_name(result.profile), "Rename From VSM to Astauto"],
+        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto"],
         "hidden_sheet_names": ["Metadata"],
     }
 
@@ -1606,6 +1652,7 @@ def _profile_summary(result: ProfileExcelReportResult) -> str:
         "===================================",
         "Status: PASS",
         f"Profile: {result.profile.profile_id}",
+        f"Report title: {result.report_metadata.report_title}",
         f"Source samples: {result.sample_count}",
         f"Source raw channels: {result.source_raw_channel_count}",
         f"Exported report channels: {result.report_channel_count}",
@@ -1614,6 +1661,7 @@ def _profile_summary(result: ProfileExcelReportResult) -> str:
         f"MATH channels: {result.math_count}",
         f"Statistics: {result.statistic_count}",
         f"KPIs: {result.kpi_count}",
+        f"Diagnostics: {' | '.join(result.statistics_result.diagnostics) if result.statistics_result.diagnostics else '-'}",
         f"Plots: {result.plot_count}",
         f"Workbook: {result.report_path}",
         "",
@@ -1637,8 +1685,8 @@ def _profile_summary(result: ProfileExcelReportResult) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _profile_sheet_name(profile: ReportingProfile) -> str:
-    name = profile.metadata.name or profile.profile_id
+def _profile_sheet_name(profile: ReportingProfile, report_metadata: ReportMetadata | None = None) -> str:
+    name = report_metadata.report_title if report_metadata is not None else (profile.metadata.name or profile.profile_id)
     if len(name) <= 31 and not any(character in name for character in "[]:*?/\\"):
         return name
     return _sheet_name(name[:31].rstrip(), "profile report sheet")
@@ -1660,7 +1708,22 @@ def _profile_raw_type_counts(profile: ReportingProfile) -> dict[str, int]:
     return counts
 
 
+def _report_channel_type_counts(report_channels: list[ChannelInfo]) -> dict[str, int]:
+    counts = {"VSM": 0, "AVL": 0, "MATH": 0}
+    for channel in report_channels:
+        channel_type = channel.kind.strip().upper()
+        if channel_type in counts:
+            counts[channel_type] += 1
+        elif channel_type == "RAW":
+            counts["VSM"] += 1
+        else:
+            counts["MATH"] += 1
+    return counts
+
+
 _PROFILE_DATA_START_ROW = 5
+_PROFILE_REPORT_PLOT_IMAGE_WIDTH = 405
+_PROFILE_REPORT_PLOT_IMAGE_HEIGHT = 234
 
 
 def _write_workbook(

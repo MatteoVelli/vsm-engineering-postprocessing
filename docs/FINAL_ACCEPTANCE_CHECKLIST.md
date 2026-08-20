@@ -1,4 +1,4 @@
-# Final Acceptance Checklist - v1.2.10
+# Final Acceptance Checklist - v1.3.0
 
 ## Engineering
 
@@ -30,7 +30,7 @@
 
 ## Release Package
 
-- [ ] version is `1.2.10` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
+- [ ] version is `1.3.0` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
 - [ ] an environment package snapshot is retained for the validated release machine.
 - [ ] client ZIP contains no reference/client workbooks.
 - [ ] client ZIP contains no generated report/run outputs.

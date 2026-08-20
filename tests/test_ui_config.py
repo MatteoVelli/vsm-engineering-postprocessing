@@ -7,6 +7,7 @@ import yaml
 
 from vsm_postprocessing.errors import ConfigurationError
 from vsm_postprocessing.pipeline_engine import load_pipeline_config
+from vsm_postprocessing.ui_app import _render_profile_validation_summary
 from vsm_postprocessing.ui_config import (
     build_runtime_bundle,
     default_ui_profile,
@@ -33,6 +34,56 @@ HYBRID_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_hybr
 
 def _robosprayer_csv() -> Path:
     return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
+class _FakeColumn:
+    def __init__(self, parent: "_FakeStreamlit") -> None:
+        self._parent = parent
+
+    def metric(self, label: str, value: object) -> None:
+        self._parent.metrics.append(("metric", label, value))
+
+
+class _FakeExpander:
+    def __init__(self, parent: "_FakeStreamlit", label: str) -> None:
+        self._parent = parent
+        self._label = label
+
+    def __enter__(self) -> "_FakeStreamlit":
+        self._parent.expanders.append(self._label)
+        return self._parent
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+        return None
+
+
+class _FakeStreamlit:
+    def __init__(self) -> None:
+        self.messages: list[tuple[str, str]] = []
+        self.metrics: list[tuple[str, str, object]] = []
+        self.expanders: list[str] = []
+        self.writes: list[str] = []
+
+    def success(self, text: str) -> None:
+        self.messages.append(("success", text))
+
+    def error(self, text: str) -> None:
+        self.messages.append(("error", text))
+
+    def info(self, text: str) -> None:
+        self.messages.append(("info", text))
+
+    def warning(self, text: str) -> None:
+        self.messages.append(("warning", text))
+
+    def write(self, text: object) -> None:
+        self.writes.append(str(text))
+
+    def columns(self, count: int) -> list[_FakeColumn]:
+        return [_FakeColumn(self) for _ in range(count)]
+
+    def expander(self, label: str) -> _FakeExpander:
+        return _FakeExpander(self, label)
 
 
 def test_default_ui_profile_matches_templates() -> None:
@@ -82,31 +133,33 @@ def test_reporting_profile_discovery_lists_electric_and_hybrid() -> None:
     profiles = discover_reporting_profiles(PROJECT_ROOT)
     by_id = {profile.profile_id: profile for profile in profiles}
 
-    assert by_id["robosprayer_electric"].display_name == "RoboSprayer Electric"
-    assert by_id["robosprayer_hybrid"].display_name == "RoboSprayer Hybrid"
+    assert by_id["robosprayer_electric"].display_name == "Electric"
+    assert by_id["robosprayer_hybrid"].display_name == "Hybrid"
 
 
 def test_electric_reporting_profile_validation_summary_matches_reference_csv() -> None:
     summary = validate_reporting_profile_source(_robosprayer_csv(), ELECTRIC_PROFILE)
 
-    assert summary.profile_name == "RoboSprayer Electric"
+    assert summary.profile_name == "Electric"
     assert summary.is_valid
     assert summary.sample_count == 3853
     assert summary.source_raw_channel_count == 607
     assert summary.required_raw_count == 287
     assert summary.resolved_raw_count == 288
     assert summary.missing_required_count == 0
+    assert summary.missing_optional_count == 1
+    assert summary.missing_optional_names == ("Road Height",)
     assert summary.math_count == 29
     assert summary.statistic_count == 27
     assert summary.kpi_count == 9
-    assert summary.plot_count == 12
+    assert summary.plot_count == 14
     assert summary.duration_minutes == pytest.approx(64.2)
 
 
 def test_hybrid_reporting_profile_validation_treats_inactive_channels_as_resolved() -> None:
     summary = validate_reporting_profile_source(_robosprayer_csv(), HYBRID_PROFILE)
 
-    assert summary.profile_name == "RoboSprayer Hybrid"
+    assert summary.profile_name == "Hybrid"
     assert summary.is_valid
     assert summary.required_raw_count == 293
     assert summary.resolved_raw_count == 294
@@ -114,7 +167,7 @@ def test_hybrid_reporting_profile_validation_treats_inactive_channels_as_resolve
     assert summary.math_count == 32
     assert summary.statistic_count == 36
     assert summary.kpi_count == 9
-    assert summary.plot_count == 18
+    assert summary.plot_count == 20
     assert summary.all_zero_resolved_count > 0
     assert any("Engine" in name or "Generator" in name for name in summary.all_zero_names)
 
@@ -130,15 +183,39 @@ def test_reporting_profile_validation_reports_missing_required_channel(tmp_path:
     assert "Battery Power" in summary.missing_required_names
 
 
+def test_profile_validation_summary_ui_exposes_optional_channels_as_non_blocking() -> None:
+    summary = validate_reporting_profile_source(_robosprayer_csv(), ELECTRIC_PROFILE)
+    st = _FakeStreamlit()
+
+    _render_profile_validation_summary(st, summary)
+
+    assert ("success", "Electric validation passed.") in st.messages
+    assert ("metric", "Optional channels unavailable", 1) in st.metrics
+    assert ("metric", "Profile plots", 14) in st.metrics
+    assert not any(label == "Missing optional" for _, label, _ in st.metrics)
+    assert any(
+        text
+        == "Optional channels are not required for profile validation. "
+        "Associated optional outputs are skipped when unavailable."
+        for kind, text in st.messages
+        if kind == "info"
+    )
+    assert "Optional channel details" in st.expanders
+    assert "Unavailable optional channels:" in st.writes
+    assert "- Road Height" in st.writes
+    assert not any(kind == "warning" and "Road Height" in text for kind, text in st.messages)
+
+
 def test_profile_report_generation_wrapper_calls_profile_excel_engine(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     calls: dict[str, object] = {}
     expected_result = object()
 
-    def fake_generate(source_file, profile_file, output_dir, import_options):
+    def fake_generate(source_file, profile_file, output_dir, import_options, **kwargs):
         calls["source_file"] = source_file
         calls["profile_file"] = profile_file
         calls["output_dir"] = output_dir
         calls["import_options"] = import_options
+        calls["report_metadata"] = kwargs["report_metadata"]
         return expected_result
 
     monkeypatch.setattr("vsm_postprocessing.ui_config.generate_profile_excel_report", fake_generate)
@@ -152,6 +229,7 @@ def test_profile_report_generation_wrapper_calls_profile_excel_engine(monkeypatc
     assert result is expected_result
     assert calls["profile_file"] == ELECTRIC_PROFILE
     assert calls["output_dir"] == tmp_path / "out"
+    assert calls["report_metadata"].report_title == "Source Electric"
 
 
 def test_profile_engineering_report_wrapper_reuses_excel_result_for_powerpoint(
@@ -167,16 +245,18 @@ def test_profile_engineering_report_wrapper_reuses_excel_result_for_powerpoint(
 
         class metadata:
             name = "Fake Profile"
+            powertrain = "electric"
 
     def fake_load_profile(profile_file):
         calls["loaded_profile_file"] = profile_file
         return FakeProfile()
 
-    def fake_generate(source_file, profile_file, output_dir, import_options, *, output_filename=None):
+    def fake_generate(source_file, profile_file, output_dir, import_options, *, output_filename=None, report_metadata=None):
         calls["source_file"] = source_file
         calls["profile_file"] = profile_file
         calls["excel_output_dir"] = output_dir
         calls["excel_output_filename"] = output_filename
+        calls["report_metadata"] = report_metadata
         calls["import_options"] = import_options
         return expected_excel
 
@@ -191,7 +271,7 @@ def test_profile_engineering_report_wrapper_reuses_excel_result_for_powerpoint(
     monkeypatch.setattr("vsm_postprocessing.ui_config.build_profile_powerpoint_report", fake_build)
 
     result = generate_reporting_profile_engineering_report(
-        tmp_path / "source.csv",
+        tmp_path / "RoboSprayer_3500Kg_Electric.csv",
         ELECTRIC_PROFILE,
         tmp_path / "out",
     )
@@ -201,8 +281,9 @@ def test_profile_engineering_report_wrapper_reuses_excel_result_for_powerpoint(
     assert calls["ppt_excel_result"] is expected_excel
     assert calls["excel_output_dir"] == tmp_path / "out" / "profile_excel_report"
     assert calls["ppt_output_dir"] == tmp_path / "out" / "profile_powerpoint_report"
-    assert calls["excel_output_filename"] == "Fake_Profile_Engineering_Report.xlsx"
-    assert calls["ppt_output_filename"] == "Fake_Profile_Engineering_Report.pptx"
+    assert calls["report_metadata"].report_title == "RoboSprayer Electric"
+    assert calls["excel_output_filename"] == "RoboSprayer_Electric_Engineering_Report.xlsx"
+    assert calls["ppt_output_filename"] == "RoboSprayer_Electric_Engineering_Report.pptx"
 
 
 def test_ui_app_preserves_profile_flow_and_removes_legacy_flow() -> None:

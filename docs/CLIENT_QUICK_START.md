@@ -6,7 +6,7 @@
 2. Double-click `START_VSM_TOOL.bat`.
 3. On first launch, the tool creates/updates its local `.venv`, performs a health check, and opens the UI in the default browser.
 4. Select **Profile-driven VSM report**.
-5. Choose the Electric or Hybrid RoboSprayer reporting profile.
+5. Choose the Electric or Hybrid reporting profile and confirm the detected machine name.
 6. Upload the source VSM `.xlsx` or `.csv` results file.
 7. Click **Generate Engineering Report**.
 8. Download or open the final Excel/PowerPoint reports from the UI.

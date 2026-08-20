@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -9,7 +9,14 @@ import numpy as np
 from .errors import MathChannelError
 from .math_engine import _compile_expression, _evaluate_node, _normalise_result, _topological_order
 from .models import ChannelInfo, ImportedDataset
-from .report_profile import MathChannelDefinition, ProfileResolutionResult, ReportingProfile, resolve_profile
+from .report_profile import (
+    MathChannelDefinition,
+    ProfileResolutionResult,
+    ReportingProfile,
+    normalize_name,
+    resolve_profile,
+)
+from .utils import normalize_display_unit
 
 DEFAULT_PROFILE_MATH_CONSTANTS: Mapping[str, float] = {
     "rpm_nm_to_kw_divisor": 9548.8,
@@ -78,6 +85,7 @@ def calculate_profile_math_channels(
     constants = {**DEFAULT_PROFILE_MATH_CONSTANTS, **(constants or {})}
     definitions_by_name = {definition.semantic_name: definition for definition in profile.math_channels}
     raw_values = _resolved_raw_values(dataset, resolution)
+    raw_fallback_channels, raw_fallback_values = _raw_fallback_values(dataset, profile)
     raw_definition_names = set(profile.raw_by_semantic_name())
     available_names = raw_definition_names | set(definitions_by_name) | set(constants)
 
@@ -110,12 +118,15 @@ def calculate_profile_math_channels(
 
     calculation_candidates = [name for name in definitions_by_name if name in compiled]
     calculation_order = _topological_order(calculation_candidates, compiled)
-    context: dict[str, Any] = {**raw_values, **constants}
+    context: dict[str, Any] = {**raw_values, **raw_fallback_values, **constants}
+    produced_by_name: dict[str, np.ndarray] = dict(raw_fallback_values)
     calculated_by_name: dict[str, np.ndarray] = {}
     unavailable_by_name: dict[str, UnavailableMathChannel] = {}
     executed_order: list[str] = []
 
     for semantic_name in calculation_order:
+        if semantic_name in raw_fallback_values:
+            continue
         definition = definitions_by_name[semantic_name]
         expression = compiled[semantic_name]
         missing_dependencies = tuple(
@@ -146,6 +157,7 @@ def calculate_profile_math_channels(
                 f"first failure at sample index {first_index}"
             )
         calculated_by_name[semantic_name] = values
+        produced_by_name[semantic_name] = values
         context[semantic_name] = values
         executed_order.append(semantic_name)
 
@@ -162,13 +174,21 @@ def calculate_profile_math_channels(
         if name in unavailable_by_name
     ]
     calculated_channels = [
-        _calculated_channel(dataset, profile, definitions_by_name[name], index)
+        raw_fallback_channels[name]
+        if name in raw_fallback_channels
+        else _calculated_channel(dataset, profile, definitions_by_name[name], index)
         for index, name in enumerate(definitions_by_name, start=1)
-        if name in calculated_by_name
+        if name in produced_by_name
     ]
     calculated_values = (
-        np.column_stack([calculated_by_name[channel.semantic_name] for channel in profile.math_channels if channel.semantic_name in calculated_by_name])
-        if calculated_by_name
+        np.column_stack(
+            [
+                produced_by_name[channel.semantic_name]
+                for channel in profile.math_channels
+                if channel.semantic_name in produced_by_name
+            ]
+        )
+        if produced_by_name
         else np.empty((dataset.quality.sample_count, 0), dtype=np.float64)
     )
 
@@ -178,7 +198,7 @@ def calculate_profile_math_channels(
         resolution=resolution,
         calculated_channels=calculated_channels,
         calculated_values=calculated_values,
-        values_by_semantic_name=calculated_by_name,
+        values_by_semantic_name=produced_by_name,
         calculation_order=executed_order,
         unavailable=unavailable,
     )
@@ -204,6 +224,67 @@ def _resolved_raw_values(dataset: ImportedDataset, resolution: ProfileResolution
     return values
 
 
+def _raw_fallback_values(
+    dataset: ImportedDataset,
+    profile: ReportingProfile,
+) -> tuple[dict[str, ChannelInfo], dict[str, np.ndarray]]:
+    channels: dict[str, ChannelInfo] = {}
+    values: dict[str, np.ndarray] = {}
+    for index, definition in enumerate(profile.math_channels, start=1):
+        if not definition.fallback_when_raw_missing:
+            continue
+        channel = _find_raw_source_channel(dataset, definition)
+        if channel is None:
+            continue
+        expected_unit = normalize_display_unit(definition.unit) or ""
+        actual_unit = normalize_display_unit(channel.unit) or ""
+        if expected_unit and expected_unit.lower() != actual_unit.lower():
+            raise MathChannelError(
+                f"Profile fallback channel '{definition.semantic_name}' expected unit {definition.unit!r} "
+                f"but raw source '{channel.source_name}' has unit {channel.unit!r}"
+            )
+        source_index = dataset.channel_index(channel.channel_id)
+        channels[definition.semantic_name] = replace(
+            channel,
+            channel_id=f"{profile.profile_id}__math__{definition.semantic_name}",
+            source_name=definition.source_name,
+            display_name=definition.report_name,
+            unit=normalize_display_unit(definition.unit or channel.unit),
+            kind=_raw_kind(channel.kind),
+            source_column_index=channel.source_column_index,
+            source_column_label=channel.source_column_label,
+            provenance=f"profile:{profile.profile_id}:{definition.semantic_name}:raw_source:{channel.channel_id}",
+            dependencies=(),
+            formula_example=None,
+        )
+        values[definition.semantic_name] = np.asarray(dataset.values[:, source_index], dtype=np.float64)
+    return channels, values
+
+
+def _find_raw_source_channel(dataset: ImportedDataset, definition: MathChannelDefinition) -> ChannelInfo | None:
+    exact = [channel for channel in dataset.channels if channel.source_name == definition.source_name]
+    if len(exact) == 1:
+        return exact[0]
+    if len(exact) > 1:
+        raise MathChannelError(
+            f"Profile fallback channel '{definition.semantic_name}' matched multiple raw sources by exact name"
+        )
+    target = normalize_name(definition.source_name)
+    normalized = [channel for channel in dataset.channels if normalize_name(channel.source_name) == target]
+    if len(normalized) == 1:
+        return normalized[0]
+    if len(normalized) > 1:
+        raise MathChannelError(
+            f"Profile fallback channel '{definition.semantic_name}' matched multiple raw sources by normalized name"
+        )
+    return None
+
+
+def _raw_kind(kind: str) -> str:
+    normalized = kind.strip().lower()
+    return normalized if normalized in {"vsm", "avl"} else "vsm"
+
+
 def _calculated_channel(
     dataset: ImportedDataset,
     profile: ReportingProfile,
@@ -215,7 +296,7 @@ def _calculated_channel(
         channel_id=f"{profile.profile_id}__math__{definition.semantic_name}",
         source_name=definition.source_name,
         display_name=definition.report_name,
-        unit=definition.unit,
+        unit=normalize_display_unit(definition.unit),
         source_column_index=dataset.quality.channel_count + index,
         source_column_label=f"PROFILE_MATH{index:03d}",
         kind="math",

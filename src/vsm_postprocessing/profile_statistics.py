@@ -6,7 +6,8 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from .errors import StatisticsError
+from .battery import nominal_capacity_estimates_kwh
+from .errors import MathChannelError, StatisticsError
 from .math_engine import _compile_expression, _evaluate_node, _topological_order
 from .models import ChannelInfo, ImportedDataset
 from .profile_math import ProfileMathResult, calculate_profile_math_channels
@@ -63,6 +64,7 @@ class ProfileStatisticsResult:
     unavailable_statistics: list[UnavailableProfileStatistic] = field(default_factory=list)
     unavailable_kpis: list[UnavailableProfileKPI] = field(default_factory=list)
     kpi_calculation_order: list[str] = field(default_factory=list)
+    diagnostics: list[str] = field(default_factory=list)
 
     @property
     def configured_statistic_count(self) -> int:
@@ -145,7 +147,8 @@ def calculate_profile_statistics(
             )
         )
 
-    kpis, unavailable_kpis, kpi_order = _calculate_kpis(profile, statistics, constants or {})
+    diagnostics = _profile_diagnostics(values_by_name)
+    kpis, unavailable_kpis, kpi_order = _calculate_kpis(profile, statistics, constants or {}, values_by_name)
 
     return ProfileStatisticsResult(
         dataset=dataset,
@@ -157,6 +160,7 @@ def calculate_profile_statistics(
         unavailable_statistics=unavailable_statistics,
         unavailable_kpis=unavailable_kpis,
         kpi_calculation_order=kpi_order,
+        diagnostics=diagnostics,
     )
 
 
@@ -182,10 +186,12 @@ def _calculate_kpis(
     profile: ReportingProfile,
     statistics: list[ProfileStatisticResult],
     constants: Mapping[str, float],
+    channel_values: Mapping[str, np.ndarray] | None = None,
 ) -> tuple[list[ProfileKPIResult], list[UnavailableProfileKPI], list[str]]:
     definitions_by_id = {definition.kpi_id: definition for definition in profile.kpis}
     statistic_values = {item.definition.statistic_id: item.value for item in statistics}
-    allowed_names = set(statistic_values) | set(definitions_by_id) | set(constants)
+    channel_values = channel_values or {}
+    allowed_names = set(statistic_values) | set(definitions_by_id) | set(constants) | set(channel_values)
     compiled = {}
     unknown: dict[str, list[str]] = {}
 
@@ -206,7 +212,7 @@ def _calculate_kpis(
             raise StatisticsError("Profile KPIs reference unknown required dependencies: " + "; ".join(required_unknown))
 
     order = _topological_order([definition.kpi_id for definition in profile.kpis], compiled)
-    context: dict[str, Any] = {**statistic_values, **constants}
+    context: dict[str, Any] = {**channel_values, **statistic_values, **constants}
     values: dict[str, float] = {}
     unavailable_by_id: dict[str, UnavailableProfileKPI] = {}
     executed_order: list[str] = []
@@ -229,8 +235,11 @@ def _calculate_kpis(
                 unavailable_dependencies=unavailable_dependencies,
             )
             continue
-        with np.errstate(all="ignore"):
-            raw_value = _evaluate_node(expression.tree.body, context)
+        try:
+            with np.errstate(all="ignore"):
+                raw_value = _evaluate_node(expression.tree.body, context)
+        except (MathChannelError, ValueError) as exc:
+            raise StatisticsError(f"Profile KPI '{kpi_id}' could not be evaluated: {exc}") from exc
         array = np.asarray(raw_value, dtype=np.float64)
         if array.ndim != 0:
             raise StatisticsError(f"Profile KPI '{kpi_id}' produced shape {array.shape}; expected a scalar")
@@ -251,3 +260,23 @@ def _calculate_kpis(
     results = [ProfileKPIResult(definition=definition, value=values[definition.kpi_id]) for definition in profile.kpis if definition.kpi_id in values]
     unavailable = [unavailable_by_id[definition.kpi_id] for definition in profile.kpis if definition.kpi_id in unavailable_by_id]
     return results, unavailable, executed_order
+
+
+def _profile_diagnostics(values_by_name: Mapping[str, np.ndarray]) -> list[str]:
+    energy = values_by_name.get("electricsystem_battery_energy")
+    soc = values_by_name.get("electricsystem_battery_soc")
+    if energy is None or soc is None:
+        return []
+    try:
+        estimates = nominal_capacity_estimates_kwh(energy, soc)
+    except ValueError as exc:
+        return [f"Nominal battery capacity could not be inferred from Battery Energy/SOC: {exc}"]
+    median = float(np.median(estimates))
+    max_deviation = float(np.max(np.abs(estimates - median)))
+    tolerance = max(0.1, abs(median) * 0.01)
+    if max_deviation <= tolerance:
+        return []
+    return [
+        "Nominal battery capacity estimates vary across Battery Energy/SOC samples: "
+        f"median={median:.6g} kWh, max deviation={max_deviation:.6g} kWh, tolerance={tolerance:.6g} kWh"
+    ]

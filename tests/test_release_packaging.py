@@ -22,7 +22,7 @@ def test_release_version_metadata_is_consistent() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as handle:
         pyproject = tomllib.load(handle)
     assert pyproject["project"]["version"] == vsm_postprocessing.__version__
-    assert vsm_postprocessing.__version__ == "1.2.10"
+    assert vsm_postprocessing.__version__ == "1.3.0"
 
 
 def test_client_release_excludes_private_and_development_artifacts(tmp_path: Path) -> None:

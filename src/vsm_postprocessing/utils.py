@@ -54,6 +54,16 @@ def normalized_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
 
+def normalize_display_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return value.replace("Ã‚Â°C", "°C").replace("Â°C", "°C").replace("deg C", "°C")
+
+
+def normalize_display_unit(unit: str | None) -> str | None:
+    return normalize_display_text(unit)
+
+
 _UI_UPLOAD_PREFIX_RE = re.compile(r"^[0-9a-fA-F]{12}_(.+)$")
 
 

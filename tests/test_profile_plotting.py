@@ -152,10 +152,12 @@ def test_electric_profile_plot_loading_count_rendering_and_representative_mappin
     result = render_profile_plots(dataset, profile, tmp_path, defaults=_fast_defaults())
     by_id = {plot.plot_id: plot for plot in profile.plots}
 
-    assert len(profile.plots) == 12
-    assert result.configured_plot_count == 12
-    assert result.rendered_plot_count == 12
+    assert len(profile.plots) == 14
+    assert result.configured_plot_count == 14
+    assert result.rendered_plot_count == 14
     assert result.unavailable_plot_count == 0
+    assert by_id["road_profile"].series[1].semantic_name == "track_height"
+    assert by_id["road_profile"].series[1].required is False
     assert by_id["battery_soc"].x == "distance_km"
     assert [item.semantic_name for item in by_id["battery_soc"].series] == [
         "chassis_speed",
@@ -163,6 +165,12 @@ def test_electric_profile_plot_loading_count_rendering_and_representative_mappin
     ]
     assert by_id["battery_energy_time_based"].status == "RECONSTRUCTED"
     assert by_id["agrochemical_discharge_vs_distance"].status == "PASS"
+    assert [item.semantic_name for item in result.series_summaries["wheel_loads"]] == [
+        "wheel_load_dynamic_fl",
+        "wheel_load_dynamic_fr",
+        "wheel_load_dynamic_rl",
+        "wheel_load_dynamic_rr",
+    ]
     assert all(Path(item.png_file).exists() for item in result.rendered_plots)
     assert all(result.values_by_semantic_name[item.x].size == dataset.quality.sample_count for item in profile.plots)
     np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
@@ -181,9 +189,10 @@ def test_hybrid_profile_plot_inheritance_generator_and_agrochemical_zero_inactiv
     result = render_profile_plots(dataset, profile, tmp_path, defaults=_fast_defaults())
     by_id = {plot.plot_id: plot for plot in profile.plots}
 
-    assert len(profile.plots) == 18
-    assert result.rendered_plot_count == 18
+    assert len(profile.plots) == 20
+    assert result.rendered_plot_count == 20
     assert result.unavailable_plot_count == 0
+    assert [item.semantic_name for item in result.series_summaries["road_profile"]] == ["track_gradient"]
     assert by_id["generator_power"].series[0].semantic_name == "generator_power_1"
     np.testing.assert_allclose(result.values_by_semantic_name["generator_power_1"], 0.0)
     np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)

@@ -2,7 +2,7 @@
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.2.10 - Profile Reporting
+## Current release: 1.3.0 - Dynamic Vehicle Reporting
 
 The validated workflow is:
 
@@ -24,7 +24,7 @@ Excel report
 Optional PowerPoint report
 ```
 
-The production client workflow uses the RoboSprayer Electric and Hybrid reporting profiles in `config/report_profiles/`. Those profiles are synced to Sergio's latest Electric_03 and Hybrid_04 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
+The production client workflow uses Electric and Hybrid reporting profiles in `config/report_profiles/`. Machine identity is resolved from source metadata/filenames and remains editable in the UI before report generation. The profiles are synced to Sergio's latest Electric_03 and Hybrid_04 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
 
 A local Streamlit UI exposes the workflow without requiring Python or YAML editing.
 

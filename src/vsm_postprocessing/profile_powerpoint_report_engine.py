@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
+import numpy as np
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -22,6 +23,7 @@ from .powerpoint_report_engine import (
     _write_metadata as _write_powerpoint_metadata,
 )
 from .profile_statistics import ProfileKPIResult, ProfileStatisticResult
+from .report_metadata import ReportMetadata
 from .report_profile import ReportingProfile
 from .statistics_engine import (
     StatisticResult,
@@ -29,7 +31,7 @@ from .statistics_engine import (
     StatisticsOutputOptions,
     StatisticsResult,
 )
-from .utils import client_display_filename, sha256_file
+from .utils import client_display_filename, normalize_display_unit, sha256_file
 from .version import __version__
 
 
@@ -391,13 +393,14 @@ def generate_profile_powerpoint_report(
     import_options: ImportOptions | None = None,
     *,
     output_filename: str | None = None,
+    machine_name_override: str | None = None,
 ) -> ProfilePowerPointReportResult:
     excel_result = generate_profile_excel_report(
         input_file,
         profile_file,
         output_dir,
         import_options or ImportOptions(strict=True),
-        output_filename=_profile_report_filename_from_path(profile_file, ".xlsx"),
+        machine_name_override=machine_name_override,
     )
     return build_profile_powerpoint_report(excel_result, output_dir, output_filename=output_filename)
 
@@ -419,7 +422,7 @@ def build_profile_powerpoint_report(
         yaml.safe_dump(
             _profile_powerpoint_config(
                 excel_result,
-                output_filename=output_filename or _profile_output_filename(profile, ".pptx"),
+                output_filename=output_filename or _report_output_filename(excel_result.report_metadata, ".pptx"),
             ),
             sort_keys=False,
             allow_unicode=False,
@@ -598,18 +601,19 @@ def _cover_metadata_items(result: ProfileExcelReportResult) -> tuple[str, str, s
             return items
     powertrain = (result.profile.metadata.powertrain or result.profile.profile_id).title()
     return (
-        f"Powertrain {powertrain}",
+        f"Machine {result.report_metadata.machine_name}",
+        f"Powertrain {result.report_metadata.powertrain_name or powertrain}",
         f"Source {_source_label(result)}",
         f"Samples {result.sample_count:,}",
-        f"Profile {result.profile.metadata.name}",
         f"Tool v{__version__}",
     )
 
 
 def _source_label(result: ProfileExcelReportResult) -> str:
-    filename = client_display_filename(result.dataset.source_path)
-    if filename.lower().startswith("robosprayer_"):
-        return "RoboSprayer raw VSM CSV"
+    filename = result.report_metadata.source_filename
+    safe_machine_prefix = result.report_metadata.safe_output_stem.split("_", 1)[0].lower()
+    if filename.lower().startswith(safe_machine_prefix):
+        return f"{result.report_metadata.machine_name} raw VSM CSV"
     if len(filename) > 34:
         return "Profile source dataset"
     return filename
@@ -721,13 +725,52 @@ def _replace_kpi_slots(
     statistics: list[StatisticResult],
     layout: _TemplateLayoutSpec,
 ) -> None:
-    for index, slot in enumerate(layout.kpi_slots.get(slide_number, ())):
+    slots = layout.kpi_slots.get(slide_number, ())
+    _fit_kpi_slot_groups(shapes, slots, len(statistics))
+    for index, slot in enumerate(slots):
         if index >= len(statistics):
-            _set_shape_text(shapes[slot.label], "")
-            _set_shape_text(shapes[slot.value], "")
             continue
         _set_shape_text(shapes[slot.label], _statistic_label(statistics[index]))
         _set_value_text_preserve_runs(shapes[slot.value], _format_statistic_value(statistics[index]))
+
+
+def _fit_kpi_slot_groups(shapes: list[Any], slots: tuple[_TemplateKpiSlot, ...], statistic_count: int) -> None:
+    if not slots or statistic_count >= len(slots):
+        return
+    used_count = max(0, statistic_count)
+    groups = [_kpi_card_group(shapes, slot) for slot in slots]
+    used_groups = groups[:used_count]
+    unused_groups = groups[used_count:]
+    if used_count >= 2 and used_groups:
+        first_left = min(shape.left for shape in groups[0])
+        last_right = max(shape.left + shape.width for shape in groups[-1])
+        card_left = min(shape.left for shape in used_groups[0])
+        card_width = max(shape.left + shape.width for shape in used_groups[0]) - card_left
+        expanded_width = min(int(card_width * 1.18), int((last_right - first_left) / used_count * 0.9))
+        gap = (last_right - first_left - used_count * expanded_width) / (used_count - 1)
+        for index, group in enumerate(used_groups):
+            group_left = min(shape.left for shape in group)
+            target_left = int(round(first_left + index * (expanded_width + gap)))
+            delta = target_left - group_left
+            for shape in group:
+                shape.left += delta
+            width_delta = expanded_width - card_width
+            if width_delta > 0:
+                group[0].width += width_delta
+                shapes[slots[index].label].width += width_delta
+                shapes[slots[index].value].width += width_delta
+    for group in unused_groups:
+        for shape in group:
+            element = shape._element
+            parent = element.getparent()
+            if parent is not None:
+                parent.remove(element)
+
+
+def _kpi_card_group(shapes: list[Any], slot: _TemplateKpiSlot) -> tuple[Any, ...]:
+    start = max(0, slot.label - 3)
+    end = min(len(shapes), slot.value + 1)
+    return tuple(shapes[index] for index in range(start, end))
 
 
 def _add_astauto_logo(slide: Any, prs: Presentation) -> None:
@@ -1000,7 +1043,7 @@ def _format_statistic_value(stat: StatisticResult) -> str:
 def _display_unit(unit: str | None) -> str | None:
     if not unit:
         return None
-    normalized = unit.strip()
+    normalized = normalize_display_unit(unit.strip()) or ""
     return {"Km": "km", "Kg": "kg", "KW": "kW", "KWh": "kWh", "Wh/Km": "Wh/km"}.get(normalized, normalized)
 
 
@@ -1075,7 +1118,7 @@ def _profile_powerpoint_config(
         slide_config(slide_id)
 
     footer = (profile.presentation.footer if profile.presentation else None) or "VSM Engineering Post-Processing Tool"
-    title = profile.metadata.name
+    title = excel_result.report_metadata.report_title
     subtitle = _cover_subtitle(excel_result, is_hybrid)
     return {
         "version": 1,
@@ -1085,8 +1128,8 @@ def _profile_powerpoint_config(
             "output_filename": output_filename,
             "footer": footer,
             "author": "VSM Engineering",
-            "subject": f"{profile.metadata.name} deterministic profile engineering report",
-            "keywords": "VSM, RoboSprayer, profile-driven, engineering report",
+            "subject": f"{excel_result.report_metadata.report_title} deterministic profile engineering report",
+            "keywords": "VSM, profile-driven, engineering report",
             "comments": f"Generated from deterministic profile outputs by v{__version__}.",
         },
         "theme": {
@@ -1149,7 +1192,7 @@ def _profile_powerpoint_config(
                 "plot_pair",
                 "Range Extender and Generator" if is_hybrid else "Energy Consumption & Estimated Range",
                 _slide_7_subtitle(is_hybrid, is_active_hybrid),
-                body=_slide_7_body(is_hybrid, is_active_hybrid),
+                body=_slide_7_body(excel_result, is_hybrid, is_active_hybrid),
             ),
             _slide(
                 slide_8,
@@ -1316,7 +1359,8 @@ def _cover_body(result: ProfileExcelReportResult) -> tuple[str, ...]:
     profile = result.profile
     return (
         f"Source: {client_display_filename(result.dataset.source_path)}",
-        f"Powertrain: {(profile.metadata.powertrain or profile.profile_id).title()}",
+        f"Machine: {result.report_metadata.machine_name}",
+        f"Powertrain: {result.report_metadata.powertrain_name}",
         f"Samples: {result.sample_count:,}",
         f"Profile: {profile.metadata.name}",
         f"Tool version: v{__version__}",
@@ -1332,11 +1376,11 @@ def _overview_body(result: ProfileExcelReportResult) -> tuple[str, ...]:
     powertrain = (result.profile.metadata.powertrain or "profile").title()
     values = _statistic_values(result)
     left = (
+        f"Machine: {result.report_metadata.machine_name}",
         f"Source dataset: {_source_label(result)}",
         f"Imported samples: {result.sample_count:,}",
         f"Mission duration: {_formatted_value(values, 'time_minutes_last', 'min')}",
         f"Mission distance: {_formatted_value(values, 'distance_km_last', 'km')}",
-        f"Maximum speed: {_formatted_value(values, 'chassis_speed_max', 'kph')}",
     )
     right = (
         f"Powertrain type: {powertrain}",
@@ -1363,15 +1407,42 @@ def _slide_7_subtitle(is_hybrid: bool, is_active_hybrid: bool) -> str:
     return "Resolved range-extender channels are inactive in this simulation"
 
 
-def _slide_7_body(is_hybrid: bool, is_active_hybrid: bool) -> tuple[str, ...]:
+def _slide_7_body(result: ProfileExcelReportResult, is_hybrid: bool, is_active_hybrid: bool) -> tuple[str, ...]:
     if not is_hybrid:
         return ("Range and consumption are deterministic profile KPI outputs.",)
     if is_active_hybrid:
-        return ("Range-extender activity is derived from non-zero resolved engine/generator statistics.",)
+        return (_range_extender_activity_sentence(result),)
     return (
         "RANGE EXTENDER INACTIVE IN THIS SIMULATION\n"
         "ICE/generator channels resolved; no operating activity detected in this simulation.",
     )
+
+
+def _range_extender_activity_sentence(result: ProfileExcelReportResult) -> str:
+    values_by_name = result.plotting_result.values_by_semantic_name
+    generator = values_by_name.get("generator_power_1")
+    time_minutes = values_by_name.get("time_minutes")
+    activation = None
+    max_power = _statistic_values(result).get("generator_power_1_max")
+    if generator is not None:
+        finite_generator = generator[np.isfinite(generator)]
+        if finite_generator.size and max_power is None:
+            max_power = float(np.nanmax(generator))
+        if time_minutes is not None and len(time_minutes) == len(generator):
+            active_indices = np.flatnonzero(np.isfinite(generator) & (np.abs(generator) > 1e-9))
+            if active_indices.size:
+                activation = float(time_minutes[int(active_indices[0])])
+    activation_text = (
+        f"{activation:.0f} min"
+        if activation is not None and math.isfinite(activation)
+        else "the resolved activation point"
+    )
+    power_text = (
+        f"{max_power:.0f} kW"
+        if max_power is not None and math.isfinite(max_power)
+        else "the resolved maximum"
+    )
+    return f"The range extender becomes active at approximately {activation_text}, with generator power reaching {power_text}."
 
 
 def _summary_body(result: ProfileExcelReportResult, is_hybrid: bool, is_active_hybrid: bool) -> tuple[str, ...]:
@@ -1456,22 +1527,8 @@ def _hybrid_subsystem_active(result: ProfileExcelReportResult) -> bool:
     )
 
 
-def _profile_report_filename_from_path(profile_file: str | Path, suffix: str) -> str:
-    profile_name = Path(profile_file).stem.replace("robosprayer_", "RoboSprayer_").replace("_", " ")
-    if "electric" in profile_name.lower():
-        return "RoboSprayer_Electric_Engineering_Report" + suffix
-    if "hybrid" in profile_name.lower():
-        return "RoboSprayer_Hybrid_Engineering_Report" + suffix
-    return _plain_report_filename(profile_name, suffix)
-
-
-def _profile_output_filename(profile: ReportingProfile, suffix: str) -> str:
-    return _plain_report_filename(profile.metadata.name, suffix)
-
-
-def _plain_report_filename(name: str, suffix: str) -> str:
-    stem = re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_") or "VSM_Profile"
-    return f"{stem}_Engineering_Report{suffix}"
+def _report_output_filename(report_metadata: ReportMetadata, suffix: str) -> str:
+    return f"{report_metadata.safe_output_stem}_Engineering_Report{suffix}"
 
 
 def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
@@ -1479,7 +1536,10 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
         "status": "PASS",
         "profile_id": result.excel_result.profile.profile_id,
         "profile_name": result.excel_result.profile.metadata.name,
-        "powertrain": result.excel_result.profile.metadata.powertrain,
+        "machine_name": result.excel_result.report_metadata.machine_name,
+        "powertrain": result.excel_result.report_metadata.powertrain_name,
+        "report_title": result.excel_result.report_metadata.report_title,
+        "safe_output_stem": result.excel_result.report_metadata.safe_output_stem,
         "source_file": str(result.excel_result.dataset.source_path),
         "source_sha256": sha256_file(result.excel_result.dataset.source_path),
         "presentation": str(result.presentation_path),

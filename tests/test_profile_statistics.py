@@ -24,6 +24,10 @@ from vsm_postprocessing.report_profile import (
 from vsm_postprocessing.statistics_engine import calculate_statistics
 
 from conftest import (
+    ROBOSPRAYER_LATEST_ELECTRIC_CSV,
+    ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION,
+    ROBOSPRAYER_LATEST_HYBRID_CSV,
+    ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION,
     ROBOSPRAYER_REFERENCE_CSV,
     ROBOSPRAYER_REFERENCE_DESCRIPTION,
     require_private_reference_file,
@@ -34,6 +38,14 @@ HYBRID_PROFILE = Path("config/report_profiles/robosprayer_hybrid.yaml")
 
 def _robosprayer_csv() -> Path:
     return require_private_reference_file(ROBOSPRAYER_REFERENCE_CSV, ROBOSPRAYER_REFERENCE_DESCRIPTION)
+
+
+def _latest_electric_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_LATEST_ELECTRIC_CSV, ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION)
+
+
+def _latest_hybrid_csv() -> Path:
+    return require_private_reference_file(ROBOSPRAYER_LATEST_HYBRID_CSV, ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION)
 
 
 def test_profile_statistic_uses_semantic_raw_channel() -> None:
@@ -88,6 +100,46 @@ def test_profile_statistics_operations_cover_rms_max_min_first_last_sum() -> Non
     assert values["power_sum"] == pytest.approx(6.0)
 
 
+def test_profile_statistics_positive_max_reports_zero_when_no_charging() -> None:
+    dataset = _dataset([_channel("power__col_002", "Battery Power", "kW")], [[-40.0], [-30.0], [-20.0]])
+    profile = _profile(
+        raw_channels=[RawChannelDefinition("battery_power", "Battery Power", "Battery Power", "VSM", unit="kW")],
+        statistics=[
+            StatisticDefinition(
+                "battery_power_max",
+                "battery_power",
+                "positive_max",
+                display_name="Max Battery Charging Power",
+                unit="kW",
+            )
+        ],
+    )
+
+    result = calculate_profile_statistics(dataset, profile)
+
+    assert result.statistics[0].value == pytest.approx(0.0)
+
+
+def test_profile_statistics_positive_max_uses_positive_charging_samples() -> None:
+    dataset = _dataset([_channel("power__col_002", "Battery Power", "kW")], [[-30.0], [5.0], [12.0], [-10.0]])
+    profile = _profile(
+        raw_channels=[RawChannelDefinition("battery_power", "Battery Power", "Battery Power", "VSM", unit="kW")],
+        statistics=[
+            StatisticDefinition(
+                "battery_power_max",
+                "battery_power",
+                "positive_max",
+                display_name="Max Battery Charging Power",
+                unit="kW",
+            )
+        ],
+    )
+
+    result = calculate_profile_statistics(dataset, profile)
+
+    assert result.statistics[0].value == pytest.approx(12.0)
+
+
 def test_profile_kpi_uses_statistic_dependencies() -> None:
     dataset = _dataset([_channel("energy__col_001", "Energy", "kWh")], [[40.0], [25.0], [10.0]])
     profile = _profile(
@@ -109,6 +161,56 @@ def test_profile_kpi_uses_statistic_dependencies() -> None:
     result = calculate_profile_statistics(dataset, profile)
 
     assert result.kpis[0].value == pytest.approx(30.0)
+
+
+def test_profile_kpi_nominal_capacity_uses_actual_energy_soc_arrays() -> None:
+    result = calculate_profile_statistics(
+        _battery_profile_dataset([40.0, 37.5, 35.0], [80.0, 75.0, 70.0]),
+        _battery_capacity_profile(),
+    )
+    kpis = {item.definition.kpi_id: item.value for item in result.kpis}
+
+    assert kpis["battery_capacity_100"] == pytest.approx(50.0)
+    assert not result.diagnostics
+
+
+def test_profile_kpi_nominal_capacity_ignores_invalid_soc_samples() -> None:
+    result = calculate_profile_statistics(
+        _battery_profile_dataset([10.0, np.nan, 40.0, 35.0], [0.0, 80.0, 80.0, 70.0]),
+        _battery_capacity_profile(),
+    )
+    kpis = {item.definition.kpi_id: item.value for item in result.kpis}
+
+    assert kpis["battery_capacity_100"] == pytest.approx(50.0)
+
+
+def test_profile_kpi_nominal_capacity_emits_consistency_diagnostic() -> None:
+    result = calculate_profile_statistics(
+        _battery_profile_dataset([40.0, 42.0, 35.0], [80.0, 75.0, 70.0]),
+        _battery_capacity_profile(),
+    )
+
+    assert result.diagnostics
+    assert "Nominal battery capacity estimates vary" in result.diagnostics[0]
+
+
+def test_range_85_uses_nominal_capacity_not_fixed_starting_soc() -> None:
+    profile = _battery_range_profile()
+    run_a = calculate_profile_statistics(
+        _battery_profile_dataset([40.0, 35.0], [80.0, 70.0], distance_km=1.0),
+        profile,
+    )
+    run_b = calculate_profile_statistics(
+        _battery_profile_dataset([47.5, 42.5], [95.0, 85.0], distance_km=1.0),
+        profile,
+    )
+    kpis_a = {item.definition.kpi_id: item.value for item in run_a.kpis}
+    kpis_b = {item.definition.kpi_id: item.value for item in run_b.kpis}
+
+    assert kpis_a["battery_capacity_100"] == pytest.approx(50.0)
+    assert kpis_b["battery_capacity_100"] == pytest.approx(50.0)
+    assert kpis_a["range_85_battery_km"] == pytest.approx(8.5)
+    assert kpis_b["range_85_battery_km"] == pytest.approx(kpis_a["range_85_battery_km"])
 
 
 def test_optional_unavailable_statistic_does_not_block_unrelated_results() -> None:
@@ -197,7 +299,8 @@ def test_electric_profile_representative_statistics_regression() -> None:
     assert stats["tyre_rr_energy_accumulated_last"] == pytest.approx(13.355223967066818)
     assert kpis["battery_capacity_used"] == pytest.approx(33.65367)
     assert kpis["battery_energy_consumption_wh_per_km"] == pytest.approx(2804.565985532851)
-    assert kpis["range_85_battery_km"] == pytest.approx(12.76114517141972)
+    assert kpis["battery_capacity_100"] == pytest.approx(50.0)
+    assert kpis["range_85_battery_km"] == pytest.approx(15.153859891060916)
 
 
 def test_electric_rms_does_not_reproduce_stale_17417_denominator() -> None:
@@ -239,6 +342,37 @@ def test_hybrid_generator_statistics_are_zero_against_electric_reference_csv() -
     assert stats["agrochemical_discharge_max"] == pytest.approx(0.0)
     assert stats["generator_torque_1_max"] == pytest.approx(0.0)
     assert stats["generator_power_1_max"] == pytest.approx(0.0)
+
+
+def test_latest_electric_profile_derives_nominal_capacity_range_and_zero_charging_power() -> None:
+    dataset = load_data_file(_latest_electric_csv(), ImportOptions(strict=True))
+    result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
+    stats = {item.definition.statistic_id: item.value for item in result.statistics}
+    kpis = {item.definition.kpi_id: item.value for item in result.kpis}
+
+    assert stats["battery_energy_first"] == pytest.approx(40.0)
+    assert stats["battery_soc_first"] == pytest.approx(80.0)
+    assert stats["battery_power_min"] == pytest.approx(-47.9221)
+    assert stats["battery_power_max"] == pytest.approx(0.0)
+    assert kpis["battery_capacity_100"] == pytest.approx(50.0)
+    assert kpis["usable_battery_capacity_85"] == pytest.approx(42.5)
+    assert kpis["battery_energy_consumption_wh_per_km"] == pytest.approx(3778.0829156591767)
+    assert kpis["range_85_battery_km"] == pytest.approx(11.24909139072848)
+    assert not result.diagnostics
+
+
+def test_latest_hybrid_profile_derives_nominal_capacity_without_adding_range_surface() -> None:
+    dataset = load_data_file(_latest_hybrid_csv(), ImportOptions(strict=True))
+    result = calculate_profile_statistics(dataset, load_reporting_profile(HYBRID_PROFILE))
+    stats = {item.definition.statistic_id: item.value for item in result.statistics}
+    kpis = {item.definition.kpi_id: item.value for item in result.kpis}
+
+    assert stats["battery_energy_first"] == pytest.approx(57.4)
+    assert stats["battery_soc_first"] == pytest.approx(57.4)
+    assert kpis["battery_capacity_100"] == pytest.approx(100.0)
+    assert stats["wheel_power_total_max"] == pytest.approx(106.80434160103889)
+    assert stats["generator_power_1_max"] == pytest.approx(80.00422042560322)
+    assert not result.diagnostics
 
 
 def test_generic_statistics_path_remains_available(tmp_path: Path) -> None:
@@ -366,4 +500,89 @@ def _dataset(channels: list[ChannelInfo], values: list[list[float]]) -> Imported
         channels=channels,
         quality=quality,
         values=array,
+    )
+
+
+def _battery_profile_dataset(
+    energy_kwh: list[float],
+    soc_percent: list[float],
+    *,
+    distance_km: float = 1.0,
+) -> ImportedDataset:
+    rows = []
+    for index, (energy, soc) in enumerate(zip(energy_kwh, soc_percent), start=1):
+        rows.append([energy, soc, distance_km * index / len(energy_kwh)])
+    return _dataset(
+        [
+            _channel("battery_energy__col_001", "Battery Energy", "kWh"),
+            _channel("battery_soc__col_002", "Battery SOC", "%", column=2),
+            _channel("distance__col_003", "Distance", "km", column=3),
+        ],
+        rows,
+    )
+
+
+def _battery_capacity_profile() -> ReportingProfile:
+    return _profile(
+        raw_channels=[
+            RawChannelDefinition("electricsystem_battery_energy", "Battery Energy", "Battery Energy", "VSM", unit="kWh"),
+            RawChannelDefinition("electricsystem_battery_soc", "Battery SOC", "Battery SOC", "VSM", unit="%"),
+        ],
+        statistics=[],
+        kpis=[
+            KPIDefinition(
+                kpi_id="battery_capacity_100",
+                expression="nominal_battery_capacity_kwh(electricsystem_battery_energy, electricsystem_battery_soc)",
+                dependencies=("electricsystem_battery_energy", "electricsystem_battery_soc"),
+                display_name="100% Battery Capacity",
+                unit="kWh",
+            )
+        ],
+    )
+
+
+def _battery_range_profile() -> ReportingProfile:
+    return _profile(
+        raw_channels=[
+            RawChannelDefinition("electricsystem_battery_energy", "Battery Energy", "Battery Energy", "VSM", unit="kWh"),
+            RawChannelDefinition("electricsystem_battery_soc", "Battery SOC", "Battery SOC", "VSM", unit="%"),
+            RawChannelDefinition("distance_km", "Distance", "Distance", "VSM", unit="km"),
+        ],
+        statistics=[
+            StatisticDefinition("battery_energy_first", "electricsystem_battery_energy", "first"),
+            StatisticDefinition("battery_energy_last", "electricsystem_battery_energy", "last"),
+            StatisticDefinition("distance_km_last", "distance_km", "last"),
+        ],
+        kpis=[
+            KPIDefinition(
+                "battery_capacity_used",
+                "battery_energy_first - battery_energy_last",
+                dependencies=("battery_energy_first", "battery_energy_last"),
+                unit="kWh",
+            ),
+            KPIDefinition(
+                "battery_energy_consumption_wh_per_km",
+                "1000 * battery_capacity_used / distance_km_last",
+                dependencies=("battery_capacity_used", "distance_km_last"),
+                unit="Wh/Km",
+            ),
+            KPIDefinition(
+                "battery_capacity_100",
+                "nominal_battery_capacity_kwh(electricsystem_battery_energy, electricsystem_battery_soc)",
+                dependencies=("electricsystem_battery_energy", "electricsystem_battery_soc"),
+                unit="kWh",
+            ),
+            KPIDefinition(
+                "usable_battery_capacity_85",
+                "battery_capacity_100 * 0.85",
+                dependencies=("battery_capacity_100",),
+                unit="kWh",
+            ),
+            KPIDefinition(
+                "range_85_battery_km",
+                "1000 * usable_battery_capacity_85 / battery_energy_consumption_wh_per_km",
+                dependencies=("usable_battery_capacity_85", "battery_energy_consumption_wh_per_km"),
+                unit="Km",
+            ),
+        ],
     )

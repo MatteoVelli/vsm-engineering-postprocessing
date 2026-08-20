@@ -1,8 +1,8 @@
 version: 1
 profile:
   profile_id: robosprayer_hybrid
-  name: RoboSprayer Hybrid
-  description: Hybrid extension of the RoboSprayer Electric/common base using the nine additional Sergio Hybrid workbook entries.
+  name: Hybrid
+  description: Hybrid extension of the Electric/common base using the nine additional Sergio Hybrid workbook entries.
   powertrain: hybrid
   extends: robosprayer_electric.yaml
 channels:

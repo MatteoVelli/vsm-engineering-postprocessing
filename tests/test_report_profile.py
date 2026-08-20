@@ -264,8 +264,10 @@ def test_hybrid_profile_extends_electric_profile() -> None:
 
     assert len(electric.raw_channels) == 289
     assert len(electric.math_channels) == 29
+    assert len(electric.plots) == 14
     assert len(hybrid.raw_channels) == 295
     assert len(hybrid.math_channels) == 32
+    assert len(hybrid.plots) == 20
     assert {channel.semantic_name for channel in hybrid.raw_channels} >= {
         "engine_fuel_consumption",
         "engine_fuelconsumption_specific",
@@ -274,6 +276,30 @@ def test_hybrid_profile_extends_electric_profile() -> None:
         "engine_torque",
         "generator_torque_1",
     }
+
+
+def test_electric_profile_marks_torque_placeholders_as_raw_fallbacks_and_plots_wheel_loads() -> None:
+    profile = load_reporting_profile(ELECTRIC_PROFILE)
+    math_by_name = profile.math_by_semantic_name()
+    for semantic_name in (
+        "driveshaft_torque_fl",
+        "driveshaft_torque_fr",
+        "driveshaft_torque_rl",
+        "driveshaft_torque_rr",
+    ):
+        definition = math_by_name[semantic_name]
+        assert definition.fallback_when_raw_missing is True
+        assert definition.expression == "0"
+
+    wheel_loads = profile.plots_by_id()["wheel_loads"]
+    assert wheel_loads.title == "Wheel Loads"
+    assert [series.semantic_name for series in wheel_loads.series] == [
+        "wheel_load_dynamic_fl",
+        "wheel_load_dynamic_fr",
+        "wheel_load_dynamic_rl",
+        "wheel_load_dynamic_rr",
+    ]
+    assert all(profile.raw_by_semantic_name()[series.semantic_name].for_plot for series in wheel_loads.series)
 
 
 def test_hybrid_generator_torque_uses_sergio_corrected_source_mapping() -> None:

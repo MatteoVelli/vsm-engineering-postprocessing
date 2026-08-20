@@ -1,8 +1,8 @@
-# Deterministic Release Notes - v1.2.10
+# Deterministic Release Notes - v1.3.0
 
 ## Purpose
 
-Version 1.2.10 focuses the production workflow on profile-driven RoboSprayer reporting. The Electric and Hybrid profiles are aligned with Sergio's latest Electric_03 and Hybrid_04 templates, and the removed composed-mission scenario/provider path is no longer exposed in code, UI, scripts, or release packaging.
+Version 1.3.0 focuses the production workflow on dynamic vehicle reporting. Electric and Hybrid profiles remain the analysis definitions, while machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
 
 No AI functionality is included in engineering calculations.
 
@@ -18,6 +18,16 @@ VSM CSV/XLSX
     -> Excel report
     -> optional PowerPoint report
 ```
+
+## v1.3.0 Changes
+
+- Dynamic report metadata resolves RoboSprayer Electric and Caiman SP Hybrid report identities from source filenames.
+- Excel and PowerPoint titles, metadata and output filenames use the resolved machine/powertrain identity.
+- Road Profile plotting includes Road Gradient and optional Road Height when `Track_Height` is present.
+- Excel plot-section headers now use the established dark blue fill with white bold text, and profile charts are larger for review.
+- Hybrid PowerPoint KPI cards now render exactly the available four-card set without an empty fifth card.
+- Nominal battery capacity is inferred from resolved Battery Energy and SOC samples as 100% SOC capacity; initial SOC is not treated as a fixed 95% or as an operational SOC ceiling.
+- Max Battery Charging Power reports the positive charging side of Battery Power and resolves to 0 kW when no positive charging samples exist.
 
 ## v1.2.10 Changes
 

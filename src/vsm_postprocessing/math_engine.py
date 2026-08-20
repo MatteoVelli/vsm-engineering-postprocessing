@@ -16,6 +16,7 @@ import yaml
 from .errors import ConfigurationError, MathChannelError
 from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo, ImportedDataset
+from .battery import infer_nominal_battery_capacity_kwh
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -164,6 +165,7 @@ _ALLOWED_FUNCTIONS: dict[str, _FunctionSpec] = {
     "clip": _FunctionSpec(np.clip, 3, 3),
     "cumulative_sum": _FunctionSpec(np.cumsum, 1, 1),
     "sample_energy_kwh": _FunctionSpec(_sample_energy_kwh, 2, 2),
+    "nominal_battery_capacity_kwh": _FunctionSpec(infer_nominal_battery_capacity_kwh, 2, 2),
 }
 
 _ALLOWED_BINARY_OPERATORS: dict[type[ast.operator], Callable[[Any, Any], Any]] = {

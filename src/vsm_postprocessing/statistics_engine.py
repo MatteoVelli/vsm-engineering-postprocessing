@@ -15,13 +15,14 @@ import numpy as np
 import yaml
 
 from .errors import ConfigurationError, StatisticsError
+from .battery import max_charging_power_kw
 from .importer import ImportOptions, load_data_file
 from .math_engine import MathChannelsResult, calculate_math_channels
 from .models import ChannelInfo, ImportedDataset
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _CELL_REFERENCE = re.compile(r"^[A-Za-z]{1,3}[1-9][0-9]*$")
-_ALLOWED_OPERATIONS = {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum"}
+_ALLOWED_OPERATIONS = {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum", "positive_max"}
 _ALLOWED_NAN_POLICIES = {"error", "omit", "propagate"}
 _ALLOWED_PLACEMENT_GROUPS = {"top_rms", "bottom_channel", "kpi_block"}
 
@@ -550,6 +551,8 @@ def compute_statistic(
         value = float(working[-1])
     elif operation == "sum":
         value = float(np.sum(working, dtype=np.float64))
+    elif operation == "positive_max":
+        value = max_charging_power_kw(working)
     elif operation == "time_weighted_rms":
         if time_values is None:
             raise StatisticsError("time_weighted_rms requires a time channel")
@@ -692,7 +695,11 @@ def _write_wide_results(result: StatisticsResult, path: Path) -> None:
             ordered_channels.append(item.channel_id)
         grouped[item.channel_id][item.operation] = item
 
-    operations = [operation for operation in ("rms", "time_weighted_rms", "max", "min", "first", "last", "sum") if any(operation in grouped[c] for c in ordered_channels)]
+    operations = [
+        operation
+        for operation in ("rms", "time_weighted_rms", "max", "min", "first", "last", "sum", "positive_max")
+        if any(operation in grouped[c] for c in ordered_channels)
+    ]
     fieldnames = ["channel_id", "channel_display_name", "channel_unit", "channel_kind", *operations]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)

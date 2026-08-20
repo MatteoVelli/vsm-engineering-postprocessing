@@ -13,6 +13,7 @@ from .excel_report_engine import ProfileExcelReportResult, generate_profile_exce
 from .importer import ImportOptions, load_data_file
 from .profile_powerpoint_report_engine import ProfilePowerPointReportResult, build_profile_powerpoint_report
 from .profile_math import calculate_profile_math_channels
+from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ReportingProfile, load_reporting_profile, resolve_profile
 
 
@@ -114,6 +115,10 @@ class ReportingProfileEngineeringReportResult:
         return self.excel_result.profile
 
     @property
+    def report_metadata(self) -> ReportMetadata:
+        return self.excel_result.report_metadata
+
+    @property
     def sample_count(self) -> int:
         return self.excel_result.sample_count
 
@@ -174,7 +179,8 @@ def discover_reporting_profiles(project_root: str | Path) -> list[ReportingProfi
                 description=profile.metadata.description,
             )
         )
-    return sorted(profiles, key=lambda item: (item.display_name != "RoboSprayer Electric", item.display_name))
+    order = {"electric": 0, "hybrid": 1}
+    return sorted(profiles, key=lambda item: (order.get((item.powertrain or "").lower(), 99), item.display_name))
 
 
 def get_reporting_profile_definition(
@@ -239,13 +245,18 @@ def generate_reporting_profile_excel_report(
     profile_file: str | Path,
     output_dir: str | Path,
     import_options: ImportOptions | None = None,
+    *,
+    machine_name_override: str | None = None,
 ) -> ProfileExcelReportResult:
     validate_profile_upload_extension(source_file)
+    profile = load_reporting_profile(profile_file)
+    report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override)
     return generate_profile_excel_report(
         source_file,
         profile_file,
         output_dir,
         import_options or ImportOptions(strict=True),
+        report_metadata=report_metadata,
     )
 
 
@@ -254,22 +265,26 @@ def generate_reporting_profile_engineering_report(
     profile_file: str | Path,
     output_dir: str | Path,
     import_options: ImportOptions | None = None,
+    *,
+    machine_name_override: str | None = None,
 ) -> ReportingProfileEngineeringReportResult:
     validate_profile_upload_extension(source_file)
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
     profile = load_reporting_profile(profile_file)
+    report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override)
     excel_result = generate_profile_excel_report(
         source_file,
         profile_file,
         destination / "profile_excel_report",
         import_options or ImportOptions(strict=True),
-        output_filename=_profile_report_filename(profile, ".xlsx"),
+        output_filename=_profile_report_filename(report_metadata, ".xlsx"),
+        report_metadata=report_metadata,
     )
     powerpoint_result = build_profile_powerpoint_report(
         excel_result,
         destination / "profile_powerpoint_report",
-        output_filename=_profile_report_filename(profile, ".pptx"),
+        output_filename=_profile_report_filename(report_metadata, ".pptx"),
     )
     return ReportingProfileEngineeringReportResult(
         excel_result=excel_result,
@@ -277,11 +292,8 @@ def generate_reporting_profile_engineering_report(
     )
 
 
-def _profile_report_filename(profile: ReportingProfile, suffix: str) -> str:
-    stem = "".join(char if char.isalnum() else "_" for char in profile.metadata.name).strip("_")
-    while "__" in stem:
-        stem = stem.replace("__", "_")
-    return f"{stem or profile.profile_id}_Engineering_Report{suffix}"
+def _profile_report_filename(report_metadata: ReportMetadata, suffix: str) -> str:
+    return f"{report_metadata.safe_output_stem}_Engineering_Report{suffix}"
 
 
 def _duration_minutes(start: float | None, end: float | None, unit: str | None) -> float | None:

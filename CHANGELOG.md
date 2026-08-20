@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 - Dynamic Vehicle Reporting
+
+- Separated Electric/Hybrid analysis profiles from resolved machine identity.
+- Added deterministic machine-name detection with UI override and dynamic Excel/PPT filenames.
+- Added Road Profile plotting with optional Road Height support.
+- Improved Excel plot-section readability and enlarged generated profile charts.
+- Fixed Hybrid PowerPoint KPI card layout for four-card slides.
+
 ## 1.2.10 - Sergio PowerPoint Fidelity
 
 - Upgraded the duty-cycle PowerPoint configuration from 4 compact slides to a 10-slide engineering feasibility-study deck.

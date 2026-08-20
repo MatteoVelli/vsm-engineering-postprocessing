@@ -10,6 +10,7 @@ import yaml
 
 from .errors import ConfigurationError
 from .models import ChannelInfo, ImportedDataset
+from .utils import normalize_display_unit
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 _NORMALIZE_PATTERN = re.compile(r"[^a-z0-9]+")
@@ -49,6 +50,7 @@ class MathChannelDefinition:
     required: bool = True
     for_plot: bool = False
     notes: str | None = None
+    fallback_when_raw_missing: bool = False
 
     @property
     def channel_type(self) -> str:
@@ -454,6 +456,7 @@ def _parse_math_channel(raw: Any, index: int) -> MathChannelDefinition:
             "required",
             "for_plot",
             "notes",
+            "fallback_when_raw_missing",
         },
         context,
     )
@@ -470,6 +473,10 @@ def _parse_math_channel(raw: Any, index: int) -> MathChannelDefinition:
         required=_optional_bool(raw.get("required", True), f"{context}.required"),
         for_plot=_optional_bool(raw.get("for_plot", False), f"{context}.for_plot"),
         notes=_optional_string(raw.get("notes"), f"{context}.notes"),
+        fallback_when_raw_missing=_optional_bool(
+            raw.get("fallback_when_raw_missing", False),
+            f"{context}.fallback_when_raw_missing",
+        ),
     )
 
 
@@ -496,7 +503,7 @@ def _parse_statistic(raw: Any, index: int) -> StatisticDefinition:
     target = _required_string(raw, f"{context}.target")
     _validate_identifier(target, f"{context}.target")
     operation = _required_string(raw, f"{context}.operation")
-    if operation not in {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum"}:
+    if operation not in {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum", "positive_max"}:
         raise ConfigurationError(f"{context}.operation must be a supported statistics operation")
     return StatisticDefinition(
         statistic_id=statistic_id,
@@ -738,8 +745,7 @@ def _unit_mismatch(expected: str | None, actual: str | None) -> bool | None:
 
 
 def _normalize_unit(unit: str) -> str:
-    normalized = unit.strip().replace("Â°C", "°C").replace("deg C", "°C")
-    return normalized.lower()
+    return (normalize_display_unit(unit.strip()) or "").lower()
 
 
 def _validate_unique_semantic_names(profile: ReportingProfile) -> None:

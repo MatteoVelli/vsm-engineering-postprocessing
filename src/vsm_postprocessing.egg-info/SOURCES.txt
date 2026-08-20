@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 src/vsm_postprocessing/__init__.py
 src/vsm_postprocessing/__main__.py
+src/vsm_postprocessing/battery.py
 src/vsm_postprocessing/channel_cli.py
 src/vsm_postprocessing/channel_manager.py
 src/vsm_postprocessing/cli.py
@@ -26,6 +27,7 @@ src/vsm_postprocessing/profile_powerpoint_report_engine.py
 src/vsm_postprocessing/profile_statistics.py
 src/vsm_postprocessing/release_builder.py
 src/vsm_postprocessing/release_cli.py
+src/vsm_postprocessing/report_metadata.py
 src/vsm_postprocessing/report_profile.py
 src/vsm_postprocessing/statistics_cli.py
 src/vsm_postprocessing/statistics_engine.py
@@ -39,6 +41,7 @@ src/vsm_postprocessing.egg-info/dependency_links.txt
 src/vsm_postprocessing.egg-info/entry_points.txt
 src/vsm_postprocessing.egg-info/requires.txt
 src/vsm_postprocessing.egg-info/top_level.txt
+tests/test_battery.py
 tests/test_channel_selection.py
 tests/test_client_readiness.py
 tests/test_excel_report.py
@@ -53,6 +56,7 @@ tests/test_profile_plotting.py
 tests/test_profile_powerpoint_report.py
 tests/test_profile_statistics.py
 tests/test_release_packaging.py
+tests/test_report_metadata.py
 tests/test_report_profile.py
 tests/test_statistics.py
 tests/test_ui_config.py

@@ -1,8 +1,8 @@
 version: 1
 profile:
   profile_id: robosprayer_electric
-  name: RoboSprayer Electric
-  description: Semantic reporting profile extracted from Sergio RoboSprayer Electric workbook. Runtime channel IDs are resolved
+  name: Electric
+  description: Semantic Electric reporting profile extracted from Sergio workbook templates. Runtime channel IDs are resolved
     from source names at import time.
   powertrain: electric
 channels:
@@ -1213,28 +1213,28 @@ channels:
     report_name: Wheel Load Dynamic FL
     unit: N
     required: true
-    for_plot: false
+    for_plot: true
     channel_type: VSM
   - semantic_name: wheel_load_dynamic_fr
     source_name: Wheel_Load_Dynamic_FR
     report_name: Wheel Load Dynamic FR
     unit: N
     required: true
-    for_plot: false
+    for_plot: true
     channel_type: VSM
   - semantic_name: wheel_load_dynamic_rl
     source_name: Wheel_Load_Dynamic_RL
     report_name: Wheel Load Dynamic RL
     unit: N
     required: true
-    for_plot: false
+    for_plot: true
     channel_type: VSM
   - semantic_name: wheel_load_dynamic_rr
     source_name: Wheel_Load_Dynamic_RR
     report_name: Wheel Load Dynamic RR
     unit: N
     required: true
-    for_plot: false
+    for_plot: true
     channel_type: VSM
   - semantic_name: wheel_rotationalspeed_fl
     source_name: Wheel_RotationalSpeed_FL
@@ -2206,6 +2206,7 @@ channels:
     unit: Nm
     required: true
     for_plot: true
+    fallback_when_raw_missing: true
     formula: '0'
     expression: '0'
   - semantic_name: driveshaft_torque_fr
@@ -2214,6 +2215,7 @@ channels:
     unit: Nm
     required: true
     for_plot: true
+    fallback_when_raw_missing: true
     formula: '0'
     expression: '0'
   - semantic_name: driveshaft_torque_rl
@@ -2222,6 +2224,7 @@ channels:
     unit: Nm
     required: true
     for_plot: true
+    fallback_when_raw_missing: true
     formula: '0'
     expression: '0'
   - semantic_name: driveshaft_torque_rr
@@ -2230,6 +2233,7 @@ channels:
     unit: Nm
     required: true
     for_plot: true
+    fallback_when_raw_missing: true
     formula: '0'
     expression: '0'
   - semantic_name: wheel_total_torque
@@ -2428,10 +2432,11 @@ statistics:
     placement_group: kpi_inputs
   - statistic_id: battery_power_max
     target: electricsystem_battery_power
-    operation: max
+    operation: positive_max
     display_name: Max Battery Charging Power
     unit: kW
     placement_group: summary
+    notes: Positive Battery Power is charging; negative Battery Power is discharging. No positive samples resolves to 0 kW charging power.
   - statistic_id: battery_soc_first
     target: electricsystem_battery_soc
     operation: first
@@ -2550,12 +2555,14 @@ kpis:
     unit: Wh/Km
     placement_group: summary
   - kpi_id: battery_capacity_100
-    expression: battery_energy_first / 0.95
+    expression: nominal_battery_capacity_kwh(electricsystem_battery_energy, electricsystem_battery_soc)
     dependencies:
-    - battery_energy_first
+    - electricsystem_battery_energy
+    - electricsystem_battery_soc
     display_name: 100% Battery Capacity
     unit: kWh
     placement_group: summary
+    notes: Nominal battery capacity at 100% SOC is inferred from Battery Energy / (SOC / 100) across valid samples; initial SOC is not assumed to be 95% or a maximum SOC limit.
   - kpi_id: usable_battery_capacity_85
     expression: battery_capacity_100 * 0.85
     dependencies:
@@ -2563,6 +2570,7 @@ kpis:
     display_name: 85% Battery Capacity
     unit: kWh
     placement_group: summary
+    notes: Usable energy for Range @ 85% is 0.85 times inferred nominal battery capacity, independent of the simulation starting SOC.
   - kpi_id: range_85_battery_km
     expression: 1000 * usable_battery_capacity_85 / battery_energy_consumption_wh_per_km
     dependencies:
@@ -2777,6 +2785,46 @@ plots:
       - semantic_name: electricsystem_battery_soc
         axis: secondary
         label: Battery SOC
+  - plot_id: road_profile
+    order: 13
+    title: Road Profile
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Road Gradient [%]
+    secondary_y_label: Road Height [m]
+    output_filename: 13_road_profile.png
+    status: PASS
+    evidence: Sergio templates select Track_Gradient and optional Track_Height for road-geometry plotting.
+    series:
+      - semantic_name: track_gradient
+        axis: primary
+        label: Road Gradient
+      - semantic_name: track_height
+        axis: secondary
+        label: Road Height
+        required: false
+  - plot_id: wheel_loads
+    order: 14
+    title: Wheel Loads
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Wheel Load [N]
+    output_filename: 14_wheel_loads.png
+    status: PASS
+    evidence: Latest profile source data resolves dynamic wheel-load channels for all four wheel corners.
+    series:
+      - semantic_name: wheel_load_dynamic_fl
+        axis: primary
+        label: Wheel Load FL
+      - semantic_name: wheel_load_dynamic_fr
+        axis: primary
+        label: Wheel Load FR
+      - semantic_name: wheel_load_dynamic_rl
+        axis: primary
+        label: Wheel Load RL
+      - semantic_name: wheel_load_dynamic_rr
+        axis: primary
+        label: Wheel Load RR
 presentation:
   footer: VSM Engineering Post-Processing Tool
   powerpoint_template: reference_files/RoboSprayer_Electric_Report_FINAL.pptx
