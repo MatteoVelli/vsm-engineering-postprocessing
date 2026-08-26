@@ -1268,28 +1268,28 @@ channels:
     source_name: Wheel_SteerAngle_FL
     report_name: Wheel Steer Angle FL
     unit: deg
-    required: true
+    required: false
     for_plot: true
     channel_type: AVL
   - semantic_name: wheel_steerangle_fr
     source_name: Wheel_SteerAngle_FR
     report_name: Wheel Steer Angle FR
     unit: deg
-    required: true
+    required: false
     for_plot: true
     channel_type: AVL
   - semantic_name: wheel_steerangle_rl
     source_name: Wheel_SteerAngle_RL
     report_name: Wheel Steer Angle RL
     unit: deg
-    required: true
+    required: false
     for_plot: true
     channel_type: AVL
   - semantic_name: wheel_steerangle_rr
     source_name: Wheel_SteerAngle_RR
     report_name: Wheel Steer Angle RR
     unit: deg
-    required: true
+    required: false
     for_plot: true
     channel_type: AVL
   - semantic_name: wheel_travel_vertical_fl
@@ -2514,6 +2514,60 @@ statistics:
     placement_group: summary
     required: false
     notes: Uses the converted agrochemical mass channel derived from HitchRear_Force_Z_VehicleCoordinates.
+  - statistic_id: road_gradient_max
+    target: track_gradient
+    operation: max
+    display_name: Max Gradient
+    unit: '%'
+    placement_group: summary
+  - statistic_id: road_gradient_min
+    target: track_gradient
+    operation: min
+    display_name: Min Gradient
+    unit: '%'
+    placement_group: summary
+  - statistic_id: road_height_max
+    target: track_height
+    operation: max
+    display_name: Max Height
+    unit: m
+    placement_group: summary
+    required: false
+  - statistic_id: road_height_min
+    target: track_height
+    operation: min
+    display_name: Min Height
+    unit: m
+    placement_group: summary
+    required: false
+  - statistic_id: steer_fl_max
+    target: wheel_steerangle_fl
+    operation: absolute_max
+    display_name: Max Steer FL
+    unit: deg
+    placement_group: summary
+    required: false
+  - statistic_id: steer_fr_max
+    target: wheel_steerangle_fr
+    operation: absolute_max
+    display_name: Max Steer FR
+    unit: deg
+    placement_group: summary
+    required: false
+  - statistic_id: steer_rl_max
+    target: wheel_steerangle_rl
+    operation: absolute_max
+    display_name: Max Steer RL
+    unit: deg
+    placement_group: summary
+    required: false
+  - statistic_id: steer_rr_max
+    target: wheel_steerangle_rr
+    operation: absolute_max
+    display_name: Max Steer RR
+    unit: deg
+    placement_group: summary
+    required: false
 kpis:
   - kpi_id: time_hours
     expression: time_minutes_last / 60
@@ -2586,6 +2640,34 @@ kpis:
     display_name: Max Battery Power
     unit: kW
     placement_group: summary
+  - kpi_id: road_gradient_range
+    expression: road_gradient_max - road_gradient_min
+    dependencies:
+    - road_gradient_max
+    - road_gradient_min
+    display_name: Gradient Range
+    unit: '%'
+    placement_group: summary
+  - kpi_id: road_height_range
+    expression: road_height_max - road_height_min
+    dependencies:
+    - road_height_max
+    - road_height_min
+    display_name: Height Range
+    unit: m
+    placement_group: summary
+    required: false
+  - kpi_id: steer_abs_max
+    expression: maximum(maximum(steer_fl_max, steer_fr_max), maximum(steer_rl_max, steer_rr_max))
+    dependencies:
+    - steer_fl_max
+    - steer_fr_max
+    - steer_rl_max
+    - steer_rr_max
+    display_name: Max Abs Steer
+    unit: deg
+    placement_group: summary
+    required: false
 plots:
   - plot_id: auxiliaries_energy_consumption
     order: 1
@@ -2803,6 +2885,32 @@ plots:
         axis: secondary
         label: Road Height
         required: false
+  - plot_id: wheel_steering_angles
+    order: 15
+    title: Wheel Steering Angles
+    x: distance_km
+    x_label: Distance [km]
+    primary_y_label: Wheel Steer Angle [deg]
+    output_filename: 15_wheel_steering_angles.png
+    status: PASS
+    evidence: Latest profile source data exposes all four wheel steering-angle channels for dynamic distance-based plotting.
+    series:
+      - semantic_name: wheel_steerangle_fl
+        axis: primary
+        label: Wheel Steer Angle FL
+        required: false
+      - semantic_name: wheel_steerangle_fr
+        axis: primary
+        label: Wheel Steer Angle FR
+        required: false
+      - semantic_name: wheel_steerangle_rl
+        axis: primary
+        label: Wheel Steer Angle RL
+        required: false
+      - semantic_name: wheel_steerangle_rr
+        axis: primary
+        label: Wheel Steer Angle RR
+        required: false
   - plot_id: wheel_loads
     order: 14
     title: Wheel Loads
@@ -2921,6 +3029,26 @@ presentation:
       plots:
         - power_at_wheels_and_edu
         - tyres_energy_consumption
+    - slide_id: road_profile
+      statistics:
+        - road_gradient_max
+        - road_gradient_min
+        - road_height_max
+        - road_height_min
+        - road_height_range
+        - distance_km_last
+      plots:
+        - road_profile
+    - slide_id: wheel_steering_angles
+      statistics:
+        - steer_fl_max
+        - steer_fr_max
+        - steer_rl_max
+        - steer_rr_max
+        - steer_abs_max
+        - distance_km_last
+      plots:
+        - wheel_steering_angles
     - slide_id: simulation_summary
       statistics:
         - distance_km_last

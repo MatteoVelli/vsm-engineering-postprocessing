@@ -114,13 +114,13 @@ def test_profile_powerpoint_generates_reopenable_electric_and_hybrid_decks(elect
     for result in (electric_report, hybrid_report):
         assert result.report_path.exists()
         assert result.presentation_path.exists()
-        assert result.slide_count == 10
+        assert result.slide_count == 12
         with zipfile.ZipFile(result.presentation_path) as package:
             assert package.testzip() is None
             media = [name for name in package.namelist() if name.startswith("ppt/media/")]
-        assert len(media) >= 10
+        assert len(media) >= 12
         prs = Presentation(result.presentation_path)
-        assert len(prs.slides) == 10
+        assert len(prs.slides) == 12
 
 
 def test_profile_powerpoint_adds_astauto_logo_to_every_slide(electric_report, hybrid_report) -> None:
@@ -150,6 +150,8 @@ def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report
         "Energy Consumption & Estimated Range",
         "Agrochemical & Battery Behaviour",
         "Traction, EDU & Auxiliary Energy Demand",
+        "Road Profile",
+        "Wheel Steering Angles",
         "Simulation Summary",
     ]
     assert _slide_titles(hybrid_report.presentation_path) == [
@@ -162,6 +164,8 @@ def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report
         "Range Extender and Generator",
         "Auxiliary and Tyre Energy Demand",
         "Traction, EDU and Auxiliary Energy Demand",
+        "Road Profile",
+        "Wheel Steering Angles",
         "Simulation Summary",
     ]
 
@@ -245,9 +249,14 @@ def test_profile_powerpoint_plot_ids_and_manifest_are_deterministic(electric_rep
         "agrochemical_discharge_vs_distance",
         "agrochemical_discharge_and_charge_vs_time",
     ]
+    assert electric_manifest["slides"][9]["plots"] == ["road_profile"]
+    assert hybrid_manifest["slides"][9]["plots"] == ["road_profile"]
+    assert electric_manifest["slides"][10]["plots"] == ["wheel_steering_angles"]
+    assert hybrid_manifest["slides"][10]["plots"] == ["wheel_steering_angles"]
     assert electric_manifest["slides"][6]["title"] == "Energy Consumption & Estimated Range"
     assert hybrid_manifest["slides"][6]["title"] == "Range Extender and Generator"
     assert electric_manifest["slides"][7]["title"] == "Agrochemical & Battery Behaviour"
+    assert electric_manifest["slides"][11]["title"] == "Simulation Summary"
 
 
 def test_profile_powerpoint_preserves_electric_reference_geometry_and_style(electric_report) -> None:
@@ -256,7 +265,8 @@ def test_profile_powerpoint_preserves_electric_reference_geometry_and_style(elec
 
     assert generated.slide_width == reference.slide_width
     assert generated.slide_height == reference.slide_height
-    assert len(generated.slides) == len(reference.slides) == 10
+    assert len(generated.slides) == 12
+    assert len(reference.slides) == 10
 
     generated_cover = list(generated.slides[0].shapes)
     reference_cover = list(reference.slides[0].shapes)
@@ -294,7 +304,21 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
     for paragraph in slide_2_body.text_frame.paragraphs:
         assert _run_texts_from_paragraph(paragraph)[0] == "\u25b8  "
 
-    slide_10_banner = list(electric.slides[9].shapes)[4]
+    slide_10_text = "\n".join(
+        shape.text for shape in electric.slides[9].shapes if getattr(shape, "text", "").strip()
+    )
+    assert "Road Profile" in slide_10_text
+    assert "10  /  12" in slide_10_text
+
+    slide_11_text = "\n".join(
+        shape.text for shape in electric.slides[10].shapes if getattr(shape, "text", "").strip()
+    )
+    assert "Wheel Steering Angles" in slide_11_text
+    assert "MAX STEER FL" in slide_11_text
+    assert "All steering-angle channels remain at 0.00\u00b0 for this drive cycle." in slide_11_text
+    assert "11  /  12" in slide_11_text
+
+    slide_10_banner = list(electric.slides[11].shapes)[4]
     assert _run_texts(slide_10_banner) == [
         "12.00 km",
         "  covered   \u00b7   SOC  ",
@@ -303,10 +327,15 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
         "2,804.6 Wh/km",
     ]
     assert len({style[3] for style in _run_styles(slide_10_banner)}) >= 3
-    assert "post-processing tool" in list(electric.slides[9].shapes)[31].text.lower()
-    assert list(electric.slides[9].shapes)[31].text.endswith("v1.3.0")
-    assert "post-processing tool" in list(hybrid.slides[9].shapes)[35].text.lower()
-    assert list(hybrid.slides[9].shapes)[35].text.endswith("v1.3.0")
+    assert "post-processing tool" in list(electric.slides[11].shapes)[31].text.lower()
+    assert list(electric.slides[11].shapes)[31].text.endswith("v1.3.0")
+    assert "post-processing tool" in list(hybrid.slides[11].shapes)[35].text.lower()
+    assert list(hybrid.slides[11].shapes)[35].text.endswith("v1.3.0")
+    hybrid_slide_10_text = "\n".join(
+        shape.text for shape in hybrid.slides[9].shapes if getattr(shape, "text", "").strip()
+    )
+    assert "ROAD HEIGHT NOT AVAILABLE" in hybrid_slide_10_text
+    assert "The active Hybrid source profile does not expose a Road Height channel." in hybrid_slide_10_text
 
     hybrid_notice = _find_text_shape(hybrid.slides[6], "RANGE EXTENDER INACTIVE")
     reference_notice = list(hybrid_reference.slides[6].shapes)[36]
@@ -324,7 +353,8 @@ def test_profile_powerpoint_preserves_hybrid_reference_plot_slots(hybrid_report)
 
     assert generated.slide_width == reference.slide_width
     assert generated.slide_height == reference.slide_height
-    assert len(generated.slides) == len(reference.slides) == 10
+    assert len(generated.slides) == 12
+    assert len(reference.slides) == 10
 
     generated_slide7 = list(generated.slides[6].shapes)
     reference_slide7 = list(reference.slides[6].shapes)
@@ -360,7 +390,7 @@ def test_profile_powerpoint_dynamic_values_update_without_losing_reference_runs(
     electric = Presentation(electric_output.presentation_path)
     assert _run_texts(list(electric.slides[0].shapes)[18]) == ["13.50", " km"]
     assert _run_texts(list(electric.slides[0].shapes)[26]) == ["44.40", " %"]
-    assert _run_texts(list(electric.slides[9].shapes)[4]) == [
+    assert _run_texts(list(electric.slides[11].shapes)[4]) == [
         "13.50 km",
         "  covered   \u00b7   SOC  ",
         "44.40 %",
@@ -403,6 +433,12 @@ def test_profile_powerpoint_latest_electric_uses_corrected_range_85(tmp_path: Pa
     assert "RANGE @ 85%" in text
     assert "11.25 km" in text
     assert "9.47 km" not in text
+    assert "Road Profile" in text
+    assert "Wheel Steering Angles" in text
+    assert "MAX HEIGHT" in text
+    assert "5.99 m" in text
+    assert "MAX ABS STEER" in text
+    assert "0.00\u00b0" in text
 
 
 def test_profile_powerpoint_traction_cards_consume_canonical_metrics(tmp_path: Path) -> None:
@@ -472,11 +508,14 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     assert "WHEEL MAX POWER" in text
 
     prs = Presentation(report.presentation_path)
-    assert len(prs.slides) == 10
+    assert len(prs.slides) == 12
     slide_8_text = [shape.text.strip() for shape in prs.slides[7].shapes if getattr(shape, "text", "").strip()]
     for label in ("AGRO DISCHARGE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "DRIVE CYCLE TIME"):
         assert label in slide_8_text
     assert "FUEL\nCONSUMPTION" not in text
+    assert "ROAD HEIGHT NOT AVAILABLE" in text
+    assert "The active Hybrid source profile does not expose a Road Height channel." in text
+    assert "All steering-angle channels remain at 0.00\u00b0 for this drive cycle." in text
 
 
 def test_profile_powerpoint_template_path_is_profile_configurable() -> None:

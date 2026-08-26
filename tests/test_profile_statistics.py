@@ -75,7 +75,7 @@ def test_profile_statistic_uses_semantic_math_channel() -> None:
     assert result.statistics[0].channel_kind == "math"
 
 
-def test_profile_statistics_operations_cover_rms_max_min_first_last_sum() -> None:
+def test_profile_statistics_operations_cover_rms_max_min_first_last_sum_absolute_max() -> None:
     dataset = _dataset([_channel("power__col_002", "Power", "kW")], [[1.0], [3.0], [2.0]])
     profile = _profile(
         raw_channels=[RawChannelDefinition("power", "Power", "Power", "VSM", unit="kW")],
@@ -86,6 +86,7 @@ def test_profile_statistics_operations_cover_rms_max_min_first_last_sum() -> Non
             StatisticDefinition("power_first", "power", "first"),
             StatisticDefinition("power_last", "power", "last"),
             StatisticDefinition("power_sum", "power", "sum"),
+            StatisticDefinition("power_absolute_max", "power", "absolute_max"),
         ],
     )
 
@@ -98,6 +99,7 @@ def test_profile_statistics_operations_cover_rms_max_min_first_last_sum() -> Non
     assert values["power_first"] == pytest.approx(1.0)
     assert values["power_last"] == pytest.approx(2.0)
     assert values["power_sum"] == pytest.approx(6.0)
+    assert values["power_absolute_max"] == pytest.approx(3.0)
 
 
 def test_profile_statistics_positive_max_reports_zero_when_no_charging() -> None:
@@ -270,12 +272,15 @@ def test_electric_profile_full_statistics_execution_against_reference_csv() -> N
     dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
-    assert result.configured_statistic_count == 27
-    assert result.calculated_statistic_count == 27
-    assert result.configured_kpi_count == 9
-    assert result.calculated_kpi_count == 9
+    assert result.configured_statistic_count == 35
+    assert result.calculated_statistic_count == 33
+    assert result.configured_kpi_count == 12
+    assert result.calculated_kpi_count == 11
     assert result.is_complete
-    assert not result.unavailable_optional_statistics
+    assert [item.definition.statistic_id for item in result.unavailable_optional_statistics] == [
+        "road_height_max",
+        "road_height_min",
+    ]
     assert not result.unavailable_required_statistics
 
 
@@ -332,12 +337,15 @@ def test_hybrid_generator_statistics_are_zero_against_electric_reference_csv() -
     result = calculate_profile_statistics(dataset, load_reporting_profile(HYBRID_PROFILE))
     stats = {item.definition.statistic_id: item.value for item in result.statistics}
 
-    assert result.configured_statistic_count == 36
-    assert result.calculated_statistic_count == 36
-    assert result.configured_kpi_count == 9
-    assert result.calculated_kpi_count == 9
+    assert result.configured_statistic_count == 44
+    assert result.calculated_statistic_count == 42
+    assert result.configured_kpi_count == 12
+    assert result.calculated_kpi_count == 11
     assert result.is_complete
-    assert not result.unavailable_optional_statistics
+    assert [item.definition.statistic_id for item in result.unavailable_optional_statistics] == [
+        "road_height_max",
+        "road_height_min",
+    ]
     assert not result.unavailable_required_statistics
     assert stats["agrochemical_discharge_max"] == pytest.approx(0.0)
     assert stats["generator_torque_1_max"] == pytest.approx(0.0)
@@ -359,6 +367,29 @@ def test_latest_electric_profile_derives_nominal_capacity_range_and_zero_chargin
     assert kpis["battery_energy_consumption_wh_per_km"] == pytest.approx(3778.0829156591767)
     assert kpis["range_85_battery_km"] == pytest.approx(11.24909139072848)
     assert not result.diagnostics
+
+
+def test_latest_electric_road_and_steering_metrics_are_canonical() -> None:
+    dataset = load_data_file(_latest_electric_csv(), ImportOptions(strict=True))
+    result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
+    metrics = {item.metric_id: item for item in build_canonical_report_metrics(result)}
+
+    assert metrics["road_gradient_max"].powerpoint_label == "MAX GRADIENT"
+    assert metrics["road_gradient_max"].value == pytest.approx(15.0)
+    assert metrics["road_gradient_min"].value == pytest.approx(-15.0)
+    assert metrics["road_gradient_range"].value == pytest.approx(30.0)
+    assert metrics["road_height_max"].value == pytest.approx(5.98938)
+    assert metrics["road_height_min"].value == pytest.approx(0.0)
+    assert metrics["road_height_range"].value == pytest.approx(5.98938)
+    assert metrics["steer_fl_max"].powerpoint_label == "MAX STEER FL"
+    assert metrics["steer_fr_max"].powerpoint_label == "MAX STEER FR"
+    assert metrics["steer_rl_max"].powerpoint_label == "MAX STEER RL"
+    assert metrics["steer_rr_max"].powerpoint_label == "MAX STEER RR"
+    assert metrics["steer_abs_max"].powerpoint_label == "MAX ABS STEER"
+    assert metrics["steer_abs_max"].calculation == (
+        "maximum(maximum(steer_fl_max, steer_fr_max), maximum(steer_rl_max, steer_rr_max))"
+    )
+    assert metrics["steer_abs_max"].value == pytest.approx(0.0)
 
 
 def test_latest_electric_traction_metrics_match_canonical_sources() -> None:
@@ -392,6 +423,23 @@ def test_latest_hybrid_profile_derives_nominal_capacity_without_adding_range_sur
     assert stats["wheel_power_total_max"] == pytest.approx(106.80434160103889)
     assert stats["generator_power_1_max"] == pytest.approx(80.00422042560322)
     assert not result.diagnostics
+
+
+def test_latest_hybrid_road_height_is_optional_and_steering_zero() -> None:
+    dataset = load_data_file(_latest_hybrid_csv(), ImportOptions(strict=True))
+    result = calculate_profile_statistics(dataset, load_reporting_profile(HYBRID_PROFILE))
+    metrics = {item.metric_id: item for item in build_canonical_report_metrics(result)}
+
+    assert metrics["road_gradient_max"].value == pytest.approx(0.0)
+    assert metrics["road_gradient_min"].value == pytest.approx(0.0)
+    assert metrics["road_gradient_range"].value == pytest.approx(0.0)
+    assert "road_height_max" not in metrics
+    assert "road_height_range" not in metrics
+    assert metrics["steer_abs_max"].value == pytest.approx(0.0)
+    assert [item.definition.statistic_id for item in result.unavailable_optional_statistics] == [
+        "road_height_max",
+        "road_height_min",
+    ]
 
 
 def test_latest_hybrid_edu_power_metrics_remain_distinct_and_traceable() -> None:

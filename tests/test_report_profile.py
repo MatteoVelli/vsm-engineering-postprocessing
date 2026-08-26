@@ -264,10 +264,12 @@ def test_hybrid_profile_extends_electric_profile() -> None:
 
     assert len(electric.raw_channels) == 289
     assert len(electric.math_channels) == 29
-    assert len(electric.plots) == 14
+    assert len(electric.plots) == 15
     assert len(hybrid.raw_channels) == 295
     assert len(hybrid.math_channels) == 32
-    assert len(hybrid.plots) == 20
+    assert len(hybrid.plots) == 21
+    assert "wheel_steering_angles" in electric.plots_by_id()
+    assert "wheel_steering_angles" in hybrid.plots_by_id()
     assert {channel.semantic_name for channel in hybrid.raw_channels} >= {
         "engine_fuel_consumption",
         "engine_fuelconsumption_specific",

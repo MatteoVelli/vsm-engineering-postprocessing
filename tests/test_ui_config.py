@@ -144,15 +144,15 @@ def test_electric_reporting_profile_validation_summary_matches_reference_csv() -
     assert summary.is_valid
     assert summary.sample_count == 3853
     assert summary.source_raw_channel_count == 607
-    assert summary.required_raw_count == 287
+    assert summary.required_raw_count == 283
     assert summary.resolved_raw_count == 288
     assert summary.missing_required_count == 0
     assert summary.missing_optional_count == 1
     assert summary.missing_optional_names == ("Road Height",)
     assert summary.math_count == 29
-    assert summary.statistic_count == 27
-    assert summary.kpi_count == 9
-    assert summary.plot_count == 14
+    assert summary.statistic_count == 35
+    assert summary.kpi_count == 12
+    assert summary.plot_count == 15
     assert summary.duration_minutes == pytest.approx(64.2)
 
 
@@ -161,13 +161,13 @@ def test_hybrid_reporting_profile_validation_treats_inactive_channels_as_resolve
 
     assert summary.profile_name == "Hybrid"
     assert summary.is_valid
-    assert summary.required_raw_count == 293
+    assert summary.required_raw_count == 289
     assert summary.resolved_raw_count == 294
     assert summary.missing_required_count == 0
     assert summary.math_count == 32
-    assert summary.statistic_count == 36
-    assert summary.kpi_count == 9
-    assert summary.plot_count == 20
+    assert summary.statistic_count == 44
+    assert summary.kpi_count == 12
+    assert summary.plot_count == 21
     assert summary.all_zero_resolved_count > 0
     assert any("Engine" in name or "Generator" in name for name in summary.all_zero_names)
 
@@ -191,7 +191,7 @@ def test_profile_validation_summary_ui_exposes_optional_channels_as_non_blocking
 
     assert ("success", "Electric validation passed.") in st.messages
     assert ("metric", "Optional channels unavailable", 1) in st.metrics
-    assert ("metric", "Profile plots", 14) in st.metrics
+    assert ("metric", "Profile plots", 15) in st.metrics
     assert not any(label == "Missing optional" for _, label, _ in st.metrics)
     assert any(
         text

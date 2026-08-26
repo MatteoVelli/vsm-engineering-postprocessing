@@ -156,6 +156,17 @@ _POWERPOINT_LABEL_OVERRIDES = {
     "engine_energy_delivered_sum": "ENGINE ENERGY",
     "generator_power_1_max": "MAX GEN POWER",
     "agrochemical_discharge_max": "AGRO DISCHARGE",
+    "road_gradient_max": "MAX GRADIENT",
+    "road_gradient_min": "MIN GRADIENT",
+    "road_gradient_range": "GRADIENT RANGE",
+    "road_height_max": "MAX HEIGHT",
+    "road_height_min": "MIN HEIGHT",
+    "road_height_range": "HEIGHT RANGE",
+    "steer_fl_max": "MAX STEER FL",
+    "steer_fr_max": "MAX STEER FR",
+    "steer_rl_max": "MAX STEER RL",
+    "steer_rr_max": "MAX STEER RR",
+    "steer_abs_max": "MAX ABS STEER",
 }
 
 

@@ -22,7 +22,17 @@ from .models import ChannelInfo, ImportedDataset
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _CELL_REFERENCE = re.compile(r"^[A-Za-z]{1,3}[1-9][0-9]*$")
-_ALLOWED_OPERATIONS = {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum", "positive_max"}
+_ALLOWED_OPERATIONS = {
+    "rms",
+    "time_weighted_rms",
+    "max",
+    "min",
+    "first",
+    "last",
+    "sum",
+    "positive_max",
+    "absolute_max",
+}
 _ALLOWED_NAN_POLICIES = {"error", "omit", "propagate"}
 _ALLOWED_PLACEMENT_GROUPS = {"top_rms", "bottom_channel", "kpi_block"}
 
@@ -553,6 +563,8 @@ def compute_statistic(
         value = float(np.sum(working, dtype=np.float64))
     elif operation == "positive_max":
         value = max_charging_power_kw(working)
+    elif operation == "absolute_max":
+        value = float(np.max(np.abs(working)))
     elif operation == "time_weighted_rms":
         if time_values is None:
             raise StatisticsError("time_weighted_rms requires a time channel")
@@ -697,7 +709,17 @@ def _write_wide_results(result: StatisticsResult, path: Path) -> None:
 
     operations = [
         operation
-        for operation in ("rms", "time_weighted_rms", "max", "min", "first", "last", "sum", "positive_max")
+        for operation in (
+            "rms",
+            "time_weighted_rms",
+            "max",
+            "min",
+            "first",
+            "last",
+            "sum",
+            "positive_max",
+            "absolute_max",
+        )
         if any(operation in grouped[c] for c in ordered_channels)
     ]
     fieldnames = ["channel_id", "channel_display_name", "channel_unit", "channel_kind", *operations]

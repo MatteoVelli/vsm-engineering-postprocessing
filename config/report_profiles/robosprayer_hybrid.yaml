@@ -347,6 +347,26 @@ presentation:
       plots:
         - power_at_wheels_and_edu
         - tyres_energy_consumption
+    - slide_id: road_profile
+      statistics:
+        - road_gradient_max
+        - road_gradient_min
+        - road_gradient_range
+        - road_height_max
+        - road_height_range
+        - distance_km_last
+      plots:
+        - road_profile
+    - slide_id: wheel_steering_angles
+      statistics:
+        - steer_fl_max
+        - steer_fr_max
+        - steer_rl_max
+        - steer_rr_max
+        - steer_abs_max
+        - distance_km_last
+      plots:
+        - wheel_steering_angles
     - slide_id: simulation_summary
       statistics:
         - distance_km_last

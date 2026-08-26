@@ -104,6 +104,14 @@ def test_nan_policy_omit_removes_non_finite_samples() -> None:
     assert omitted == 1
 
 
+def test_absolute_max_uses_largest_magnitude_sample() -> None:
+    value, used, omitted = compute_statistic([-7.5, 2.0, 6.0], "absolute_max")
+
+    assert value == pytest.approx(7.5)
+    assert used == 3
+    assert omitted == 0
+
+
 def test_nan_policy_error_rejects_non_finite_samples() -> None:
     with pytest.raises(StatisticsError, match="encountered 1 non-finite values"):
         compute_statistic([1.0, math.nan, 3.0], "max", "error")

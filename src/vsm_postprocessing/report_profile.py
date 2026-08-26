@@ -503,7 +503,17 @@ def _parse_statistic(raw: Any, index: int) -> StatisticDefinition:
     target = _required_string(raw, f"{context}.target")
     _validate_identifier(target, f"{context}.target")
     operation = _required_string(raw, f"{context}.operation")
-    if operation not in {"rms", "time_weighted_rms", "max", "min", "first", "last", "sum", "positive_max"}:
+    if operation not in {
+        "rms",
+        "time_weighted_rms",
+        "max",
+        "min",
+        "first",
+        "last",
+        "sum",
+        "positive_max",
+        "absolute_max",
+    }:
         raise ConfigurationError(f"{context}.operation must be a supported statistics operation")
     return StatisticDefinition(
         statistic_id=statistic_id,
