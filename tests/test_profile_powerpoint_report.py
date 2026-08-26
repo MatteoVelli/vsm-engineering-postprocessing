@@ -34,6 +34,9 @@ from conftest import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ELECTRIC_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "RoboSprayer_Electric_Report_Astauto_Colours.pptx"
 HYBRID_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "Caiman_SP_Hybrid_Report_Astauto_Colours.pptx"
+ELECTRIC_V7_REFERENCE_DECK = (
+    PROJECT_ROOT / "reference_files" / "RoboSprayer_Electric_Report_Astauto_v7.pptx"
+)
 ELECTRIC_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_electric.yaml"
 HYBRID_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_hybrid.yaml"
 
@@ -347,6 +350,54 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
     assert _run_styles(hybrid_notice) == _run_styles(reference_notice)
 
 
+def test_profile_powerpoint_matches_v7_road_and_steering_slide_geometry(electric_report) -> None:
+    assert ELECTRIC_V7_REFERENCE_DECK.exists()
+    generated = Presentation(electric_report.presentation_path)
+    reference = Presentation(ELECTRIC_V7_REFERENCE_DECK)
+
+    assert len(reference.slides) == 12
+    for slide_index, title, subtitle, page_text in (
+        (
+            9,
+            "Road Profile",
+            "Road height and road gradient over the drive cycle",
+            "10  /  12",
+        ),
+        (
+            10,
+            "Wheel Steering Angles",
+            "Front and rear wheel steering behaviour over the drive cycle",
+            "11  /  12",
+        ),
+    ):
+        generated_slide = generated.slides[slide_index]
+        reference_slide = reference.slides[slide_index]
+
+        for text in (title, subtitle, "DISTANCE", page_text):
+            _assert_geometry_close(
+                _find_text_shape(generated_slide, text),
+                _find_text_shape(reference_slide, text),
+            )
+
+        _assert_geometry_close(
+            _largest_plot_picture(generated_slide),
+            _largest_plot_picture(reference_slide),
+        )
+        assert _run_styles(_find_text_shape(generated_slide, title)) == _run_styles(
+            _find_text_shape(reference_slide, title)
+        )
+
+    _assert_geometry_close(
+        _find_text_shape(generated.slides[10], "All steering-angle channels remain"),
+        _find_text_shape(reference.slides[10], "All steering-angle channels remain"),
+    )
+
+    generated_hashes = set(_media_hashes(electric_report.presentation_path))
+    reference_hashes = _picture_hashes_by_slide(ELECTRIC_V7_REFERENCE_DECK)
+    assert reference_hashes[10][0] in generated_hashes
+    assert reference_hashes[11][0] in generated_hashes
+
+
 def test_profile_powerpoint_preserves_hybrid_reference_plot_slots(hybrid_report) -> None:
     generated = Presentation(hybrid_report.presentation_path)
     reference = Presentation(HYBRID_REFERENCE_DECK)
@@ -597,8 +648,28 @@ def _shape_geometry(shape) -> tuple[int, int, int, int]:
     return shape.left, shape.top, shape.width, shape.height
 
 
+def _shape_geometry_in(shape) -> tuple[float, float, float, float]:
+    return tuple(value / 914400 for value in _shape_geometry(shape))
+
+
+def _assert_geometry_close(generated_shape, reference_shape, tolerance: float = 0.015) -> None:
+    for generated, reference in zip(
+        _shape_geometry_in(generated_shape), _shape_geometry_in(reference_shape)
+    ):
+        assert generated == pytest.approx(reference, abs=tolerance)
+
+
 def _picture_geometries(shapes) -> set[tuple[int, int, int, int]]:
     return {_shape_geometry(shape) for shape in shapes if shape.shape_type == 13}
+
+
+def _largest_plot_picture(slide):
+    pictures = [
+        shape
+        for shape in slide.shapes
+        if shape.shape_type == 13 and shape.width > 2_000_000 and shape.height > 2_000_000
+    ]
+    return max(pictures, key=lambda shape: shape.width * shape.height)
 
 
 def _media_hashes(path: Path) -> list[str]:
@@ -612,6 +683,18 @@ def _media_hashes(path: Path) -> list[str]:
 
 def _file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _picture_hashes_by_slide(path: Path) -> dict[int, list[str]]:
+    prs = Presentation(path)
+    return {
+        index: [
+            hashlib.sha256(shape.image.blob).hexdigest()
+            for shape in slide.shapes
+            if shape.shape_type == 13
+        ]
+        for index, slide in enumerate(prs.slides, start=1)
+    }
 
 
 def _with_values(excel_result, replacements: dict[str, float]):

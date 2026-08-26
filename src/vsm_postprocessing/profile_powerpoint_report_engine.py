@@ -71,8 +71,31 @@ _ASTAUTO_NAVY = RGBColor.from_string("17246E")
 _ASTAUTO_ORANGE = RGBColor.from_string("D98A2B")
 _ASTAUTO_TEXT = RGBColor.from_string("0E1A4A")
 _ASTAUTO_MUTED = RGBColor.from_string("5C6B82")
-_ASTAUTO_CARD_BORDER = RGBColor.from_string("E4EAF0")
+_ASTAUTO_CARD_BORDER = RGBColor.from_string("E3E8F0")
 _ASTAUTO_PANEL_FILL = RGBColor.from_string("F7F9FC")
+_V7_REFERENCE_DECK_PATH = Path("reference_files/RoboSprayer_Electric_Report_Astauto_v7.pptx")
+_V7_HEADER_ICON_RECT = (0.6, 0.52, 0.64, 0.64)
+_V7_HEADER_ICON_IMAGE_RECT = (0.75, 0.67, 0.34, 0.34)
+_V7_TITLE_RECT = (1.45, 0.44, 11.4, 0.5)
+_V7_SUBTITLE_RECT = (1.47, 0.94, 11.4, 0.32)
+_V7_KPI_CARD_LEFT = 0.6
+_V7_KPI_CARD_TOP = 1.72
+_V7_KPI_CARD_WIDTH = 1.89
+_V7_KPI_CARD_HEIGHT = 1.28
+_V7_KPI_CARD_GAP = 0.16
+_V7_KPI_DOT_OFFSET = (0.18, 0.17, 0.11, 0.11)
+_V7_KPI_LABEL_OFFSET = (0.36, 0.11, 1.39, 0.4)
+_V7_KPI_VALUE_OFFSET = (0.32, 0.54, 1.47, 0.6)
+_V7_ROAD_PANEL_RECT = (3.057, 3.15, 7.22, 3.73)
+_V7_ROAD_IMAGE_RECT = (3.177, 3.27, 6.98, 3.49)
+_V7_STEERING_PANEL_RECT = (3.337, 3.15, 6.66, 3.45)
+_V7_STEERING_IMAGE_RECT = (3.457, 3.27, 6.42, 3.21)
+_V7_HYBRID_ROAD_PLOT_PANEL_RECT = (0.9, 3.15, 5.58, 3.45)
+_V7_HYBRID_ROAD_PLOT_IMAGE_RECT = (1.02, 3.77, 5.34, 2.67)
+_V7_HYBRID_ROAD_HEIGHT_PANEL_RECT = (6.86, 3.15, 5.58, 3.45)
+_V7_STEERING_ZERO_NOTE_RECT = (0.6, 6.66, 12.13, 0.24)
+_V7_FOOTER_RECT = (0.6, 7.02, 9.0, 0.3)
+_V7_PAGE_RECT = (11.0, 7.02, 1.73, 0.3)
 
 
 @dataclass(frozen=True)
@@ -615,6 +638,8 @@ def _render_road_profile_slide(
         slide,
         slide_def.title,
         slide_def.subtitle or "Road height and road gradient over the drive cycle",
+        assets,
+        icon_slide_number=10,
     )
     is_hybrid = (excel_result.profile.metadata.powertrain or "").strip().lower() == "hybrid"
     height_available = "track_height" in excel_result.plotting_result.values_by_semantic_name
@@ -639,10 +664,15 @@ def _render_road_profile_slide(
     _add_custom_kpi_cards(slide, statistics_by_id, cards)
     image_path = _plot_path_or_none("road_profile", plots_by_id, assets)
     if is_hybrid and not height_available:
-        _add_custom_plot_panel(slide, image_path, Inches(0.64), Inches(3.03), Inches(5.9), Inches(3.58))
-        _add_road_height_unavailable_panel(slide, Inches(6.83), Inches(3.03), Inches(5.86), Inches(3.58))
+        _add_custom_plot_panel(
+            slide,
+            image_path,
+            _rect(_V7_HYBRID_ROAD_PLOT_PANEL_RECT),
+            _rect(_V7_HYBRID_ROAD_PLOT_IMAGE_RECT),
+        )
+        _add_road_height_unavailable_panel(slide, *_rect(_V7_HYBRID_ROAD_HEIGHT_PANEL_RECT))
     else:
-        _add_custom_plot_panel(slide, image_path, Inches(0.64), Inches(2.94), Inches(12.05), Inches(3.74))
+        _add_custom_plot_panel(slide, image_path, _rect(_V7_ROAD_PANEL_RECT), _rect(_V7_ROAD_IMAGE_RECT))
     _add_custom_footer(slide, prs, excel_result, footer, slide_number, slide_count)
     _add_astauto_logo(slide, prs)
 
@@ -665,6 +695,8 @@ def _render_wheel_steering_slide(
         slide,
         slide_def.title,
         slide_def.subtitle or "Front and rear wheel steering behaviour over the drive cycle",
+        assets,
+        icon_slide_number=11,
     )
     _add_custom_kpi_cards(
         slide,
@@ -679,56 +711,64 @@ def _render_wheel_steering_slide(
         ),
     )
     image_path = _plot_path_or_none("wheel_steering_angles", plots_by_id, assets)
-    _add_custom_plot_panel(slide, image_path, Inches(0.64), Inches(2.94), Inches(12.05), Inches(3.74))
+    _add_custom_plot_panel(slide, image_path, _rect(_V7_STEERING_PANEL_RECT), _rect(_V7_STEERING_IMAGE_RECT))
     if _all_steering_channels_zero(statistics_by_id):
         _add_text_box(
             slide,
             "All steering-angle channels remain at 0.00\u00b0 for this drive cycle.",
-            Inches(1.0),
-            Inches(6.25),
-            Inches(7.3),
-            Inches(0.24),
-            font_size=8.5,
+            *_rect(_V7_STEERING_ZERO_NOTE_RECT),
+            font_size=10.5,
             color=_ASTAUTO_MUTED,
             italic=True,
+            font_name="Calibri",
         )
     _add_custom_footer(slide, prs, excel_result, footer, slide_number, slide_count)
     _add_astauto_logo(slide, prs)
 
 
-def _apply_custom_astauto_background(slide: Any, prs: Presentation) -> None:
+def _apply_custom_astauto_background(slide: Any, _prs: Presentation) -> None:
     background = slide.background
     background.fill.solid()
     background.fill.fore_color.rgb = RGBColor.from_string("FFFFFF")
-    rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), prs.slide_width, Inches(0.06))
-    rule.fill.solid()
-    rule.fill.fore_color.rgb = _ASTAUTO_ORANGE
-    rule.line.fill.background()
 
 
-def _add_custom_header(slide: Any, title: str, subtitle: str) -> None:
+def _rect(values: tuple[float, float, float, float]) -> tuple[int, int, int, int]:
+    left, top, width, height = values
+    return Inches(left), Inches(top), Inches(width), Inches(height)
+
+
+def _add_custom_header(
+    slide: Any,
+    title: str,
+    subtitle: str,
+    assets: Path,
+    *,
+    icon_slide_number: int,
+) -> None:
+    icon = slide.shapes.add_shape(MSO_SHAPE.OVAL, *_rect(_V7_HEADER_ICON_RECT))
+    icon.fill.solid()
+    icon.fill.fore_color.rgb = _ASTAUTO_BLUE
+    icon.line.fill.background()
+    icon_path = _reference_header_icon_path(icon_slide_number, assets)
+    if icon_path is not None:
+        slide.shapes.add_picture(str(icon_path), *_rect(_V7_HEADER_ICON_IMAGE_RECT))
     _add_text_box(
         slide,
         title,
-        Inches(0.62),
-        Inches(0.42),
-        Inches(8.4),
-        Inches(0.48),
-        font_size=30,
-        color=_ASTAUTO_NAVY,
+        *_rect(_V7_TITLE_RECT),
+        font_size=25,
+        color=_ASTAUTO_TEXT,
         bold=True,
-        font_name="Cambria",
+        font_name="Georgia",
     )
     _add_text_box(
         slide,
         subtitle,
-        Inches(0.64),
-        Inches(0.98),
-        Inches(8.0),
-        Inches(0.28),
-        font_size=13.5,
+        *_rect(_V7_SUBTITLE_RECT),
+        font_size=12.5,
         color=_ASTAUTO_MUTED,
-        font_name="Cambria",
+        italic=True,
+        font_name="Calibri",
     )
 
 
@@ -737,65 +777,83 @@ def _add_custom_kpi_cards(
     statistics_by_id: Mapping[str, StatisticResult],
     cards: tuple[tuple[str, str, str], ...],
 ) -> None:
-    left = Inches(0.64)
-    top = Inches(1.55)
-    gap = Inches(0.11)
-    width = Inches(1.93)
-    height = Inches(1.0)
     for index, (label, metric_id, unit) in enumerate(cards):
-        card_left = left + index * (width + gap)
+        card_left = Inches(
+            _V7_KPI_CARD_LEFT + index * (_V7_KPI_CARD_WIDTH + _V7_KPI_CARD_GAP)
+        )
+        top = Inches(_V7_KPI_CARD_TOP)
+        width = Inches(_V7_KPI_CARD_WIDTH)
+        height = Inches(_V7_KPI_CARD_HEIGHT)
         card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, card_left, top, width, height)
         card.fill.solid()
         card.fill.fore_color.rgb = RGBColor.from_string("FFFFFF")
         card.line.color.rgb = _ASTAUTO_CARD_BORDER
-        card.line.width = Pt(0.8)
+        card.line.width = Pt(1)
 
-        stripe = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, card_left, top, Inches(0.06), height)
-        stripe.fill.solid()
-        stripe.fill.fore_color.rgb = _ASTAUTO_BLUE if index % 2 == 0 else _ASTAUTO_ORANGE
-        stripe.line.fill.background()
+        accent_color = _custom_kpi_accent_color(index)
+        dot_left, dot_top, dot_width, dot_height = _V7_KPI_DOT_OFFSET
+        dot = slide.shapes.add_shape(
+            MSO_SHAPE.OVAL,
+            card_left + Inches(dot_left),
+            top + Inches(dot_top),
+            Inches(dot_width),
+            Inches(dot_height),
+        )
+        dot.fill.solid()
+        dot.fill.fore_color.rgb = accent_color
+        dot.line.fill.background()
 
+        label_left, label_top, label_width, label_height = _V7_KPI_LABEL_OFFSET
         _add_text_box(
             slide,
             label,
-            card_left + Inches(0.18),
-            top + Inches(0.16),
-            width - Inches(0.3),
-            Inches(0.2),
-            font_size=8.2,
+            card_left + Inches(label_left),
+            top + Inches(label_top),
+            Inches(label_width),
+            Inches(label_height),
+            font_size=8.5,
             color=_ASTAUTO_MUTED,
             bold=True,
+            font_name="Calibri",
         )
+        value_left, value_top, value_width, value_height = _V7_KPI_VALUE_OFFSET
         _add_text_box(
             slide,
             _format_custom_metric_value(statistics_by_id.get(metric_id), unit),
-            card_left + Inches(0.18),
-            top + Inches(0.42),
-            width - Inches(0.3),
-            Inches(0.36),
-            font_size=17.5,
-            color=_ASTAUTO_TEXT,
+            card_left + Inches(value_left),
+            top + Inches(value_top),
+            Inches(value_width),
+            Inches(value_height),
+            font_size=19,
+            color=accent_color,
             bold=True,
+            font_name="Calibri",
         )
 
 
-def _add_custom_plot_panel(slide: Any, image_path: Path | None, left: int, top: int, width: int, height: int) -> None:
+def _custom_kpi_accent_color(index: int) -> RGBColor:
+    if index == 5:
+        return _ASTAUTO_TEXT
+    return _ASTAUTO_BLUE if index % 2 == 0 else _ASTAUTO_ORANGE
+
+
+def _add_custom_plot_panel(
+    slide: Any,
+    image_path: Path | None,
+    panel_rect: tuple[int, int, int, int],
+    image_rect: tuple[int, int, int, int],
+) -> None:
+    left, top, width, height = panel_rect
     panel = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
     panel.fill.solid()
     panel.fill.fore_color.rgb = RGBColor.from_string("FFFFFF")
-    panel.line.color.rgb = _ASTAUTO_CARD_BORDER
-    panel.line.width = Pt(0.8)
+    panel.line.fill.background()
     if image_path is None:
         _add_unavailable_plot_text(slide, left, top, width, height)
         return
-    inset_x = Inches(0.22)
-    inset_y = Inches(0.2)
+    image_left, image_top, image_width, image_height = image_rect
     slide.shapes.add_picture(
-        str(image_path),
-        left + inset_x,
-        top + inset_y,
-        width=width - (2 * inset_x),
-        height=height - Inches(0.42),
+        str(image_path), image_left, image_top, width=image_width, height=image_height
     )
 
 
@@ -828,7 +886,13 @@ def _add_road_height_unavailable_panel(slide: Any, left: int, top: int, width: i
         color=_ASTAUTO_MUTED,
         align=PP_ALIGN.CENTER,
     )
-    rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left + Inches(1.85), top + Inches(2.2), Inches(2.2), Inches(0.04))
+    rule = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        left + Inches(1.85),
+        top + Inches(2.2),
+        Inches(2.2),
+        Inches(0.04),
+    )
     rule.fill.solid()
     rule.fill.fore_color.rgb = _ASTAUTO_ORANGE
     rule.line.fill.background()
@@ -849,9 +913,46 @@ def _add_unavailable_plot_text(slide: Any, left: int, top: int, width: int, heig
     )
 
 
+def _reference_header_icon_path(slide_number: int, assets: Path) -> Path | None:
+    deck_path = _resolve_v7_reference_deck_path()
+    if deck_path is None:
+        return None
+    try:
+        reference = Presentation(deck_path)
+        slide = reference.slides[slide_number - 1]
+    except (IndexError, OSError, ValueError):
+        return None
+    for shape in slide.shapes:
+        if shape.shape_type != 13:
+            continue
+        image = shape.image
+        if image.size != (256, 256):
+            continue
+        assets.mkdir(parents=True, exist_ok=True)
+        icon_path = assets / f"v7_slide_{slide_number}_header_icon.{image.ext}"
+        if not icon_path.exists() or icon_path.read_bytes() != image.blob:
+            icon_path.write_bytes(image.blob)
+        return icon_path
+    return None
+
+
+def _resolve_v7_reference_deck_path() -> Path | None:
+    candidates = []
+    if _V7_REFERENCE_DECK_PATH.is_absolute():
+        candidates.append(_V7_REFERENCE_DECK_PATH)
+    else:
+        project_root = Path(__file__).resolve().parents[2]
+        candidates.append(project_root / _V7_REFERENCE_DECK_PATH)
+        candidates.append(Path.cwd() / _V7_REFERENCE_DECK_PATH)
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
 def _add_custom_footer(
     slide: Any,
-    prs: Presentation,
+    _prs: Presentation,
     result: ProfileExcelReportResult,
     footer: str | None,
     slide_number: int,
@@ -867,23 +968,20 @@ def _add_custom_footer(
     _add_text_box(
         slide,
         text,
-        Inches(0.64),
-        Inches(7.04),
-        Inches(8.4),
-        Inches(0.22),
-        font_size=7.5,
-        color=_ASTAUTO_MUTED,
+        *_rect(_V7_FOOTER_RECT),
+        font_size=8.5,
+        color=_ASTAUTO_TEXT if is_electric else _ASTAUTO_MUTED,
+        bold=is_electric,
+        font_name="Calibri",
     )
     _add_text_box(
         slide,
         page_text,
-        prs.slide_width - Inches(1.15),
-        Inches(7.04),
-        Inches(0.72),
-        Inches(0.22),
-        font_size=8,
+        *_rect(_V7_PAGE_RECT),
+        font_size=8.5,
         color=_ASTAUTO_MUTED,
         align=PP_ALIGN.RIGHT,
+        font_name="Calibri",
     )
 
 
