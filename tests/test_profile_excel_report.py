@@ -229,6 +229,29 @@ def test_profile_excel_report_exports_latest_electric_road_height(tmp_path: Path
     assert road_profile[1].unit == "m"
 
 
+def test_profile_excel_report_latest_electric_final_traction_values_use_three_decimal_format(tmp_path: Path) -> None:
+    result = generate_profile_excel_report(
+        _latest_electric_csv(),
+        ELECTRIC_PROFILE,
+        tmp_path / "latest_electric_traction",
+        ImportOptions(strict=True),
+    )
+    workbook = load_workbook(result.report_path, data_only=True)
+    sheet = workbook["RoboSprayer Electric"]
+    summary = _right_summary_cells(sheet, result)
+
+    expected = {
+        "EDU Max Power [kW]": 6.329424115281502,
+        "Max Wheel Power Total [kW]": 0.0,
+        "EDU Max Speed [rpm]": 70.3409,
+        "EDU Max Torque [Nm]": 1420.93,
+    }
+    for label, value in expected.items():
+        cell = summary[label]
+        assert cell.value == pytest.approx(value)
+        assert cell.number_format == "0.000"
+
+
 def test_profile_excel_report_exports_latest_hybrid_road_height(tmp_path: Path) -> None:
     result = generate_profile_excel_report(
         _latest_hybrid_csv(),
@@ -273,6 +296,33 @@ def test_profile_excel_report_exports_latest_hybrid_road_height(tmp_path: Path) 
     assert metadata["Resolved raw profile channels"] == (
         metadata["Exported VSM raw channels"] + metadata["Exported AVL raw channels"]
     )
+
+
+def test_profile_excel_report_latest_hybrid_final_edu_metrics_are_distinct_and_three_decimal(tmp_path: Path) -> None:
+    result = generate_profile_excel_report(
+        _latest_hybrid_csv(),
+        HYBRID_PROFILE,
+        tmp_path / "latest_hybrid_traction",
+        ImportOptions(strict=True),
+    )
+    workbook = load_workbook(result.report_path, data_only=True)
+    sheet = workbook["Caiman SP Hybrid"]
+    summary = _right_summary_cells(sheet, result)
+
+    assert summary["EDU Max Power [kW]"].value == pytest.approx(55.53472977546917)
+    assert summary["Max Total EDU Mechanical Power [kW]"].value == pytest.approx(111.06945955093833)
+    assert summary["EDU Max Power [kW]"].value != pytest.approx(summary["Max Total EDU Mechanical Power [kW]"].value)
+    assert summary["Max Wheel Power Total [kW]"].value == pytest.approx(106.80434160103889)
+    assert summary["EDU Max Speed [rpm]"].value == pytest.approx(22750.0)
+    assert summary["EDU Max Torque [Nm]"].value == pytest.approx(892.452)
+    for label in (
+        "EDU Max Power [kW]",
+        "Max Total EDU Mechanical Power [kW]",
+        "Max Wheel Power Total [kW]",
+        "EDU Max Speed [rpm]",
+        "EDU Max Torque [Nm]",
+    ):
+        assert summary[label].number_format == "0.000"
 
 
 def test_profile_excel_report_uses_dynamic_geometry_for_short_profile(tmp_path: Path) -> None:
@@ -334,3 +384,9 @@ def test_profile_excel_report_uses_dynamic_geometry_for_short_profile(tmp_path: 
     assert sheet.cell(3, 5).value == "Max Speed [kph]"
     assert sheet.cell(4, 5).value == pytest.approx(6.0)
     assert result.report_path.name == "Short_Electric_Engineering_Report.xlsx"
+
+
+def _right_summary_cells(sheet, result) -> dict[str, object]:
+    start_col = result.report_channel_count + 2
+    end_col = start_col + result.statistic_count + result.kpi_count
+    return {sheet.cell(3, col).value: sheet.cell(4, col) for col in range(start_col, end_col)}

@@ -53,6 +53,25 @@ class UnavailableProfileKPI:
     unavailable_dependencies: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class CanonicalReportMetric:
+    metric_id: str
+    excel_label: str
+    powerpoint_label: str
+    value: float
+    unit: str | None
+    source_channel: str
+    source_name: str | None
+    source_kind: str
+    statistic: str
+    calculation: str
+    placement_group: str
+    notes: str | None = None
+    sample_count: int = 0
+    used_sample_count: int = 0
+    omitted_sample_count: int = 0
+
+
 @dataclass
 class ProfileStatisticsResult:
     dataset: ImportedDataset
@@ -101,6 +120,110 @@ class ProfileStatisticsResult:
     @property
     def is_complete(self) -> bool:
         return not self.unavailable_required_statistics and not self.unavailable_required_kpis
+
+    @property
+    def canonical_metrics(self) -> list[CanonicalReportMetric]:
+        return build_canonical_report_metrics(self)
+
+
+_POWERPOINT_LABEL_OVERRIDES = {
+    "time_minutes_last": "DRIVE CYCLE TIME",
+    "distance_km_last": "DISTANCE",
+    "chassis_speed_max": "MAX SPEED",
+    "battery_soc_first": "INITIAL BATTERY SOC",
+    "battery_soc_last": "FINAL BATTERY SOC",
+    "battery_capacity_used": "BATTERY CAPACITY USED",
+    "battery_energy_consumption_wh_per_km": "ENERGY CONSUMPTION",
+    "range_85_battery_km": "RANGE @ 85%",
+    "max_battery_discharge_power": "MAX BATT POWER",
+    "battery_power_rms": "BATT POWER RMS",
+    "battery_heatflow_rms": "HEATFLOW RMS",
+    "battery_heatflow_max": "MAX HEATFLOW",
+    "energy_released_last": "ENERGY RELEASED",
+    "energy_recuperated_last": "ENERGY RECOVERED",
+    "auxiliary_energy_accumulated_last": "AUX ENERGY",
+    "total_auxiliary_power_max": "MAX AUX POWER",
+    "tyre_rr_energy_accumulated_last": "TYRE RR ENERGY",
+    "edu_mech_power_rl_max": "EDU MAX POWER",
+    "total_edu_mech_power_max": "MAX TOTAL EDU MECH POWER",
+    "wheel_power_total_max": "WHEEL MAX POWER",
+    "edu_speed_rl_max": "EDU MAX SPEED",
+    "edu_torque_rl_max": "EDU MAX TORQUE",
+    "engine_fuel_consumption_last": "FUEL CONSUMPTION",
+    "engine_power_required_max": "MAX ENG POWER",
+    "engine_speed_max": "MAX ENG SPEED",
+    "engine_torque_max": "MAX ENG TORQUE",
+    "engine_energy_delivered_sum": "ENGINE ENERGY",
+    "generator_power_1_max": "MAX GEN POWER",
+    "agrochemical_discharge_max": "AGRO DISCHARGE",
+}
+
+
+def build_canonical_report_metrics(result: ProfileStatisticsResult) -> list[CanonicalReportMetric]:
+    """Return final report metrics with one shared Excel/PPT meaning and source trace."""
+
+    metrics: list[CanonicalReportMetric] = []
+    raw_by_name = result.profile.raw_by_semantic_name()
+    math_by_name = result.profile.math_by_semantic_name()
+
+    for item in result.statistics:
+        definition = item.definition
+        source_definition = raw_by_name.get(definition.target) or math_by_name.get(definition.target)
+        source_name = source_definition.source_name if source_definition is not None else item.channel_display_name
+        excel_label = definition.display_name or item.channel_display_name
+        metrics.append(
+            CanonicalReportMetric(
+                metric_id=definition.statistic_id,
+                excel_label=excel_label,
+                powerpoint_label=_powerpoint_label(definition.statistic_id, excel_label),
+                value=item.value,
+                unit=item.channel_unit or definition.unit,
+                source_channel=definition.target,
+                source_name=source_name,
+                source_kind=item.channel_kind,
+                statistic=definition.operation.upper(),
+                calculation=f"{definition.operation.upper()}({definition.target})",
+                placement_group=definition.placement_group or "profile",
+                notes=definition.notes,
+                sample_count=item.sample_count,
+                used_sample_count=item.used_sample_count,
+                omitted_sample_count=item.omitted_sample_count,
+            )
+        )
+
+    for item in result.kpis:
+        definition = item.definition
+        excel_label = _client_kpi_label(definition.kpi_id, definition.display_name)
+        metrics.append(
+            CanonicalReportMetric(
+                metric_id=definition.kpi_id,
+                excel_label=excel_label,
+                powerpoint_label=_powerpoint_label(definition.kpi_id, excel_label),
+                value=item.value,
+                unit=definition.unit,
+                source_channel=definition.kpi_id,
+                source_name=None,
+                source_kind="KPI",
+                statistic="KPI",
+                calculation=definition.expression,
+                placement_group=definition.placement_group or "profile",
+                notes=definition.notes,
+                sample_count=result.dataset.quality.sample_count,
+                used_sample_count=result.dataset.quality.sample_count,
+                omitted_sample_count=0,
+            )
+        )
+    return metrics
+
+
+def _powerpoint_label(metric_id: str, excel_label: str) -> str:
+    return _POWERPOINT_LABEL_OVERRIDES.get(metric_id, excel_label.split("[", 1)[0].strip().upper())
+
+
+def _client_kpi_label(kpi_id: str, display_name: str | None) -> str:
+    if kpi_id == "range_85_battery_km":
+        return "Range for 85% Battery"
+    return display_name or kpi_id.replace("_", " ").title()
 
 
 def calculate_profile_statistics(

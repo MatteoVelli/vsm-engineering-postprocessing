@@ -332,7 +332,7 @@ def _render_cover_slide(
             5.25,
             2.85,
             theme,
-            title="Mission Definition",
+            title="Drive Cycle Definition",
             body_font_size=11,
         )
     stats = [statistics_by_id[sid] for sid in definition.statistic_ids]
@@ -358,7 +358,7 @@ def _render_overview_slide(
 ) -> None:
     left = definition.body[:5]
     right = definition.body[5:]
-    _add_bullet_panel(slide, left, 0.72, 1.65, 5.75, 3.95, theme, title="Mission Structure")
+    _add_bullet_panel(slide, left, 0.72, 1.65, 5.75, 3.95, theme, title="Drive Cycle Structure")
     _add_bullet_panel(slide, right, 6.85, 1.65, 5.75, 3.95, theme, title="Hybrid System Context")
     stats = [statistics_by_id[sid] for sid in definition.statistic_ids]
     if stats:

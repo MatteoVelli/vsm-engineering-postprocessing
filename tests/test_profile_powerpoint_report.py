@@ -15,6 +15,7 @@ from vsm_postprocessing.profile_powerpoint_report_engine import (
     build_profile_powerpoint_report,
     _hybrid_subsystem_active,
     _profile_powerpoint_config,
+    _profile_statistics_as_powerpoint_statistics,
     inspect_reference_powerpoint_layout,
 )
 from vsm_postprocessing.ui_config import generate_reporting_profile_engineering_report
@@ -31,8 +32,8 @@ from conftest import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-ELECTRIC_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "RoboSprayer_Electric_Report_FINAL.pptx"
-HYBRID_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "RoboSprayer_Hybrid_Engineering_Report.pptx"
+ELECTRIC_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "RoboSprayer_Electric_Report_Astauto_Colours.pptx"
+HYBRID_REFERENCE_DECK = PROJECT_ROOT / "reference_files" / "Caiman_SP_Hybrid_Report_Astauto_Colours.pptx"
 ELECTRIC_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_electric.yaml"
 HYBRID_PROFILE = PROJECT_ROOT / "config" / "report_profiles" / "robosprayer_hybrid.yaml"
 
@@ -91,18 +92,18 @@ def test_reference_powerpoint_layout_inspection_matches_final_profile_decks() ->
         "Simulation Summary",
     ]
     assert _reference_titles(hybrid.source_path) == [
-        "RoboSprayer Hybrid",
+        "Caiman SP Hybrid",
         "System and Simulation Overview",
         "Executive Results",
         "Vehicle Operation",
         "Battery and Electrical Energy System",
         "Battery Power and Energy Recovery",
         "Range Extender and Generator",
-        "Auxiliary and Tyre Energy Demand",
+        "Agrochemical and Battery Behaviour",
         "Traction, EDU and Auxiliary Energy Demand",
         "Simulation Summary",
     ]
-    assert electric.slides[3].shapes[21].x_in == pytest.approx(3.157)
+    assert electric.slides[3].shapes[23].x_in == pytest.approx(3.157)
     assert hybrid.slides[3].shapes[25].x_in == pytest.approx(3.419)
 
 
@@ -267,7 +268,7 @@ def test_profile_powerpoint_preserves_electric_reference_geometry_and_style(elec
 
     generated_slide4 = list(generated.slides[3].shapes)
     reference_slide4 = list(reference.slides[3].shapes)
-    assert _shape_geometry(reference_slide4[21]) in _picture_geometries(generated_slide4)
+    assert _shape_geometry(reference_slide4[23]) in _picture_geometries(generated_slide4)
 
 
 def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report, hybrid_report) -> None:
@@ -308,10 +309,13 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
     assert list(hybrid.slides[9].shapes)[35].text.endswith("v1.3.0")
 
     hybrid_notice = _find_text_shape(hybrid.slides[6], "RANGE EXTENDER INACTIVE")
-    reference_notice = _find_text_shape(hybrid_reference.slides[6], "RANGE EXTENDER INACTIVE")
-    assert hybrid_notice.text == reference_notice.text
+    reference_notice = list(hybrid_reference.slides[6].shapes)[36]
+    assert hybrid_notice.text.replace("\x0b", "\n").strip() == (
+        "RANGE EXTENDER INACTIVE IN THIS SIMULATION\n"
+        "ICE/generator channels resolved; no operating activity detected in this simulation."
+    )
     assert len(hybrid_notice.text_frame.paragraphs) == 1
-    assert _run_texts(hybrid_notice) == _run_texts(reference_notice)
+    assert _run_styles(hybrid_notice) == _run_styles(reference_notice)
 
 
 def test_profile_powerpoint_preserves_hybrid_reference_plot_slots(hybrid_report) -> None:
@@ -324,7 +328,7 @@ def test_profile_powerpoint_preserves_hybrid_reference_plot_slots(hybrid_report)
 
     generated_slide7 = list(generated.slides[6].shapes)
     reference_slide7 = list(reference.slides[6].shapes)
-    for index in (36, 37):
+    for index in (37, 38):
         assert _shape_geometry(reference_slide7[index]) in _picture_geometries(generated_slide7)
 
 
@@ -401,6 +405,50 @@ def test_profile_powerpoint_latest_electric_uses_corrected_range_85(tmp_path: Pa
     assert "9.47 km" not in text
 
 
+def test_profile_powerpoint_traction_cards_consume_canonical_metrics(tmp_path: Path) -> None:
+    report = generate_reporting_profile_engineering_report(
+        _latest_hybrid_csv(),
+        HYBRID_PROFILE,
+        tmp_path / "hybrid_traction_mapping",
+        ImportOptions(strict=True),
+    )
+    stats = _profile_statistics_as_powerpoint_statistics(report.excel_result)
+    by_id = {item.statistic_id: item for item in stats.statistics}
+    text = _visible_text(report.presentation_path)
+
+    assert by_id["edu_mech_power_rl_max"].display_name == "EDU MAX POWER"
+    assert by_id["edu_mech_power_rl_max"].channel_id == "edu_mech_power_rl"
+    assert by_id["edu_mech_power_rl_max"].value == pytest.approx(55.53472977546917)
+    assert by_id["total_edu_mech_power_max"].display_name == "MAX TOTAL EDU MECH POWER"
+    assert by_id["total_edu_mech_power_max"].channel_id == "total_edu_mech_power"
+    assert by_id["total_edu_mech_power_max"].value == pytest.approx(111.06945955093833)
+    assert "EDU MAX POWER" in text
+    assert "55.53 kW" in text
+    assert "111.07 kW" not in text
+    assert "WHEEL MAX POWER" in text
+    assert "EDU MAX SPEED" in text
+    assert "EDU MAX TORQUE" in text
+
+
+def test_profile_powerpoint_replaces_mission_with_drive_cycle(electric_report, hybrid_report) -> None:
+    for result in (electric_report, hybrid_report):
+        text = _visible_text(result.presentation_path)
+        assert "DRIVE CYCLE TIME" in text
+        assert "Drive Cycle Structure" in text
+        assert "MISSION TIME" not in text
+        assert "Mission Structure" not in text
+        assert "Mission duration" not in text
+        assert "Mission distance" not in text
+
+
+def test_profile_powerpoint_astauto_theme_constants_are_configured(electric_report) -> None:
+    config = _profile_powerpoint_config(electric_report.excel_result, output_filename="theme_check.pptx")
+    assert config["theme"]["accent_fill"] == "2E56D0"
+    assert config["theme"]["accent_border"] == "17246E"
+    assert config["theme"]["rule_color"] == "D98A2B"
+    assert config["theme"]["text_color"] == "0E1A4A"
+
+
 def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path: Path) -> None:
     report = generate_reporting_profile_engineering_report(
         _latest_hybrid_csv(),
@@ -421,12 +469,12 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     assert "Range-extender activity is derived from non-zero resolved engine/generator statistics." not in text
     values = {item.definition.statistic_id: item.value for item in report.excel_result.statistics_result.statistics}
     assert values["wheel_power_total_max"] > 100.0
-    assert "WHEEL POWER" in text
+    assert "WHEEL MAX POWER" in text
 
     prs = Presentation(report.presentation_path)
     assert len(prs.slides) == 10
     slide_8_text = [shape.text.strip() for shape in prs.slides[7].shapes if getattr(shape, "text", "").strip()]
-    for label in ("AGRO DISCHARGE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "MISSION TIME"):
+    for label in ("AGRO DISCHARGE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "DRIVE CYCLE TIME"):
         assert label in slide_8_text
     assert "FUEL\nCONSUMPTION" not in text
 
@@ -436,8 +484,8 @@ def test_profile_powerpoint_template_path_is_profile_configurable() -> None:
     hybrid_source = HYBRID_PROFILE.read_text(encoding="utf-8")
     engine_source = Path("src/vsm_postprocessing/profile_powerpoint_report_engine.py").read_text(encoding="utf-8")
 
-    assert "powerpoint_template: reference_files/RoboSprayer_Electric_Report_FINAL.pptx" in electric_source
-    assert "powerpoint_template: reference_files/RoboSprayer_Hybrid_Engineering_Report.pptx" in hybrid_source
+    assert "powerpoint_template: reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx" in electric_source
+    assert "powerpoint_template: reference_files/Caiman_SP_Hybrid_Report_Astauto_Colours.pptx" in hybrid_source
     assert "fallback_mode: auxiliary_tyre_energy" not in electric_source
     legacy_template = "Hybrid_SP_" + "Cai" + "man" + "_Sprayer_Report_FINAL (1).pptx"
     assert legacy_template not in electric_source

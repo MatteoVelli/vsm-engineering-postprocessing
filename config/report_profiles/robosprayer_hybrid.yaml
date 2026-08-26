@@ -258,7 +258,7 @@ plots:
         label: Engine Fuel Consumption
 presentation:
   footer: VSM Engineering Post-Processing Tool
-  powerpoint_template: reference_files/RoboSprayer_Hybrid_Engineering_Report.pptx
+  powerpoint_template: reference_files/Caiman_SP_Hybrid_Report_Astauto_Colours.pptx
   slides:
     - slide_id: cover
       statistics:
@@ -338,7 +338,7 @@ presentation:
         - battery_energy_and_fuel_vs_time
     - slide_id: traction_auxiliaries
       statistics:
-        - total_edu_mech_power_max
+        - edu_mech_power_rl_max
         - wheel_power_total_max
         - edu_speed_rl_max
         - edu_torque_rl_max

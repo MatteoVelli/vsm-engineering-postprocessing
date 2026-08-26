@@ -23,7 +23,7 @@ from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots
 from .profile_math import ProfileMathResult, calculate_profile_math_channels
 from .profile_plotting import ProfilePlottingResult, render_profile_plots
-from .profile_statistics import ProfileStatisticsResult, calculate_profile_statistics
+from .profile_statistics import ProfileStatisticsResult, build_canonical_report_metrics, calculate_profile_statistics
 from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ProfileResolutionResult, ReportingProfile, load_reporting_profile, resolve_profile
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
@@ -966,7 +966,7 @@ def _write_profile_report_sheet(
         if col is None:
             continue
         cell = sheet.cell(operation_rows[item.definition.operation], col, item.value)
-        cell.number_format = "0.000000"
+        cell.number_format = "0.000"
         cell.fill = label_fill
         cell.border = border
         cell.font = Font(bold=True)
@@ -1034,7 +1034,7 @@ def _write_profile_rms_blocks(
                 cell.border = border
                 cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         label.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        value.number_format = "0.000000"
+        value.number_format = "0.000"
 
 
 def _non_overlapping_rms_range(
@@ -1087,18 +1087,13 @@ def _write_profile_right_summary(
         label.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         value.border = border
         value.alignment = Alignment(horizontal="center", vertical="center")
-        value.number_format = "0.000000"
+        value.number_format = "0.000"
 
 
 def _profile_right_summary_items(statistics_result: ProfileStatisticsResult) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    for statistic in statistics_result.statistics:
-        label = statistic.definition.display_name or statistic.channel_display_name
-        unit = statistic.channel_unit or statistic.definition.unit
-        items.append({"label": _summary_label(label, unit), "value": statistic.value})
-    for kpi in statistics_result.kpis:
-        label = _client_kpi_label(kpi.definition.kpi_id, kpi.definition.display_name)
-        items.append({"label": _summary_label(label, kpi.definition.unit), "value": kpi.value})
+    for metric in build_canonical_report_metrics(statistics_result):
+        items.append({"label": _summary_label(metric.excel_label, metric.unit), "value": metric.value})
     return items
 
 
@@ -1163,7 +1158,7 @@ def _write_profile_kpi_block(
             cell = sheet.cell(row, col, value)
             cell.border = border
             if col == 2:
-                cell.number_format = "0.000000"
+                cell.number_format = "0.000"
 
 
 def _write_profile_plots_on_report_sheet(
@@ -1336,7 +1331,7 @@ def _write_profile_statistics_sheet(
             cell = sheet.cell(row, col, value)
             cell.border = border
             if col == 5:
-                cell.number_format = "0.000000"
+                cell.number_format = "0.000"
 
     kpi_start = len(statistics_result.statistics) + 4
     kpi_headers = ["KPI ID", "Display name", "Value", "Unit", "Dependencies", "Placement group"]
@@ -1358,7 +1353,7 @@ def _write_profile_statistics_sheet(
             cell = sheet.cell(row, col, value)
             cell.border = border
             if col == 3:
-                cell.number_format = "0.000000"
+                cell.number_format = "0.000"
 
     sheet.freeze_panes = "A2"
     for col in range(1, 11):

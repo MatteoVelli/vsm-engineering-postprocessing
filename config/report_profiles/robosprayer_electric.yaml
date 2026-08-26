@@ -2827,7 +2827,7 @@ plots:
         label: Wheel Load RR
 presentation:
   footer: VSM Engineering Post-Processing Tool
-  powerpoint_template: reference_files/RoboSprayer_Electric_Report_FINAL.pptx
+  powerpoint_template: reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx
   metadata_pills:
     - GVW 3,500 kg
     - Electric powertrain
@@ -2912,7 +2912,7 @@ presentation:
         - agrochemical_discharge_and_charge_vs_time
     - slide_id: traction_auxiliaries
       statistics:
-        - total_edu_mech_power_max
+        - edu_mech_power_rl_max
         - wheel_power_total_max
         - edu_speed_rl_max
         - edu_torque_rl_max

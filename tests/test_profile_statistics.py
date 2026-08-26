@@ -10,7 +10,7 @@ from vsm_postprocessing.importer import ImportOptions, load_data_file
 from vsm_postprocessing.math_engine import calculate_math_channels
 from vsm_postprocessing.models import ChannelInfo, DataQualityReport, ImportedDataset
 from vsm_postprocessing.profile_math import calculate_profile_math_channels
-from vsm_postprocessing.profile_statistics import calculate_profile_statistics
+from vsm_postprocessing.profile_statistics import build_canonical_report_metrics, calculate_profile_statistics
 from vsm_postprocessing.report_profile import (
     KPIDefinition,
     MathChannelDefinition,
@@ -361,6 +361,25 @@ def test_latest_electric_profile_derives_nominal_capacity_range_and_zero_chargin
     assert not result.diagnostics
 
 
+def test_latest_electric_traction_metrics_match_canonical_sources() -> None:
+    dataset = load_data_file(_latest_electric_csv(), ImportOptions(strict=True))
+    result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
+    metrics = {item.metric_id: item for item in build_canonical_report_metrics(result)}
+
+    assert metrics["edu_mech_power_rl_max"].excel_label == "EDU Max Power"
+    assert metrics["edu_mech_power_rl_max"].powerpoint_label == "EDU MAX POWER"
+    assert metrics["edu_mech_power_rl_max"].source_channel == "edu_mech_power_rl"
+    assert metrics["edu_mech_power_rl_max"].source_name == "EDU Mech Power RL"
+    assert metrics["edu_mech_power_rl_max"].statistic == "MAX"
+    assert metrics["edu_mech_power_rl_max"].value == pytest.approx(6.329424115281502)
+    assert metrics["wheel_power_total_max"].powerpoint_label == "WHEEL MAX POWER"
+    assert metrics["wheel_power_total_max"].value == pytest.approx(0.0)
+    assert metrics["edu_speed_rl_max"].source_name == "ElectricSystem_EM3_Speed"
+    assert metrics["edu_speed_rl_max"].value == pytest.approx(70.3409)
+    assert metrics["edu_torque_rl_max"].source_name == "ElectricSystem_EM3_Torque"
+    assert metrics["edu_torque_rl_max"].value == pytest.approx(1420.93)
+
+
 def test_latest_hybrid_profile_derives_nominal_capacity_without_adding_range_surface() -> None:
     dataset = load_data_file(_latest_hybrid_csv(), ImportOptions(strict=True))
     result = calculate_profile_statistics(dataset, load_reporting_profile(HYBRID_PROFILE))
@@ -373,6 +392,35 @@ def test_latest_hybrid_profile_derives_nominal_capacity_without_adding_range_sur
     assert stats["wheel_power_total_max"] == pytest.approx(106.80434160103889)
     assert stats["generator_power_1_max"] == pytest.approx(80.00422042560322)
     assert not result.diagnostics
+
+
+def test_latest_hybrid_edu_power_metrics_remain_distinct_and_traceable() -> None:
+    dataset = load_data_file(_latest_hybrid_csv(), ImportOptions(strict=True))
+    result = calculate_profile_statistics(dataset, load_reporting_profile(HYBRID_PROFILE))
+    metrics = {item.metric_id: item for item in build_canonical_report_metrics(result)}
+
+    edu_power = metrics["edu_mech_power_rl_max"]
+    total_power = metrics["total_edu_mech_power_max"]
+    wheel_power = metrics["wheel_power_total_max"]
+
+    assert edu_power.excel_label == "EDU Max Power"
+    assert edu_power.powerpoint_label == "EDU MAX POWER"
+    assert edu_power.source_channel == "edu_mech_power_rl"
+    assert edu_power.source_name == "EDU Mech Power RL"
+    assert edu_power.statistic == "MAX"
+    assert edu_power.value == pytest.approx(55.53472977546917)
+    assert total_power.excel_label == "Max Total EDU Mechanical Power"
+    assert total_power.powerpoint_label == "MAX TOTAL EDU MECH POWER"
+    assert total_power.source_channel == "total_edu_mech_power"
+    assert total_power.source_name == "Total EDU Mech Power"
+    assert total_power.value == pytest.approx(111.06945955093833)
+    assert edu_power.value != pytest.approx(total_power.value)
+    assert wheel_power.powerpoint_label == "WHEEL MAX POWER"
+    assert wheel_power.value == pytest.approx(106.80434160103889)
+    assert metrics["edu_speed_rl_max"].source_name == "ElectricSystem_EM3_Speed"
+    assert metrics["edu_speed_rl_max"].value == pytest.approx(22750.0)
+    assert metrics["edu_torque_rl_max"].source_name == "ElectricSystem_EM3_Torque"
+    assert metrics["edu_torque_rl_max"].value == pytest.approx(892.452)
 
 
 def test_generic_statistics_path_remains_available(tmp_path: Path) -> None:

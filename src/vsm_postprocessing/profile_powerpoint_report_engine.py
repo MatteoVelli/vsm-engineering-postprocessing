@@ -22,7 +22,7 @@ from .powerpoint_report_engine import (
     load_powerpoint_report_config,
     _write_metadata as _write_powerpoint_metadata,
 )
-from .profile_statistics import ProfileKPIResult, ProfileStatisticResult
+from .profile_statistics import CanonicalReportMetric, build_canonical_report_metrics
 from .report_metadata import ReportMetadata
 from .report_profile import ReportingProfile
 from .statistics_engine import (
@@ -171,8 +171,8 @@ _HYBRID_TEXT_SLOTS: dict[int, _TemplateTextSlots] = {
     4: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
     5: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
     6: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
-    7: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(38,)),
-    8: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(31,)),
+    7: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(36,)),
+    8: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(26,)),
     9: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
     10: _TemplateTextSlots(title=1, subtitle=2, footer=35, page_number=36, body=(34,)),
 }
@@ -181,12 +181,12 @@ _ELECTRIC_TEXT_SLOTS: dict[int, _TemplateTextSlots] = {
     1: _TemplateTextSlots(title=3, subtitle=4, footer=39, page_number=40, body=(6, 8, 10, 12, 14), eyebrow=2),
     2: _TemplateTextSlots(title=2, subtitle=3, footer=40, page_number=41, body=(6, 8, 10, 12, 14, 17, 18, 22, 23)),
     3: _TemplateTextSlots(title=2, subtitle=3, footer=38, page_number=39, body=(37,)),
-    4: _TemplateTextSlots(title=2, subtitle=3, footer=22, page_number=23),
-    5: _TemplateTextSlots(title=2, subtitle=3, footer=32, page_number=33),
-    6: _TemplateTextSlots(title=2, subtitle=3, footer=28, page_number=29),
-    7: _TemplateTextSlots(title=2, subtitle=3, footer=35, page_number=36, body=(34,)),
-    8: _TemplateTextSlots(title=2, subtitle=3, footer=24, page_number=25),
-    9: _TemplateTextSlots(title=2, subtitle=3, footer=32, page_number=33),
+    4: _TemplateTextSlots(title=2, subtitle=3, footer=21, page_number=22),
+    5: _TemplateTextSlots(title=2, subtitle=3, footer=30, page_number=31),
+    6: _TemplateTextSlots(title=2, subtitle=3, footer=26, page_number=27),
+    7: _TemplateTextSlots(title=2, subtitle=3, footer=33, page_number=34, body=(32,)),
+    8: _TemplateTextSlots(title=2, subtitle=3, footer=22, page_number=23),
+    9: _TemplateTextSlots(title=2, subtitle=3, footer=30, page_number=31),
     10: _TemplateTextSlots(title=2, subtitle=3, footer=31, page_number=32, body=(4, 6)),
 }
 
@@ -198,7 +198,7 @@ _HYBRID_KPI_SLOTS: dict[int, tuple[_TemplateKpiSlot, ...]] = {
     5: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28)),
     6: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23)),
     7: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28), _TemplateKpiSlot(32, 33)),
-    8: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28)),
+    8: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23)),
     9: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28), _TemplateKpiSlot(32, 33)),
     10: (_TemplateKpiSlot(6, 7), _TemplateKpiSlot(11, 12), _TemplateKpiSlot(16, 17), _TemplateKpiSlot(21, 22), _TemplateKpiSlot(26, 27), _TemplateKpiSlot(31, 32)),
 }
@@ -220,54 +220,22 @@ _HYBRID_PLOT_SLOTS: dict[int, tuple[_TemplatePlotSlot, ...]] = {
     4: (_TemplatePlotSlot(25),),
     5: (_TemplatePlotSlot(31), _TemplatePlotSlot(32)),
     6: (_TemplatePlotSlot(26), _TemplatePlotSlot(27)),
-    7: (_TemplatePlotSlot(36), _TemplatePlotSlot(37)),
-    8: (_TemplatePlotSlot(32), _TemplatePlotSlot(33)),
-    9: (_TemplatePlotSlot(36), _TemplatePlotSlot(37)),
+    7: (_TemplatePlotSlot(37), _TemplatePlotSlot(38)),
+    8: (_TemplatePlotSlot(28), _TemplatePlotSlot(29)),
+    9: (_TemplatePlotSlot(37), _TemplatePlotSlot(38)),
 }
 
 _ELECTRIC_PLOT_SLOTS: dict[int, tuple[_TemplatePlotSlot, ...]] = {
-    4: (_TemplatePlotSlot(21),),
-    5: (_TemplatePlotSlot(29), _TemplatePlotSlot(31)),
-    6: (_TemplatePlotSlot(25), _TemplatePlotSlot(27)),
-    7: (_TemplatePlotSlot(29), _TemplatePlotSlot(31)),
-    8: (_TemplatePlotSlot(21), _TemplatePlotSlot(23)),
-    9: (_TemplatePlotSlot(29), _TemplatePlotSlot(31)),
+    4: (_TemplatePlotSlot(23),),
+    5: (_TemplatePlotSlot(32), _TemplatePlotSlot(33)),
+    6: (_TemplatePlotSlot(28), _TemplatePlotSlot(29)),
+    7: (_TemplatePlotSlot(35), _TemplatePlotSlot(36)),
+    8: (_TemplatePlotSlot(24), _TemplatePlotSlot(25)),
+    9: (_TemplatePlotSlot(32), _TemplatePlotSlot(33)),
 }
 
 _HYBRID_LAYOUT = _TemplateLayoutSpec(_HYBRID_TEXT_SLOTS, _HYBRID_KPI_SLOTS, _HYBRID_PLOT_SLOTS)
 _ELECTRIC_LAYOUT = _TemplateLayoutSpec(_ELECTRIC_TEXT_SLOTS, _ELECTRIC_KPI_SLOTS, _ELECTRIC_PLOT_SLOTS)
-
-_LABEL_OVERRIDES = {
-    "time_minutes_last": "MISSION TIME",
-    "distance_km_last": "DISTANCE",
-    "chassis_speed_max": "MAX SPEED",
-    "battery_soc_first": "INITIAL BATTERY SOC",
-    "battery_soc_last": "FINAL BATTERY SOC",
-    "battery_capacity_used": "BATTERY CAPACITY USED",
-    "battery_energy_consumption_wh_per_km": "ENERGY CONSUMPTION",
-    "range_85_battery_km": "RANGE @ 85%",
-    "max_battery_discharge_power": "MAX BATT POWER",
-    "battery_power_rms": "BATT POWER RMS",
-    "battery_heatflow_rms": "HEATFLOW RMS",
-    "battery_heatflow_max": "MAX HEATFLOW",
-    "energy_released_last": "ENERGY RELEASED",
-    "energy_recuperated_last": "ENERGY RECOVERED",
-    "auxiliary_energy_accumulated_last": "AUX ENERGY",
-    "total_auxiliary_power_max": "MAX AUX POWER",
-    "tyre_rr_energy_accumulated_last": "TYRE RR ENERGY",
-    "total_edu_mech_power_max": "EDU MECH POWER",
-    "wheel_power_total_max": "WHEEL POWER",
-    "edu_speed_rl_max": "EDU SPEED RL",
-    "edu_torque_rl_max": "EDU TORQUE RL",
-    "engine_fuel_consumption_last": "FUEL CONSUMPTION",
-    "engine_power_required_max": "MAX ENG POWER",
-    "engine_speed_max": "MAX ENG SPEED",
-    "engine_torque_max": "MAX ENG TORQUE",
-    "engine_energy_delivered_sum": "ENGINE ENERGY",
-    "generator_power_1_max": "MAX GEN POWER",
-    "agrochemical_discharge_max": "AGRO DISCHARGE",
-}
-
 
 def inspect_reference_powerpoint_layout(path: str | Path) -> PowerPointReferenceDeckSpec:
     """Return a concise structural specification for a reference PowerPoint deck."""
@@ -565,6 +533,7 @@ def _render_template_slide(
             "RANGE EXTENDER INACTIVE IN THIS SIMULATION\n"
             "ICE/generator channels resolved; no operating activity detected in this simulation.",
         )
+    _replace_drive_cycle_terminology(slide)
 
 
 def _layout_for_profile(profile: ReportingProfile) -> _TemplateLayoutSpec:
@@ -654,7 +623,7 @@ def _render_overview_template_body(
         pills = (
             f"Samples {result.sample_count:,}",
             f"Distance {distance}",
-            f"Mission time {time_value}",
+            f"Drive cycle time {time_value}",
             "Hybrid profile",
         )
         for shape_index, text in zip(pill_slots, pills):
@@ -664,7 +633,7 @@ def _render_overview_template_body(
         context_title_slot = 20
         context_body_slot = 21
 
-    _set_shape_text(shapes[mission_title_slot], "Mission Structure")
+    _set_shape_text(shapes[mission_title_slot], "Drive Cycle Structure")
     if layout is _ELECTRIC_LAYOUT:
         _set_shape_text(
             shapes[mission_body_slot],
@@ -684,8 +653,8 @@ def _render_overview_template_body(
                 (
                     f"Source dataset: {_source_label(result)}",
                     f"Imported samples: {result.sample_count:,}",
-                    f"Mission duration: {time_value}",
-                    f"Mission distance: {distance}",
+                    f"Drive cycle duration: {time_value}",
+                    f"Drive cycle distance: {distance}",
                     f"Maximum speed: {speed}",
                 )
             ),
@@ -778,6 +747,13 @@ def _add_astauto_logo(slide: Any, prs: Presentation) -> None:
     if logo_path is None:
         return
     left = prs.slide_width - _ASTAUTO_LOGO_RIGHT_MARGIN - _ASTAUTO_LOGO_WIDTH
+    if any(
+        shape.shape_type == 13
+        and abs(shape.left - left) < 9144
+        and abs(shape.top - _ASTAUTO_LOGO_TOP) < 9144
+        for shape in slide.shapes
+    ):
+        return
     slide.shapes.add_picture(str(logo_path), left, _ASTAUTO_LOGO_TOP, width=_ASTAUTO_LOGO_WIDTH)
 
 
@@ -896,6 +872,27 @@ def _set_value_text_preserve_runs(shape: Any, text: str) -> None:
     _set_shape_text(shape, text)
 
 
+def _replace_drive_cycle_terminology(slide: Any) -> None:
+    replacements = {
+        "MISSION TIME": "DRIVE CYCLE TIME",
+        "Mission Structure": "Drive Cycle Structure",
+        "Mission duration": "Drive cycle duration",
+        "Mission distance": "Drive cycle distance",
+        "Mission time": "Drive cycle time",
+        "Mission": "Drive Cycle",
+        "mission": "drive cycle",
+    }
+    for shape in slide.shapes:
+        if not getattr(shape, "has_text_frame", False):
+            continue
+        text = shape.text
+        updated = text
+        for source, target in replacements.items():
+            updated = updated.replace(source, target)
+        if updated != text:
+            _set_shape_text(shape, updated)
+
+
 def _set_summary_banner_preserve_runs(shape: Any, text: str) -> None:
     if not getattr(shape, "has_text_frame", False):
         return
@@ -1012,10 +1009,7 @@ def _add_notice(slide: Any, text: str) -> None:
 
 
 def _statistic_label(stat: StatisticResult) -> str:
-    if stat.statistic_id in _LABEL_OVERRIDES:
-        return _LABEL_OVERRIDES[stat.statistic_id]
-    text = stat.display_name.split("[", 1)[0].strip()
-    return text.upper()
+    return stat.display_name.split("[", 1)[0].strip()
 
 
 def _format_statistic_value(stat: StatisticResult) -> str:
@@ -1138,12 +1132,12 @@ def _profile_powerpoint_config(
             "kpi_label_font_size": 9.5,
             "kpi_value_font_size": 20,
             "body_font_size": 10.5,
-            "accent_fill": "F7F3E8",
-            "accent_border": "9C7A2F",
-            "text_color": "1E252B",
-            "muted_text_color": "5D6770",
+            "accent_fill": "2E56D0",
+            "accent_border": "17246E",
+            "text_color": "0E1A4A",
+            "muted_text_color": "5C6B82",
             "background_color": "FFFFFF",
-            "rule_color": "B8C2CC",
+            "rule_color": "D98A2B",
         },
         "slides": [
             _slide(
@@ -1281,13 +1275,9 @@ def _slide_8_body(definition: Any, is_hybrid: bool) -> str:
 
 def _profile_statistics_as_powerpoint_statistics(excel_result: ProfileExcelReportResult) -> StatisticsResult:
     statistics = [
-        _profile_statistic_as_powerpoint_item(item)
-        for item in excel_result.statistics_result.statistics
+        _canonical_metric_as_powerpoint_item(metric)
+        for metric in build_canonical_report_metrics(excel_result.statistics_result)
     ]
-    statistics.extend(
-        _profile_kpi_as_powerpoint_item(item, excel_result.sample_count, excel_result.profile)
-        for item in excel_result.statistics_result.kpis
-    )
     return StatisticsResult(
         dataset=excel_result.dataset,
         config_path=excel_result.report_path,
@@ -1299,54 +1289,37 @@ def _profile_statistics_as_powerpoint_statistics(excel_result: ProfileExcelRepor
     )
 
 
-def _profile_statistic_as_powerpoint_item(item: ProfileStatisticResult) -> StatisticResult:
-    definition = item.definition
-    display_name = definition.display_name or item.channel_display_name
+def _canonical_metric_as_powerpoint_item(metric: CanonicalReportMetric) -> StatisticResult:
     return StatisticResult(
-        statistic_id=definition.statistic_id,
-        channel_id=item.target_channel,
-        channel_display_name=item.channel_display_name,
-        channel_unit=item.channel_unit,
-        channel_kind=item.channel_kind,
-        operation=definition.operation,
-        placement_group=definition.placement_group or "profile",
+        statistic_id=metric.metric_id,
+        channel_id=metric.source_channel,
+        channel_display_name=metric.excel_label,
+        channel_unit=metric.unit,
+        channel_kind=metric.source_kind,
+        operation=metric.statistic.lower(),
+        placement_group=metric.placement_group,
         nan_policy="error",
-        value=item.value,
-        sample_count=item.sample_count,
-        used_sample_count=item.used_sample_count,
-        omitted_sample_count=item.omitted_sample_count,
-        display_name=display_name,
-        description=definition.notes,
+        value=metric.value,
+        sample_count=metric.sample_count,
+        used_sample_count=metric.used_sample_count,
+        omitted_sample_count=metric.omitted_sample_count,
+        display_name=metric.powerpoint_label,
+        description=_metric_description(metric),
         comparison=None,
     )
 
 
-def _profile_kpi_as_powerpoint_item(
-    item: ProfileKPIResult,
-    sample_count: int,
-    profile: ReportingProfile,
-) -> StatisticResult:
-    definition = item.definition
-    display_name = definition.display_name or definition.kpi_id.replace("_", " ").title()
-    if (profile.metadata.powertrain or "").lower() == "electric" and definition.kpi_id == "range_85_battery_km":
-        display_name = "Range for 85% Battery"
-    return StatisticResult(
-        statistic_id=definition.kpi_id,
-        channel_id=definition.kpi_id,
-        channel_display_name=display_name,
-        channel_unit=definition.unit,
-        channel_kind="KPI",
-        operation="kpi",
-        placement_group=definition.placement_group or "profile",
-        nan_policy="error",
-        value=item.value,
-        sample_count=sample_count,
-        used_sample_count=sample_count,
-        omitted_sample_count=0,
-        display_name=display_name,
-        description=definition.notes,
-        comparison=None,
-    )
+def _metric_description(metric: CanonicalReportMetric) -> str:
+    source = metric.source_name or metric.source_channel
+    parts = [
+        f"Canonical metric '{metric.metric_id}'",
+        f"source={source}",
+        f"statistic={metric.statistic}",
+        f"calculation={metric.calculation}",
+    ]
+    if metric.notes:
+        parts.append(metric.notes)
+    return "; ".join(parts)
 
 
 def _cover_subtitle(result: ProfileExcelReportResult, is_hybrid: bool) -> str:
@@ -1379,8 +1352,8 @@ def _overview_body(result: ProfileExcelReportResult) -> tuple[str, ...]:
         f"Machine: {result.report_metadata.machine_name}",
         f"Source dataset: {_source_label(result)}",
         f"Imported samples: {result.sample_count:,}",
-        f"Mission duration: {_formatted_value(values, 'time_minutes_last', 'min')}",
-        f"Mission distance: {_formatted_value(values, 'distance_km_last', 'km')}",
+        f"Drive cycle duration: {_formatted_value(values, 'time_minutes_last', 'min')}",
+        f"Drive cycle distance: {_formatted_value(values, 'distance_km_last', 'km')}",
     )
     right = (
         f"Powertrain type: {powertrain}",
