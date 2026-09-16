@@ -13,6 +13,7 @@ from .excel_report_engine import ProfileExcelReportResult, generate_profile_exce
 from .importer import ImportOptions, load_data_file
 from .profile_powerpoint_report_engine import ProfilePowerPointReportResult, build_profile_powerpoint_report
 from .profile_math import calculate_profile_math_channels
+from .utils import source_report_filename
 from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ReportingProfile, load_reporting_profile, resolve_profile
 
@@ -293,7 +294,7 @@ def generate_reporting_profile_engineering_report(
 
 
 def _profile_report_filename(report_metadata: ReportMetadata, suffix: str) -> str:
-    return f"{report_metadata.safe_output_stem}_Engineering_Report{suffix}"
+    return source_report_filename(report_metadata.source_filename, suffix)
 
 
 def _duration_minutes(start: float | None, end: float | None, unit: str | None) -> float | None:

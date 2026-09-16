@@ -308,7 +308,7 @@ presentation:
         - battery_power_rms
         - energy_released_last
         - energy_recuperated_last
-        - auxiliary_energy_accumulated_last
+        - auxiliary_energy_accumulated_max
         - max_battery_discharge_power
       plots:
         - battery_power_charge_discharge
@@ -343,7 +343,7 @@ presentation:
         - edu_speed_rl_max
         - edu_torque_rl_max
         - tyre_rr_energy_accumulated_last
-        - auxiliary_energy_accumulated_last
+        - auxiliary_energy_accumulated_max
       plots:
         - power_at_wheels_and_edu
         - tyres_energy_consumption

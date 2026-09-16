@@ -1,39 +1,43 @@
+param(
+    [string]$ProjectRoot
+)
+
 $ErrorActionPreference = "Stop"
 
-$ProjectRoot = Split-Path -Parent $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+    $ProjectRoot = Split-Path -Parent $PSScriptRoot
+}
+
+$ProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
+$VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+$SetupScript = Join-Path $ProjectRoot "scripts\client_setup.ps1"
+$LogDir = Join-Path $ProjectRoot "logs"
+New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+
 Set-Location $ProjectRoot
 
 Write-Host ""
-Write-Host "VSM Engineering Post-Processing" -ForegroundColor Cyan
-Write-Host "Client launcher" -ForegroundColor Cyan
-Write-Host ""
+Write-Host "Running system health check..."
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-    Write-Host "ERROR: uv is not available in PATH." -ForegroundColor Red
-    Write-Host "Install uv or ask the project maintainer for the packaged runtime instructions."
+if (-not (Test-Path $VenvPython)) {
+    Write-Host ""
+    Write-Host "VSM Engineering Post-Processing is not set up yet." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Please double-click SETUP_VSM_TOOL.bat first."
+    Write-Host "Setup creates the package-local Python environment and installs the required dependencies."
     exit 2
 }
 
-if (-not (Test-Path ".\.venv\Scripts\python.exe")) {
-    Write-Host "Creating local Python 3.11 environment..."
-    uv venv .venv --python 3.11
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-
-Write-Host "Checking/installing application dependencies..."
-uv pip install --python ".\.venv\Scripts\python.exe" -e "."
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host ""
-Write-Host "Running system health check..."
-& ".\.venv\Scripts\python.exe" -m vsm_postprocessing.doctor_cli --project-root "."
+& $VenvPython -m vsm_postprocessing.doctor_cli --project-root $ProjectRoot
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "The health check found a blocking problem. The UI will not start." -ForegroundColor Red
+    Write-Host "Run SETUP_VSM_TOOL.bat again. Technical details are in the Tool\logs folder."
     exit $LASTEXITCODE
 }
 
 Write-Host ""
 Write-Host "Starting VSM user interface..." -ForegroundColor Green
-& ".\.venv\Scripts\python.exe" -m streamlit run ".\src\vsm_postprocessing\ui_app.py" --server.headless false
+$AppPath = Join-Path $ProjectRoot "src\vsm_postprocessing\ui_app.py"
+& $VenvPython -m streamlit run $AppPath --server.headless false
 exit $LASTEXITCODE

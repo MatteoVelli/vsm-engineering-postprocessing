@@ -2396,12 +2396,14 @@ statistics:
   - statistic_id: total_auxiliary_power_max
     target: total_auxiliary_power
     operation: max
+    nan_policy: omit
     display_name: Max Auxiliaries Power Demand
     unit: kW
     placement_group: summary
-  - statistic_id: auxiliary_energy_accumulated_last
+  - statistic_id: auxiliary_energy_accumulated_max
     target: auxiliary_energy_consumption_accumulated
-    operation: last
+    operation: max
+    nan_policy: omit
     display_name: Auxiliaries Energy Consumption
     unit: kWh
     placement_group: summary
@@ -2585,10 +2587,10 @@ kpis:
     unit: kWh
     placement_group: summary
   - kpi_id: total_energy_consumption_tyres_aux
-    expression: tyre_rr_energy_accumulated_last + auxiliary_energy_accumulated_last
+    expression: tyre_rr_energy_accumulated_last + auxiliary_energy_accumulated_max
     dependencies:
     - tyre_rr_energy_accumulated_last
-    - auxiliary_energy_accumulated_last
+    - auxiliary_energy_accumulated_max
     display_name: Total Energy Consumption (Tyres + Aux)
     unit: kWh
     placement_group: summary
@@ -2991,7 +2993,7 @@ presentation:
         - battery_power_rms
         - energy_released_last
         - energy_recuperated_last
-        - auxiliary_energy_accumulated_last
+        - auxiliary_energy_accumulated_max
         - max_battery_discharge_power
       plots:
         - battery_power_charge_discharge
@@ -3004,7 +3006,7 @@ presentation:
         - range_85_battery_km
         - battery_soc_last
         - max_battery_discharge_power
-        - auxiliary_energy_accumulated_last
+        - auxiliary_energy_accumulated_max
       plots:
         - battery_energy_distance_based
         - auxiliaries_energy_consumption
@@ -3025,7 +3027,7 @@ presentation:
         - edu_speed_rl_max
         - edu_torque_rl_max
         - tyre_rr_energy_accumulated_last
-        - auxiliary_energy_accumulated_last
+        - auxiliary_energy_accumulated_max
       plots:
         - power_at_wheels_and_edu
         - tyres_energy_consumption

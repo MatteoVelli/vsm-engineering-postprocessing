@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 import math
 import re
@@ -14,6 +15,10 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.util import Inches, Pt
+from pptx.parts.slide import SlideLayoutPart
+from pptx.opc.constants import CONTENT_TYPE as CT, RELATIONSHIP_TYPE as RT
+from pptx.oxml.xmlchemy import OxmlElement
+from pptx.oxml.ns import qn
 
 from .errors import PowerPointReportError
 from .excel_report_engine import ProfileExcelReportResult, generate_profile_excel_report
@@ -32,7 +37,7 @@ from .statistics_engine import (
     StatisticsOutputOptions,
     StatisticsResult,
 )
-from .utils import client_display_filename, normalize_display_unit, sha256_file
+from .utils import source_report_filename, client_display_filename, normalize_display_unit, sha256_file
 from .version import __version__
 
 
@@ -541,6 +546,7 @@ def _build_template_profile_powerpoint_report(
     )
 
     _move_slide(prs, 9, 11)
+    _add_reusable_content_layout(prs)
 
     presentation_path = output_dir / config.output_filename
     try:
@@ -640,6 +646,7 @@ def _render_road_profile_slide(
         slide_def.subtitle or "Road height and road gradient over the drive cycle",
         assets,
         icon_slide_number=10,
+        reference_slide=prs.slides[8],
     )
     is_hybrid = (excel_result.profile.metadata.powertrain or "").strip().lower() == "hybrid"
     height_available = "track_height" in excel_result.plotting_result.values_by_semantic_name
@@ -697,6 +704,7 @@ def _render_wheel_steering_slide(
         slide_def.subtitle or "Front and rear wheel steering behaviour over the drive cycle",
         assets,
         icon_slide_number=11,
+        reference_slide=prs.slides[8],
     )
     _add_custom_kpi_cards(
         slide,
@@ -726,10 +734,77 @@ def _render_wheel_steering_slide(
     _add_astauto_logo(slide, prs)
 
 
+def _add_reusable_content_layout(prs: Presentation) -> None:
+    """Derive a selectable native layout from the deck's normal content slide.
+
+    python-pptx has no public layout-creation API; isolate the package/XML wiring
+    here, retaining the existing master and copying only template-owned shapes.
+    """
+    reference = prs.slides[8]
+    master = reference.slide_layout.slide_master
+    element = deepcopy(reference.slide_layout.element)
+    element.set("type", "obj")
+    element.set("preserve", "1")
+    element.cSld.set("name", "Astauto VSM - Additional content")
+    for shape in list(element.spTree)[2:]:
+        element.spTree.remove(shape)
+    if element.cSld.bg is not None:
+        element.cSld.remove(element.cSld.bg)
+    element.cSld.insert(0, deepcopy(reference._element.cSld.bg))
+    package = prs.part.package
+    part = SlideLayoutPart(package.next_partname("/ppt/slideLayouts/slideLayout%d.xml"),
+                           CT.PML_SLIDE_LAYOUT, package, element)
+    part.relate_to(master.part, RT.SLIDE_MASTER)
+    # Title/caption are editable placeholders; footer and logo live on the layout.
+    selected = [reference.shapes[2], reference.shapes[3]]
+    selected.extend(shape for shape in reference.shapes
+                    if shape.top > Inches(7) and shape.has_text_frame)
+    selected.extend(shape for shape in reference.shapes
+                    if shape.shape_type == 13 and abs(shape.top - _ASTAUTO_LOGO_TOP) < 9144)
+    for index, shape in enumerate(selected, start=2):
+        clone = deepcopy(shape.element)
+        clone.xpath(".//p:cNvPr")[0].set("id", str(index))
+        for node in clone.iter():
+            for attribute, value in list(node.attrib.items()):
+                if attribute in {qn("r:embed"), qn("r:link"), qn("r:id")}:
+                    rel = reference.part.rels[value]
+                    target = rel.target_ref if rel.is_external else rel.target_part
+                    node.set(attribute, part.relate_to(target, rel.reltype, rel.is_external))
+        if index in (2, 3):
+            placeholder = OxmlElement("p:ph")
+            placeholder.set("type", "title" if index == 2 else "body")
+            placeholder.set("idx", str(index - 2))
+            clone.xpath(".//p:nvPr")[0].append(placeholder)
+            texts = clone.xpath(".//a:t")
+            texts[0].text = "Additional information" if index == 2 else "Add a caption"
+            for text in texts[1:]:
+                text.text = ""
+        elif shape.has_text_frame and re.fullmatch(r"\s*\d+\s*/\s*\d+\s*", shape.text):
+            # A native slide-number field avoids copying the report's fixed 9 / 12.
+            paragraph = clone.xpath(".//a:p")[0]
+            run_properties = deepcopy(clone.xpath(".//a:rPr")[0])
+            for child in list(paragraph):
+                if child.tag != qn("a:pPr"):
+                    paragraph.remove(child)
+            field = OxmlElement("a:fld")
+            field.set("id", "{EDCB2D53-A9AC-482D-97BB-2DB99F020A63}")
+            field.set("type", "slidenum")
+            field.append(run_properties)
+            text = OxmlElement("a:t")
+            text.text = "1"
+            field.append(text)
+            paragraph.append(field)
+        element.spTree.insert_element_before(clone, "p:extLst")
+    layout_id = OxmlElement("p:sldLayoutId")
+    ids = master.element.get_or_add_sldLayoutIdLst()
+    layout_id.set("id", str(max(int(item.get("id")) for item in ids) + 1))
+    layout_id.set(qn("r:id"), master.part.relate_to(part, RT.SLIDE_LAYOUT))
+    ids.append(layout_id)
+
+
 def _apply_custom_astauto_background(slide: Any, _prs: Presentation) -> None:
-    background = slide.background
-    background.fill.solid()
-    background.fill.fore_color.rgb = RGBColor.from_string("FFFFFF")
+    source_background = _prs.slides[8]._element.cSld.bg
+    slide._element.cSld.insert(0, deepcopy(source_background))
 
 
 def _rect(values: tuple[float, float, float, float]) -> tuple[int, int, int, int]:
@@ -744,6 +819,7 @@ def _add_custom_header(
     assets: Path,
     *,
     icon_slide_number: int,
+    reference_slide: Any,
 ) -> None:
     icon = slide.shapes.add_shape(MSO_SHAPE.OVAL, *_rect(_V7_HEADER_ICON_RECT))
     icon.fill.solid()
@@ -761,15 +837,11 @@ def _add_custom_header(
         bold=True,
         font_name="Georgia",
     )
-    _add_text_box(
-        slide,
-        subtitle,
-        *_rect(_V7_SUBTITLE_RECT),
-        font_size=12.5,
-        color=_ASTAUTO_MUTED,
-        italic=True,
-        font_name="Calibri",
-    )
+    # Copy the normal caption's full shape XML to preserve typography and geometry.
+    caption = deepcopy(reference_slide.shapes[3].element)
+    caption.xpath(".//p:cNvPr")[0].set("id", str(slide.shapes._next_shape_id))
+    slide.shapes._spTree.insert_element_before(caption, "p:extLst")
+    _set_shape_text(slide.shapes[-1], subtitle)
 
 
 def _add_custom_kpi_cards(
@@ -1794,7 +1866,7 @@ def _slide_8_definition(excel_result: ProfileExcelReportResult, definition: Any)
         return definition
     statistics = (
         "total_auxiliary_power_max",
-        "auxiliary_energy_accumulated_last",
+        "auxiliary_energy_accumulated_max",
         "tyre_rr_energy_accumulated_last",
         "battery_soc_last",
         "time_minutes_last",
@@ -1850,7 +1922,7 @@ def _canonical_metric_as_powerpoint_item(metric: CanonicalReportMetric) -> Stati
         channel_kind=metric.source_kind,
         operation=metric.statistic.lower(),
         placement_group=metric.placement_group,
-        nan_policy="error",
+        nan_policy=metric.nan_policy,
         value=metric.value,
         sample_count=metric.sample_count,
         used_sample_count=metric.used_sample_count,
@@ -2053,7 +2125,7 @@ def _hybrid_subsystem_active(result: ProfileExcelReportResult) -> bool:
 
 
 def _report_output_filename(report_metadata: ReportMetadata, suffix: str) -> str:
-    return f"{report_metadata.safe_output_stem}_Engineering_Report{suffix}"
+    return source_report_filename(report_metadata.source_filename, suffix)
 
 
 def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
@@ -2064,7 +2136,7 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
         "machine_name": result.excel_result.report_metadata.machine_name,
         "powertrain": result.excel_result.report_metadata.powertrain_name,
         "report_title": result.excel_result.report_metadata.report_title,
-        "safe_output_stem": result.excel_result.report_metadata.safe_output_stem,
+        "safe_output_stem": result.presentation_path.stem,
         "source_file": str(result.excel_result.dataset.source_path),
         "source_sha256": sha256_file(result.excel_result.dataset.source_path),
         "presentation": str(result.presentation_path),

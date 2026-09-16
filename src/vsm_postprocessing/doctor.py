@@ -54,6 +54,15 @@ _REQUIRED_PACKAGES = (
     "python-pptx",
 )
 
+_REQUIRED_RUNTIME_ASSETS = (
+    "astauto-light-text_web.jpg",
+    "RoboSprayer_Electric_Report_Astauto_Colours.pptx",
+    "Caiman_SP_Hybrid_Report_Astauto_Colours.pptx",
+    "RoboSprayer_Electric_Report_Astauto_v7.pptx",
+    "Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx",
+    "Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx",
+)
+
 
 def run_doctor(project_root: str | Path, pipeline_config: str | Path | None = None) -> DoctorReport:
     root = Path(project_root).expanduser().resolve()
@@ -63,6 +72,8 @@ def run_doctor(project_root: str | Path, pipeline_config: str | Path | None = No
     checks.append(_check_uv())
     checks.extend(_check_packages())
     checks.append(_check_project_structure(root))
+    checks.extend(_check_runtime_assets(root))
+    checks.append(_check_application_entry_point(root))
     checks.append(_check_output_writable(root / "outputs"))
     checks.append(_check_disk_space(root))
 
@@ -75,19 +86,19 @@ def run_doctor(project_root: str | Path, pipeline_config: str | Path | None = No
 def _check_python_version() -> DoctorCheck:
     version = sys.version_info
     detail = f"Python {version.major}.{version.minor}.{version.micro} ({sys.executable})"
-    if version < (3, 11):
-        return DoctorCheck("Python version", "FAIL", detail + "; Python >= 3.11 is required")
+    if version < (3, 11) or version >= (3, 12):
+        return DoctorCheck("Python version", "FAIL", detail + "; validated runtime range is Python >= 3.11,<3.12")
     return DoctorCheck("Python version", "PASS", detail)
 
 
 def _check_uv() -> DoctorCheck:
     location = shutil.which("uv")
     if location:
-        return DoctorCheck("uv launcher", "PASS", location)
+        return DoctorCheck("Optional uv launcher", "PASS", location)
     return DoctorCheck(
-        "uv launcher",
-        "WARN",
-        "uv is not on PATH. The already-created .venv can still run, but one-click setup/update will not work.",
+        "Optional uv launcher",
+        "PASS",
+        "uv is not required for the client bootstrap; setup uses CPython, venv and pip",
     )
 
 
@@ -115,6 +126,25 @@ def _check_project_structure(root: Path) -> DoctorCheck:
     if missing:
         return DoctorCheck("Project structure", "FAIL", "missing: " + ", ".join(missing))
     return DoctorCheck("Project structure", "PASS", str(root))
+
+
+def _check_runtime_assets(root: Path) -> list[DoctorCheck]:
+    checks: list[DoctorCheck] = []
+    reference_root = root / "reference_files"
+    for filename in _REQUIRED_RUNTIME_ASSETS:
+        path = reference_root / filename
+        if path.exists() and path.is_file():
+            checks.append(DoctorCheck(f"Runtime asset {filename}", "PASS", str(path)))
+        else:
+            checks.append(DoctorCheck(f"Runtime asset {filename}", "FAIL", f"missing: {path}"))
+    return checks
+
+
+def _check_application_entry_point(root: Path) -> DoctorCheck:
+    entry_point = root / "src" / "vsm_postprocessing" / "ui_app.py"
+    if entry_point.exists():
+        return DoctorCheck("Application entry point", "PASS", str(entry_point))
+    return DoctorCheck("Application entry point", "FAIL", f"missing: {entry_point}")
 
 
 def _check_output_writable(output_dir: Path) -> DoctorCheck:

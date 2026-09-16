@@ -70,6 +70,7 @@ class CanonicalReportMetric:
     sample_count: int = 0
     used_sample_count: int = 0
     omitted_sample_count: int = 0
+    nan_policy: str = "error"
 
 
 @dataclass
@@ -141,7 +142,7 @@ _POWERPOINT_LABEL_OVERRIDES = {
     "battery_heatflow_max": "MAX HEATFLOW",
     "energy_released_last": "ENERGY RELEASED",
     "energy_recuperated_last": "ENERGY RECOVERED",
-    "auxiliary_energy_accumulated_last": "AUX ENERGY",
+    "auxiliary_energy_accumulated_max": "AUX ENERGY",
     "total_auxiliary_power_max": "MAX AUX POWER",
     "tyre_rr_energy_accumulated_last": "TYRE RR ENERGY",
     "edu_mech_power_rl_max": "EDU MAX POWER",
@@ -199,6 +200,7 @@ def build_canonical_report_metrics(result: ProfileStatisticsResult) -> list[Cano
                 sample_count=item.sample_count,
                 used_sample_count=item.used_sample_count,
                 omitted_sample_count=item.omitted_sample_count,
+                nan_policy=definition.nan_policy,
             )
         )
 
@@ -264,7 +266,7 @@ def calculate_profile_statistics(
         value, used_count, omitted_count = compute_statistic(
             values_by_name[definition.target],
             definition.operation,
-            "error",
+            definition.nan_policy,
             time_values=time_values,
         )
         statistics.append(

@@ -30,7 +30,17 @@ A local Streamlit UI exposes the workflow without requiring Python or YAML editi
 
 ## Client start (recommended)
 
-On Windows, double-click:
+On Windows, first double-click:
+
+```text
+SETUP_VSM_TOOL.bat
+```
+
+Setup detects a validated Python 3.11.x runtime, offers to install the supported
+official CPython 3.11.9 runtime if one is missing, creates the package-local
+`.venv`, installs runtime dependencies, and runs the health check.
+
+After setup reports success, double-click:
 
 ```text
 START_VSM_TOOL.bat
@@ -38,11 +48,9 @@ START_VSM_TOOL.bat
 
 The launcher:
 
-1. checks that `uv` is available;
-2. creates a local Python 3.11 `.venv` when required;
-3. installs/updates the application dependencies;
-4. runs the client-readiness health check;
-5. opens the UI in the default browser.
+1. uses the package-local `.venv`;
+2. runs the client-readiness health check;
+3. opens the UI in the default browser.
 
 See `docs/CLIENT_QUICK_START.md` for the client workflow.
 
@@ -102,6 +110,7 @@ vsm-post-processing/
   scripts/
   src/vsm_postprocessing/
   tests/
+  SETUP_VSM_TOOL.bat
   START_VSM_TOOL.bat
   CHANGELOG.md
   pyproject.toml

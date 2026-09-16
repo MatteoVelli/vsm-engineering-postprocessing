@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 from pptx import Presentation
+from lxml import etree
 
 from vsm_postprocessing.importer import ImportOptions
 from vsm_postprocessing.profile_powerpoint_report_engine import (
@@ -73,6 +74,24 @@ def hybrid_report(tmp_path_factory: pytest.TempPathFactory):
     )
 
 
+@pytest.mark.parametrize('fixture_name', ['electric_report', 'hybrid_report'])
+def test_generated_custom_slides_share_normal_theme_and_reusable_layout(request, fixture_name):
+    result = request.getfixturevalue(fixture_name)
+    prs = Presentation(result.presentation_path)
+    assert len(prs.slides) == 12
+    assert prs.slide_layouts[-1].name == 'Astauto VSM - Additional content'
+    normal = prs.slides[8]
+    caption = normal.shapes[3]
+    for slide in (prs.slides[9], prs.slides[10]):
+        assert str(slide.element.cSld.bg.xml) == str(normal.element.cSld.bg.xml)
+        matching = [shape for shape in slide.shapes if shape.has_text_frame
+                    and shape.top == caption.top and shape.left == caption.left]
+        assert len(matching) == 1
+        actual = matching[0]
+        assert (actual.width, actual.height) == (caption.width, caption.height)
+        assert etree.tostring(actual.text_frame.paragraphs[0].runs[0]._r.rPr, method="c14n") == etree.tostring(caption.text_frame.paragraphs[0].runs[0]._r.rPr, method="c14n")
+
+
 def test_reference_powerpoint_layout_inspection_matches_final_profile_decks() -> None:
     assert ELECTRIC_REFERENCE_DECK.exists()
     assert HYBRID_REFERENCE_DECK.exists()
@@ -111,8 +130,8 @@ def test_reference_powerpoint_layout_inspection_matches_final_profile_decks() ->
 
 
 def test_profile_powerpoint_generates_reopenable_electric_and_hybrid_decks(electric_report, hybrid_report) -> None:
-    assert electric_report.presentation_path.name == "RoboSprayer_Electric_Engineering_Report.pptx"
-    assert hybrid_report.presentation_path.name == "RoboSprayer_Hybrid_Engineering_Report.pptx"
+    assert electric_report.presentation_path.name == _robosprayer_csv().with_suffix(".pptx").name
+    assert hybrid_report.presentation_path.name == _robosprayer_csv().with_suffix(".pptx").name
 
     for result in (electric_report, hybrid_report):
         assert result.report_path.exists()
@@ -476,8 +495,8 @@ def test_profile_powerpoint_latest_electric_uses_corrected_range_85(tmp_path: Pa
     kpis = {item.definition.kpi_id: item.value for item in report.excel_result.statistics_result.kpis}
     stats = {item.definition.statistic_id: item.value for item in report.excel_result.statistics_result.statistics}
 
-    assert report.report_path.name == "RoboSprayer_Electric_Engineering_Report.xlsx"
-    assert report.presentation_path.name == "RoboSprayer_Electric_Engineering_Report.pptx"
+    assert report.report_path.name == _latest_electric_csv().with_suffix(".xlsx").name
+    assert report.presentation_path.name == _latest_electric_csv().with_suffix(".pptx").name
     assert stats["battery_power_max"] == pytest.approx(0.0)
     assert kpis["battery_capacity_100"] == pytest.approx(50.0)
     assert kpis["range_85_battery_km"] == pytest.approx(11.24909139072848)
@@ -545,8 +564,8 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     )
     text = _visible_text(report.presentation_path)
 
-    assert report.report_path.name == "Caiman_SP_Hybrid_Engineering_Report.xlsx"
-    assert report.presentation_path.name == "Caiman_SP_Hybrid_Engineering_Report.pptx"
+    assert report.report_path.name == _latest_hybrid_csv().with_suffix(".xlsx").name
+    assert report.presentation_path.name == _latest_hybrid_csv().with_suffix(".pptx").name
     assert report.excel_result.report_metadata.report_title == "Caiman SP Hybrid"
     assert _slide_titles(report.presentation_path)[0] == "Caiman SP Hybrid"
     assert "RoboSprayer Hybrid" not in text

@@ -148,13 +148,13 @@ def test_doctor_validates_default_pipeline_bundle_when_reference_present(monkeyp
     assert all(check.status == "PASS" for check in config_checks)
 
 
-def test_client_display_filename_strips_ui_hash_prefix() -> None:
+def test_client_display_filename_preserves_source_stem() -> None:
     from vsm_postprocessing.utils import client_display_filename
 
     assert (
         client_display_filename(
             r"C:\project\outputs\ui_workspace\176a68563304_RoboSprayer_Source.csv"
         )
-        == "RoboSprayer_Source.csv"
+        == "176a68563304_RoboSprayer_Source.csv"
     )
     assert client_display_filename("RoboSprayer_Source.csv") == "RoboSprayer_Source.csv"

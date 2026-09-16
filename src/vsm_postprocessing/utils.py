@@ -64,16 +64,24 @@ def normalize_display_unit(unit: str | None) -> str | None:
     return normalize_display_text(unit)
 
 
-_UI_UPLOAD_PREFIX_RE = re.compile(r"^[0-9a-fA-F]{12}_(.+)$")
-
-
 def client_display_filename(path: str | Path) -> str:
-    """Return a client-facing filename without the UI workspace hash prefix.
-
-    Streamlit stores uploads as ``<12-hex-sha>_<original-name>`` so repeated
-    uploads are content-addressed. That internal prefix is useful for the
-    workspace but should not leak into client-facing Excel/PowerPoint reports.
-    """
+    """Return the original basename; upload hashes belong in parent directories."""
     name = re.split(r"[\\\\/]", str(path))[-1]
-    match = _UI_UPLOAD_PREFIX_RE.match(name)
-    return match.group(1) if match else name
+    return name
+
+
+def source_report_filename(source: str | Path, suffix: str) -> str:
+    """Preserve the source stem, replacing only filesystem-invalid characters."""
+    stem = Path(client_display_filename(source)).stem
+    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', stem)
+    if re.fullmatch(r'(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?', stem):
+        stem = '_' + stem
+    return (stem or '_') + suffix
+
+
+def protect_source_path(destination: Path, source: str | Path) -> Path:
+    """Keep a same-named XLSX report in a subdirectory instead of replacing input."""
+    if destination.resolve() == Path(source).resolve():
+        destination = destination.parent / 'reports' / destination.name
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    return destination

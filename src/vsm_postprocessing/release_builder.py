@@ -23,6 +23,7 @@ class ReleaseBuildResult:
 
 
 _CLIENT_ROOT_FILES = (
+    "SETUP_VSM_TOOL.bat",
     "START_VSM_TOOL.bat",
     "README.md",
     "CHANGELOG.md",
@@ -49,6 +50,15 @@ _CLIENT_DOCS = (
 _CLIENT_PLACEHOLDERS = (
     "reference_files/README.md",
     "outputs/.gitkeep",
+)
+
+_CLIENT_REFERENCE_FILES = (
+    "reference_files/astauto-light-text_web.jpg",
+    "reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx",
+    "reference_files/Caiman_SP_Hybrid_Report_Astauto_Colours.pptx",
+    "reference_files/RoboSprayer_Electric_Report_Astauto_v7.pptx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx",
 )
 
 _EXCLUDED_NAMES = {
@@ -87,7 +97,7 @@ def _is_allowed(path: Path, project_root: Path) -> bool:
 def _collect_client_files(project_root: Path) -> list[Path]:
     candidates: list[Path] = []
 
-    for relative in _CLIENT_ROOT_FILES + _CLIENT_DOCS + _CLIENT_PLACEHOLDERS:
+    for relative in _CLIENT_ROOT_FILES + _CLIENT_DOCS + _CLIENT_PLACEHOLDERS + _CLIENT_REFERENCE_FILES:
         path = project_root / relative
         if not path.exists():
             raise FileNotFoundError(f"Required release file is missing: {relative}")

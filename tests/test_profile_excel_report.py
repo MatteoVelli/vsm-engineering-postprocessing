@@ -52,7 +52,7 @@ def electric_workbook(electric_report):
 
 def test_profile_excel_report_generates_reopenable_electric_workbook(electric_report, electric_workbook) -> None:
     assert electric_report.report_path.exists()
-    assert electric_report.report_path.name == "RoboSprayer_Electric_Engineering_Report.xlsx"
+    assert electric_report.report_path.name == _robosprayer_csv().with_suffix(".xlsx").name
     assert electric_report.sample_count == 3853
     assert electric_report.source_raw_channel_count == 607
     assert electric_report.report_channel_count == 317
@@ -66,10 +66,12 @@ def test_profile_excel_report_generates_reopenable_electric_workbook(electric_re
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
         "Metadata",
+        "Plot Templates",
     ]
     assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "visible"] == [
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
+        "Plot Templates",
     ]
     assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "hidden"] == ["Metadata"]
 
@@ -138,19 +140,32 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
     report_sheet = electric_workbook["RoboSprayer Electric"]
     metadata_sheet = electric_workbook["Metadata"]
 
-    assert len(report_sheet._images) == 15
-    anchors = [(image.anchor._from.col + 1, image.anchor._from.row + 1) for image in report_sheet._images]
-    assert anchors[:6] == [(319, 7), (325, 7), (331, 7), (337, 7), (343, 7), (349, 7)]
-    assert anchors[6:12] == [(319, 24), (325, 24), (331, 24), (337, 24), (343, 24), (349, 24)]
-    assert anchors[12:] == [(319, 41), (325, 41), (331, 41)]
-    assert report_sheet.cell(6, 319).value == "Speed Vs Distance"
-    assert report_sheet.cell(6, 331).value == "Road Profile"
-    assert report_sheet.cell(40, 319).value == "Agrochemical Discharge and Battery SOC Vs Time"
-    assert report_sheet.cell(6, 331).fill.fgColor.rgb == "001F4E78"
-    assert report_sheet.cell(6, 331).font.color.rgb == "00FFFFFF"
-    assert report_sheet.cell(6, 331).font.bold is True
-    assert report_sheet._images[0].anchor.ext.cx == 405 * 9525
-    assert report_sheet._images[0].anchor.ext.cy == 234 * 9525
+    assert len(report_sheet._charts) == 15
+    anchors = [(chart.anchor._from.col + 1, chart.anchor._from.row + 1) for chart in report_sheet._charts]
+    assert anchors == [(319 + (i % 2) * 8, 6 + (i // 2) * 20) for i in range(15)]
+    def title_text(chart):
+        return "".join(run.t for paragraph in chart.title.tx.rich.p for run in paragraph.r)
+    assert title_text(report_sheet._charts[0]) == "Speed Vs Distance"
+    assert title_text(report_sheet._charts[2]) == "Road Profile"
+    assert title_text(report_sheet._charts[12]) == "Agrochemical Discharge and Battery SOC Vs Time"
+    assert report_sheet.cell(6, 319).value is None
+    assert report_sheet._charts[0].anchor.ext.cx == 637 * 9525
+    assert report_sheet._charts[0].anchor.ext.cy == 3.75 * 914400
+    assert not report_sheet._images
+    from vsm_postprocessing.excel_report_engine import _ordered_profile_plots
+    from openpyxl.utils import get_column_letter, quote_sheetname
+    columns = {channel.channel_id: index for index, channel in enumerate(electric_report.report_channels, 1)}
+    for chart, plot in zip(report_sheet._charts, _ordered_profile_plots(electric_report.plotting_result.rendered_plots)):
+        expected_ids = [plot.primary_series_ids, plot.secondary_series_ids]
+        for component, channel_ids in zip(chart._charts, expected_ids):
+            assert len(component.series) == len(channel_ids)
+            for series, channel_id in zip(component.series, channel_ids):
+                def reference(name):
+                    col = get_column_letter(columns[name])
+                    return f"{quote_sheetname(report_sheet.title)}!${col}$5:${col}${electric_report.sample_count + 4}"
+                assert series.xVal.numRef.f == reference(plot.x_channel_id)
+                assert series.yVal.numRef.f == reference(channel_id)
+                assert series.graphicalProperties.line.width == 31750
 
     metadata = {metadata_sheet.cell(row, 1).value: metadata_sheet.cell(row, 2).value for row in range(2, 45)}
     assert metadata["Source sample count"] == 3853
@@ -187,7 +202,7 @@ def test_profile_excel_report_hybrid_dry_run_remains_profile_generic(tmp_path: P
     )
     workbook = load_workbook(result.report_path, data_only=True)
 
-    assert result.report_path.name == "RoboSprayer_Hybrid_Engineering_Report.xlsx"
+    assert result.report_path.name == _robosprayer_csv().with_suffix(".xlsx").name
     assert workbook.sheetnames[0] == "RoboSprayer Hybrid"
     assert result.sample_count == 3853
     assert result.source_raw_channel_count == 607
@@ -201,7 +216,7 @@ def test_profile_excel_report_hybrid_dry_run_remains_profile_generic(tmp_path: P
     assert workbook["RoboSprayer Hybrid"].sheet_state == "visible"
     assert workbook["Rename From VSM to Astauto"].sheet_state == "visible"
     assert workbook["Metadata"].sheet_state == "hidden"
-    assert len(workbook["RoboSprayer Hybrid"]._images) == 21
+    assert len(workbook["RoboSprayer Hybrid"]._charts) == 21
 
 
 def test_profile_excel_report_exports_latest_electric_road_height(tmp_path: Path) -> None:
@@ -265,7 +280,7 @@ def test_profile_excel_report_exports_latest_hybrid_road_height(tmp_path: Path) 
 
     assert result.report_channel_count == 326
     assert result.plot_count == 21
-    assert result.report_path.name == "Caiman_SP_Hybrid_Engineering_Report.xlsx"
+    assert result.report_path.name == _latest_hybrid_csv().with_suffix(".xlsx").name
     assert result.report_metadata.report_title == "Caiman SP Hybrid"
     assert workbook.sheetnames[0] == "Caiman SP Hybrid"
     assert "track_height" not in by_semantic
@@ -383,7 +398,7 @@ def test_profile_excel_report_uses_dynamic_geometry_for_short_profile(tmp_path: 
     assert sheet.cell(8, 2).value == pytest.approx(6.0)
     assert sheet.cell(3, 5).value == "Max Speed [kph]"
     assert sheet.cell(4, 5).value == pytest.approx(6.0)
-    assert result.report_path.name == "Short_Electric_Engineering_Report.xlsx"
+    assert result.report_path.name == data_path.with_suffix(".xlsx").name
 
 
 def _right_summary_cells(sheet, result) -> dict[str, object]:

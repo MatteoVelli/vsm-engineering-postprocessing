@@ -11,6 +11,7 @@ from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 from vsm_postprocessing.pipeline_engine import run_pipeline
 from vsm_postprocessing.report_metadata import resolve_report_metadata
 from vsm_postprocessing.version import __version__
+from vsm_postprocessing.utils import source_report_filename
 from vsm_postprocessing.ui_config import (
     available_math_channel_ids,
     build_runtime_bundle,
@@ -346,7 +347,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         machine_name_override = st.text_input(
             "Machine / Vehicle Name",
             value=detected_metadata.machine_name,
-            help="This display name is used in report titles and output filenames. The Electric/Hybrid profile remains separate.",
+            help="This display name is used in report titles. The Electric/Hybrid profile remains separate.",
         )
         validation_key = f"{source_path}:{source_path.stat().st_size}:{profile_definition.profile_id}"
         try:
@@ -552,8 +553,9 @@ def _persist_upload(uploaded: Any) -> Path:
     UI_WORKSPACE.mkdir(parents=True, exist_ok=True)
     data = uploaded.getvalue()
     digest = hashlib.sha256(data).hexdigest()[:12]
-    safe_name = Path(uploaded.name).name
-    destination = UI_WORKSPACE / f"{digest}_{safe_name}"
+    safe_name = source_report_filename(uploaded.name, Path(uploaded.name).suffix)
+    destination = UI_WORKSPACE / digest / safe_name
+    destination.parent.mkdir(parents=True, exist_ok=True)
     if not destination.exists() or destination.stat().st_size != len(data):
         destination.write_bytes(data)
     return destination

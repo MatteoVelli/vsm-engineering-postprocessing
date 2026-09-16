@@ -282,8 +282,8 @@ def test_profile_engineering_report_wrapper_reuses_excel_result_for_powerpoint(
     assert calls["excel_output_dir"] == tmp_path / "out" / "profile_excel_report"
     assert calls["ppt_output_dir"] == tmp_path / "out" / "profile_powerpoint_report"
     assert calls["report_metadata"].report_title == "RoboSprayer Electric"
-    assert calls["excel_output_filename"] == "RoboSprayer_Electric_Engineering_Report.xlsx"
-    assert calls["ppt_output_filename"] == "RoboSprayer_Electric_Engineering_Report.pptx"
+    assert calls["excel_output_filename"] == "RoboSprayer_3500Kg_Electric.xlsx"
+    assert calls["ppt_output_filename"] == "RoboSprayer_3500Kg_Electric.pptx"
 
 
 def test_ui_app_preserves_profile_flow_and_removes_legacy_flow() -> None:

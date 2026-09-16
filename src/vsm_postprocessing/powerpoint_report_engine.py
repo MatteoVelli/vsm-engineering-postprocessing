@@ -17,7 +17,7 @@ from .errors import ConfigurationError, PowerPointReportError
 from .importer import ImportOptions
 from .plotting_engine import PlottingResult, render_plots
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
-from .utils import client_display_filename, sha256_file
+from .utils import source_report_filename, client_display_filename, sha256_file
 from .version import __version__
 
 
@@ -259,7 +259,7 @@ def build_powerpoint_report(
             raise PowerPointReportError(f"Unsupported PowerPoint slide type: {slide_def.slide_type}")
         _add_footer(slide, slide_def.footer or config.footer, slide_number, len(config.slides), config.theme)
 
-    presentation_path = destination / config.output_filename
+    presentation_path = destination / source_report_filename(statistics_result.dataset.source_path, ".pptx")
     try:
         prs.save(presentation_path)
     except Exception as exc:  # python-pptx exposes several low-level exceptions
@@ -870,7 +870,8 @@ def _hex_color(value: object, context: str) -> str:
 
 
 def _pptx_filename(value: object) -> str:
-    text = _nonempty_string(value, "presentation.output_filename")
+    _nonempty_string(value, "presentation.output_filename")
+    text = str(value)
     if Path(text).name != text or not text.lower().endswith(".pptx"):
         raise ConfigurationError("presentation.output_filename must be a plain .pptx filename")
     return text

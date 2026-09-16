@@ -67,6 +67,7 @@ class StatisticDefinition:
     placement_group: str | None = None
     required: bool = True
     notes: str | None = None
+    nan_policy: str = "error"
 
 
 @dataclass(frozen=True)
@@ -495,6 +496,7 @@ def _parse_statistic(raw: Any, index: int) -> StatisticDefinition:
             "placement_group",
             "required",
             "notes",
+            "nan_policy",
         },
         context,
     )
@@ -515,7 +517,11 @@ def _parse_statistic(raw: Any, index: int) -> StatisticDefinition:
         "absolute_max",
     }:
         raise ConfigurationError(f"{context}.operation must be a supported statistics operation")
+    nan_policy = raw.get("nan_policy", "error")
+    if not isinstance(nan_policy, str) or nan_policy not in {"error", "omit", "propagate"}:
+        raise ConfigurationError(f"{context}.nan_policy must be error, omit, or propagate")
     return StatisticDefinition(
+        nan_policy=nan_policy,
         statistic_id=statistic_id,
         target=target,
         operation=operation,

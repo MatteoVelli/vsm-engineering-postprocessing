@@ -9,6 +9,6 @@ Version 1.3.0 is a deterministic profile-reporting release for validated Electri
 5. Plots are configuration-driven rather than a fully interactive chart designer.
 6. Excel charts are embedded deterministic PNG assets rather than native editable Excel chart objects.
 7. PowerPoint report content is deterministic and template-driven. Manual annotations present in reference presentations are not automatically inferred.
-8. `START_VSM_TOOL.bat` requires `uv` to be installed and available in PATH. The first setup may require internet access to obtain the locked Python environment/packages if they are not already cached.
+8. `SETUP_VSM_TOOL.bat` performs an online first-time bootstrap when a validated Python 3.11.x runtime or Python packages are missing. The automatic runtime target is CPython 3.11.9 because it is the supported Python 3.11 Windows binary installer for this release. Company networks that block downloads may require manual Python installation or an offline wheelhouse prepared by the maintainer.
 9. The release is not yet a fully standalone/offline Windows executable or MSI installer.
 10. AI-assisted KPI/plot recommendations are not included in the deterministic release. If introduced later, AI must remain advisory and must not replace numerical calculations.

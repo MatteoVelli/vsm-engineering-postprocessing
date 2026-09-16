@@ -13,6 +13,11 @@ import numpy as np
 import yaml
 from openpyxl import Workbook, load_workbook
 from openpyxl.chart import Reference, ScatterChart, Series
+from openpyxl.chart.axis import ChartLines
+from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.chart.text import RichText
+from openpyxl.drawing.line import LineProperties
+from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -20,14 +25,14 @@ from openpyxl.utils import get_column_letter
 from .errors import ConfigurationError, ExcelReportError
 from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo
-from .plotting_engine import PlottingResult, load_plotting_config, render_plots
+from .plotting_engine import PlotDefinition, PlotSeriesDefinition, PlottingResult, load_plotting_config, render_plots, _axis_label, _automatic_y_label
 from .profile_math import ProfileMathResult, calculate_profile_math_channels
-from .profile_plotting import ProfilePlottingResult, render_profile_plots
+from .profile_plotting import ProfilePlottingResult, render_profile_plots, _prepare_plot_definition
 from .profile_statistics import ProfileStatisticsResult, build_canonical_report_metrics, calculate_profile_statistics
 from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ProfileResolutionResult, ReportingProfile, load_reporting_profile, resolve_profile
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
-from .utils import client_display_filename, normalize_display_unit, normalized_name, sha256_file
+from .utils import source_report_filename, protect_source_path, client_display_filename, normalize_display_unit, normalized_name, sha256_file
 from .version import __version__
 
 _ALLOWED_BOTTOM_OPERATIONS = ("max", "min", "last", "sum", "rms", "time_weighted_rms")
@@ -97,11 +102,11 @@ class ExcelReportResult:
 
     @property
     def native_excel_chart_count(self) -> int:
-        return len(self.config.native_chart_ids)
+        return len(self.config.native_chart_ids) + len(self.config.plot_ids)
 
     @property
     def embedded_plot_image_count(self) -> int:
-        return len(self.config.plot_ids)
+        return 0
 
 
 @dataclass
@@ -416,9 +421,9 @@ def generate_excel_report(
         )
     plotting_config = load_plotting_config(plotting_config_file)
     native_chart_definitions = {
-        definition.plot_id: definition
+        definition.plot_id: _native_plot_definition(definition, plotting_result.channels_by_id)
         for definition in plotting_config.plots
-        if definition.plot_id in config.native_chart_ids
+        if definition.plot_id in config.native_chart_ids + config.plot_ids
     }
     missing_native_charts = sorted(set(config.native_chart_ids) - set(native_chart_definitions))
     if missing_native_charts:
@@ -427,7 +432,7 @@ def generate_excel_report(
             + ", ".join(missing_native_charts)
         )
 
-    report_path = destination / config.output_filename
+    report_path = protect_source_path(destination / source_report_filename(input_file, ".xlsx"), input_file)
     manifest_path = destination / "excel_report_manifest.json"
     summary_path = destination / "excel_report_summary.txt"
 
@@ -483,7 +488,7 @@ def generate_profile_excel_report(
 
     This adapter uses the validated profile processing layers as numerical
     authority and writes semantic raw/math report channels, statistics, KPIs,
-    and profile-rendered plot images into one workbook.
+    and editable native charts into one workbook.
     """
 
     source_path = Path(input_file).expanduser().resolve()
@@ -541,7 +546,7 @@ def generate_profile_excel_report(
         template_file=_profile_template_file(profile, template_file),
     )
     comparison = _profile_template_comparison_rows(profile, dataset, report_channels, statistics_result, plotting_result)
-    report_path = destination / _profile_output_filename(profile, output_filename, report_metadata)
+    report_path = protect_source_path(destination / _profile_output_filename(profile, output_filename, report_metadata), source_path)
     manifest_path = destination / "profile_excel_report_manifest.json"
     summary_path = destination / "profile_excel_report_summary.txt"
     report_type = report_type or (profile.metadata.powertrain or profile.profile_id)
@@ -593,8 +598,8 @@ def _profile_output_filename(
 ) -> str:
     if output_filename is not None:
         return _plain_xlsx_filename(output_filename, "output_filename")
-    stem = report_metadata.safe_output_stem if report_metadata is not None else profile.profile_id
-    return _plain_xlsx_filename(f"{stem}_Engineering_Report.xlsx", "output_filename")
+    source = report_metadata.source_filename if report_metadata is not None else profile.profile_id
+    return source_report_filename(source, ".xlsx")
 
 
 def _profile_template_file(profile: ReportingProfile, template_file: str | Path | None) -> Path | None:
@@ -876,6 +881,7 @@ def _write_profile_workbook(
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_plot_templates(workbook)
     workbook.save(output_path)
 
 
@@ -976,6 +982,7 @@ def _write_profile_report_sheet(
         plotting_result,
         start_row=6,
         start_col=summary_start_col,
+        channel_columns=channel_columns,
         border=border,
         label_fill=plot_header_fill,
         white_bold=white_bold,
@@ -1167,24 +1174,39 @@ def _write_profile_plots_on_report_sheet(
     start_row: int,
     start_col: int,
     *,
+    channel_columns: Mapping[str, int],
     border: Border,
     label_fill: PatternFill,
     white_bold: Font,
 ) -> None:
     rendered = _ordered_profile_plots(plotting_result.rendered_plots)
+    # Keep data-row heights and the KPI panel above intact. The panel columns
+    # are already width 13 (91 px in the workbook's Calibri 11 normal font).
+    row_height = sheet.sheet_format.defaultRowHeight or 15
+    chart_rows = math.ceil(_PROFILE_PLOT_HEIGHT_IN * 72 / row_height)
+    row_stride = chart_rows + _PROFILE_PLOT_GAP_ROWS
     for index, plot in enumerate(rendered):
-        row = start_row + (index // 6) * 17
-        col = start_col + (index % 6) * 6
+        row = start_row + (index // _PROFILE_PLOT_COLUMNS) * row_stride
+        col = start_col + (index % _PROFILE_PLOT_COLUMNS) * (
+            _PROFILE_PLOT_SPAN_COLUMNS + _PROFILE_PLOT_GAP_COLUMNS
+        )
         title = _client_plot_title(plot.plot_id, plot.title)
-        label = sheet.cell(row, col, title)
-        label.fill = label_fill
-        label.font = white_bold
-        label.border = border
-        label.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        image = XLImage(plot.png_file)
-        image.width = _PROFILE_REPORT_PLOT_IMAGE_WIDTH
-        image.height = _PROFILE_REPORT_PLOT_IMAGE_HEIGHT
-        sheet.add_image(image, f"{get_column_letter(col)}{row + 1}")
+        profile_definition = next(item for item in plotting_result.profile.plots if item.plot_id == plot.plot_id)
+        definition, _ = _prepare_plot_definition(
+            profile_definition, plotting_result.channels_by_semantic_name,
+            plotting_result.values_by_semantic_name, plotting_result.sample_count,
+        )
+        definition = _native_plot_definition(definition, plotting_result.channels_by_semantic_name)
+        chart = _build_native_scatter_chart(
+            definition, report_sheet=sheet, channel_column_by_id=channel_columns,
+            data_start_row=_PROFILE_DATA_START_ROW,
+            data_end_row=_PROFILE_DATA_START_ROW + plotting_result.sample_count - 1,
+            chart_index=index,
+        )
+        _set_native_chart_title(chart, title)
+        chart.width = _PROFILE_PLOT_WIDTH_IN * 2.54
+        chart.height = _PROFILE_PLOT_HEIGHT_IN * 2.54
+        sheet.add_chart(chart, f"{get_column_letter(col)}{row}")
 
 
 def _ordered_profile_plots(rendered_plots: list[Any]) -> list[Any]:
@@ -1433,7 +1455,7 @@ def _write_profile_metadata_sheet(
         ("Machine / Vehicle name", report_metadata.machine_name),
         ("Powertrain", report_metadata.powertrain_name),
         ("Report title", report_metadata.report_title),
-        ("Output stem", report_metadata.safe_output_stem),
+        ("Output stem", Path(source_report_filename(source_path, ".xlsx")).stem),
         ("Machine detection source", report_metadata.detection_source),
         ("Source SHA-256", dataset.quality.source_sha256),
         ("Source format", dataset.quality.file_type),
@@ -1463,7 +1485,7 @@ def _write_profile_metadata_sheet(
         ("Configured plots", plotting_result.configured_plot_count),
         ("Rendered plots", plotting_result.rendered_plot_count),
         ("Plot series", plotting_result.series_count),
-        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto"),
+        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto, Plot Templates"),
         ("Hidden sheets", "Metadata"),
     ]
     sheet.cell(1, 1, "Field").fill = label_fill
@@ -1575,12 +1597,12 @@ def _profile_template_comparison_rows(
             "Sergio reference plot set",
             f"{plotting_result.rendered_plot_count} of {plotting_result.configured_plot_count} profile plots embedded on main sheet",
             "PASS",
-            "The workbook embeds profile-rendered PNG plot assets.",
+            "The workbook contains editable native Excel charts referencing report data.",
         ),
         _comparison_row(
             "Sergio template fidelity",
             "Report sheet plus channel-selection sheet",
-            "Production workbook has main report, Rename From VSM to Astauto, and hidden Metadata",
+            "Production workbook has main report, Rename From VSM to Astauto, Plot Templates, and hidden Metadata",
             "PASS",
             "Development-only QA comparison content is omitted from visible client sheets.",
         ),
@@ -1609,7 +1631,7 @@ def _profile_manifest(
         "report_title": result.report_metadata.report_title,
         "machine_name": result.report_metadata.machine_name,
         "powertrain": result.report_metadata.powertrain_name,
-        "safe_output_stem": result.report_metadata.safe_output_stem,
+        "safe_output_stem": result.report_path.stem,
         "machine_detection_source": result.report_metadata.detection_source,
         "source_file": str(source_path),
         "source_sha256": result.dataset.quality.source_sha256,
@@ -1634,7 +1656,7 @@ def _profile_manifest(
         "plot_series_count": result.plotting_result.series_count,
         "report_channel_ids": [channel.channel_id for channel in result.report_channels],
         "plot_ids": [plot.plot_id for plot in result.plotting_result.rendered_plots],
-        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto"],
+        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto", "Plot Templates"],
         "hidden_sheet_names": ["Metadata"],
     }
 
@@ -1717,8 +1739,14 @@ def _report_channel_type_counts(report_channels: list[ChannelInfo]) -> dict[str,
 
 
 _PROFILE_DATA_START_ROW = 5
-_PROFILE_REPORT_PLOT_IMAGE_WIDTH = 405
-_PROFILE_REPORT_PLOT_IMAGE_HEIGHT = 234
+_PROFILE_PLOT_COLUMNS = 2
+# Seven existing width-13 columns, each 91 px with Calibri 11 at 96 DPI.
+# SpreadsheetML: trunc(((256 * width + trunc(128 / 7)) / 256) * 7).
+_PROFILE_PLOT_WIDTH_IN = 637 / 96
+_PROFILE_PLOT_HEIGHT_IN = 3.75
+_PROFILE_PLOT_SPAN_COLUMNS = 7
+_PROFILE_PLOT_GAP_COLUMNS = 1
+_PROFILE_PLOT_GAP_ROWS = 2
 
 
 def _write_workbook(
@@ -1857,20 +1885,28 @@ def _write_workbook(
         value.number_format = _number_format(item.channel_unit)
         report.column_dimensions[get_column_letter(col)].width = 20
 
-    # Plot images are embedded below statistics in a deterministic grid.
+    plotting_defaults = load_plotting_config(plotting_config_file).defaults
+    chart_columns = _native_chart_source_columns(report, report_channels, native_chart_definitions,
+                                                 values_by_id, data_start_row)
+    # Native charts retain the existing deterministic plot grid.
     chart_start_row = bottom_start_row + len(config.bottom_operations) + 3
     horizontal_span = max(8, math.ceil(channel_count / config.plot_columns))
     vertical_span = 20
-    for plot_index, plot_id in enumerate(config.plot_ids):
-        item = plots_by_id[plot_id]
+    for plot_index, plot_id in enumerate(config.native_chart_ids + config.plot_ids):
         grid_row = plot_index // config.plot_columns
         grid_col = plot_index % config.plot_columns
         anchor_row = chart_start_row + grid_row * vertical_span
         anchor_col = 1 + grid_col * horizontal_span
-        image = XLImage(item.output_file)
-        image.width = config.plot_width_px
-        image.height = config.plot_height_px
-        report.add_image(image, f"{get_column_letter(anchor_col)}{anchor_row}")
+        chart = _build_native_scatter_chart(
+            native_chart_definitions[plot_id], report_sheet=report,
+            channel_column_by_id=chart_columns,
+            show_legend=plotting_defaults.legend,
+            data_start_row=data_start_row, data_end_row=data_end_row,
+            chart_index=plot_index + len(config.native_chart_ids) + 1,
+        )
+        chart.width = config.plot_width_px * 2.54 / 96
+        chart.height = config.plot_height_px * 2.54 / 96
+        report.add_chart(chart, f"{get_column_letter(anchor_col)}{anchor_row}")
 
     report.freeze_panes = "B5"
     report.row_dimensions[1].height = 28
@@ -1897,6 +1933,7 @@ def _write_workbook(
         border=border,
     )
 
+    _write_plot_templates(workbook)
     workbook.save(output_path)
 
 
@@ -2024,9 +2061,10 @@ def _write_sergio_reference_workbook(
         value.number_format = _number_format(item.channel_unit)
         report.column_dimensions[get_column_letter(col)].width = max(12, config.channel_width)
 
-    # Native Excel charts sit directly below the KPI/secondary-selection strip,
-    # as in the supplied report. The PNG path is retained for PowerPoint and for
-    # legacy Excel configs that do not request native charts.
+    plotting_defaults = load_plotting_config(plotting_config_file).defaults
+    chart_columns = _native_chart_source_columns(report, report_channels, native_chart_definitions,
+                                                 values_by_id, data_start_row)
+    # Native charts retain the existing KPI-panel placement.
     if config.plot_placement == "kpi_panel":
         chart_start_row = 6
         chart_start_col = kpi_start_col
@@ -2051,7 +2089,8 @@ def _write_sergio_reference_workbook(
         chart = _build_native_scatter_chart(
             definition,
             report_sheet=report,
-            channel_column_by_id=channel_column_by_id,
+            channel_column_by_id=chart_columns,
+            show_legend=plotting_defaults.legend,
             data_start_row=data_start_row,
             data_end_row=data_end_row,
             chart_index=plot_index + 1,
@@ -2066,10 +2105,16 @@ def _write_sergio_reference_workbook(
         grid_col = (plot_index + len(native_chart_ids)) % config.plot_columns
         anchor_row = chart_start_row + grid_row * vertical_span
         anchor_col = chart_start_col + grid_col * horizontal_span
-        image = XLImage(item.output_file)
-        image.width = config.plot_width_px
-        image.height = config.plot_height_px
-        report.add_image(image, f"{get_column_letter(anchor_col)}{anchor_row}")
+        chart = _build_native_scatter_chart(
+            native_chart_definitions[plot_id], report_sheet=report,
+            channel_column_by_id=chart_columns,
+            show_legend=plotting_defaults.legend,
+            data_start_row=data_start_row, data_end_row=data_end_row,
+            chart_index=plot_index + len(config.native_chart_ids) + 1,
+        )
+        chart.width = config.plot_width_px * 2.54 / 96
+        chart.height = config.plot_height_px * 2.54 / 96
+        report.add_chart(chart, f"{get_column_letter(anchor_col)}{anchor_row}")
 
     # Match the visible mechanics of the supplied workbook.
     report.freeze_panes = "B6"
@@ -2104,17 +2149,60 @@ def _write_sergio_reference_workbook(
         border=border,
     )
 
+    _write_plot_templates(workbook)
     workbook.save(output_path)
+
+
+def _native_plot_definition(definition: Any, channels: Mapping[str, ChannelInfo]) -> Any:
+    """Use the same resolved labels and units as the matplotlib plot."""
+    primary = tuple(item.channel_id for item in definition.series if item.axis == "primary")
+    secondary = tuple(item.channel_id for item in definition.series if item.axis == "secondary")
+    return replace(
+        definition,
+        x_label=definition.x_label or _axis_label(channels[definition.x_channel_id]),
+        primary_y_label=definition.primary_y_label or _automatic_y_label(primary, channels, fallback="Value"),
+        secondary_y_label=definition.secondary_y_label or _automatic_y_label(secondary, channels, fallback="Value"),
+        series=tuple(replace(item, label=item.label or channels[item.channel_id].display_name)
+                     for item in definition.series),
+    )
+
+
+def _native_chart_source_columns(
+    report: Any,
+    report_channels: list[ChannelInfo],
+    definitions: Mapping[str, Any],
+    values_by_id: Mapping[str, Any],
+    data_start_row: int,
+) -> dict[str, int | tuple[Any, int]]:
+    """Reference exported channels directly; retain plot-only channels on a hidden sheet."""
+    columns: dict[str, int | tuple[Any, int]] = {
+        channel.channel_id: index for index, channel in enumerate(report_channels, 1)
+    }
+    needed = dict.fromkeys(channel_id for definition in definitions.values()
+                          for channel_id in (definition.x_channel_id, *(item.channel_id for item in definition.series)))
+    missing = [channel_id for channel_id in needed if channel_id not in columns]
+    if missing:
+        data_sheet = report.parent.create_sheet("Chart Data")
+        data_sheet.sheet_state = "hidden"
+        for col, channel_id in enumerate(missing, 1):
+            if channel_id not in values_by_id:
+                raise ExcelReportError(f"Native chart source channel unavailable: {channel_id}")
+            data_sheet.cell(1, col, channel_id)
+            for row, value in enumerate(values_by_id[channel_id], data_start_row):
+                data_sheet.cell(row, col, float(value))
+            columns[channel_id] = (data_sheet, col)
+    return columns
 
 
 def _build_native_scatter_chart(
     definition: Any,
     *,
     report_sheet: Any,
-    channel_column_by_id: Mapping[str, int],
+    channel_column_by_id: Mapping[str, int | tuple[Any, int]],
     data_start_row: int,
     data_end_row: int,
     chart_index: int,
+    show_legend: bool = True,
 ) -> ScatterChart:
     base_axis_id = 100000 + chart_index * 10
     chart = _make_scatter_shell(
@@ -2125,13 +2213,27 @@ def _build_native_scatter_chart(
         y_axis_id=base_axis_id + 2,
         y_position="l",
     )
-    x_col = channel_column_by_id[definition.x_channel_id]
-    x_values = Reference(
-        report_sheet,
-        min_col=x_col,
-        min_row=data_start_row,
-        max_row=data_end_row,
-    )
+    if any(isinstance(location, tuple) for location in channel_column_by_id.values()):
+        chart.visible_cells_only = False
+
+    def channel_reference(channel_id: str) -> Reference:
+        location = channel_column_by_id[channel_id]
+        source_sheet, column = location if isinstance(location, tuple) else (report_sheet, location)
+        return Reference(source_sheet, min_col=column, min_row=data_start_row, max_row=data_end_row)
+
+    x_values = channel_reference(definition.x_channel_id)
+    # Read the exact referenced cells only to choose display precision.
+    # Never round or replace workbook values or chart reference ranges.
+    def axis_values(channel_ids: list[str]) -> np.ndarray:
+        values = []
+        for channel_id in channel_ids:
+            location = channel_column_by_id[channel_id]
+            sheet, column = location if isinstance(location, tuple) else (report_sheet, location)
+            values.extend(sheet.cell(row, column).value for row in range(data_start_row, data_end_row + 1))
+        return np.asarray(values, dtype=np.float64)
+
+    x_data = axis_values([definition.x_channel_id])
+    _apply_native_axis_format(chart.x_axis, x_data, definition.x_label or "")
     secondary_chart = _make_scatter_shell(
         definition.title,
         x_title="",
@@ -2141,26 +2243,33 @@ def _build_native_scatter_chart(
         y_position="r",
     )
     has_secondary = False
-    for item in definition.series:
-        y_col = channel_column_by_id[item.channel_id]
-        y_values = Reference(
-            report_sheet,
-            min_col=y_col,
-            min_row=data_start_row,
-            max_row=data_end_row,
-        )
+    for series_index, item in enumerate(definition.series):
+        y_values = channel_reference(item.channel_id)
         series = Series(y_values, x_values, title=item.label or item.channel_id)
-        series.graphicalProperties.line.width = 12700
+        _style_native_series(series, series_index)
         if item.axis == "secondary":
             has_secondary = True
             series.graphicalProperties.line.dashStyle = "dash"
             secondary_chart.series.append(series)
         else:
             chart.series.append(series)
+    _apply_native_axis_format(
+        chart.y_axis, axis_values([item.channel_id for item in definition.series if item.axis == "primary"]),
+        definition.primary_y_label or "",
+    )
     if has_secondary:
+        _apply_native_axis_format(secondary_chart.x_axis, x_data, definition.x_label or "")
+        _apply_native_axis_format(
+            secondary_chart.y_axis,
+            axis_values([item.channel_id for item in definition.series if item.axis == "secondary"]),
+            definition.secondary_y_label or "",
+        )
         secondary_chart.y_axis.crosses = "max"
+        secondary_chart.y_axis.majorGridlines = None
         secondary_chart.x_axis.delete = True
         chart += secondary_chart
+    if not show_legend or len(definition.series) < 2:
+        chart.legend = None
     return chart
 
 
@@ -2174,10 +2283,13 @@ def _make_scatter_shell(
     y_position: str,
 ) -> ScatterChart:
     chart = ScatterChart()
-    chart.title = title
+    _set_native_chart_title(chart, title)
     chart.style = 13
     chart.scatterStyle = "line"
+    chart.graphical_properties = GraphicalProperties(solidFill="FFFFFF", ln=LineProperties(noFill=True))
+    chart.plot_area.spPr = GraphicalProperties(solidFill="FFFFFF", ln=LineProperties(noFill=True))
     chart.legend.position = "b"
+    chart.legend.overlay = False
     chart.x_axis.axId = x_axis_id
     chart.y_axis.axId = y_axis_id
     chart.x_axis.crossAx = y_axis_id
@@ -2188,7 +2300,135 @@ def _make_scatter_shell(
     chart.y_axis.crosses = "autoZero"
     chart.x_axis.title = x_title
     chart.y_axis.title = y_title
+    chart.x_axis.txPr = _chart_text(10)
+    chart.y_axis.txPr = _chart_text(10)
+    chart.x_axis.title.txPr = _chart_text(11)
+    chart.y_axis.title.txPr = _chart_text(11)
+    chart.legend.txPr = _chart_text(9)
+    chart.x_axis.majorGridlines = None
+    chart.y_axis.majorGridlines = ChartLines(spPr=GraphicalProperties(
+        ln=LineProperties(solidFill="DCE3E8", w=6350),
+    ))
     return chart
+
+
+def _engineering_axis_scale(values: np.ndarray, label: str) -> tuple[float, float, float, str] | None:
+    """Estimate a nice interval to choose precision; do not lock Excel axis bounds."""
+    finite = values[np.isfinite(values)]
+    if not finite.size:
+        return None  # Leave Excel autoscaling for an empty optional axis.
+    low, high = float(finite.min()), float(finite.max())
+    if low == high:
+        padding = abs(low) * 0.05 if low else 1.0
+        low, high = low - padding, high + padding
+    desired_step = (high - low) / 5
+    if not math.isfinite(desired_step) or desired_step <= 0:
+        return None  # Excel autoscaling is safer outside floating-point display bounds.
+    magnitude = 10 ** math.floor(math.log10(desired_step))
+    candidates = []
+    for multiplier in (1, 2, 2.5, 5, 10):
+        step = multiplier * magnitude
+        lower = min(low, math.floor(low / step) * step)
+        upper = max(high, math.ceil(high / step) * step)
+        tick_count = round((upper - lower) / step) + 1
+        candidates.append((abs(tick_count - 6), abs(step - desired_step), lower, upper, step))
+    _, _, lower, upper, step = min(candidates)
+
+    # Labels already carry the resolved channel unit from the plotting layer.
+    unit = label.rsplit("[", 1)[-1].rstrip("]").strip().casefold() if "[" in label else ""
+    decimals = 0 if unit in {"n", "nm", "rpm"} else 1
+    step_decimals = max(0, -math.floor(math.log10(step)))
+    if step_decimals <= 3 and not math.isclose(step * 10 ** step_decimals, round(step * 10 ** step_decimals), abs_tol=1e-8):
+        step_decimals += 1
+    decimals = max(decimals, step_decimals)
+    if decimals > 3 or max(abs(lower), abs(upper)) >= 1e6:
+        number_format = "0.0E+00"
+    else:
+        number_format = "0" + ("." + "0" * decimals if decimals else "")
+    return lower, upper, step, number_format
+
+
+def _apply_native_axis_format(axis: Any, values: np.ndarray, label: str) -> None:
+    scale = _engineering_axis_scale(values, label)
+    if scale is None:
+        return
+    _, _, _, number_format = scale
+    # Bounds AND intervals must remain automatic when an engineer repoints a chart.
+    axis.scaling.min = None
+    axis.scaling.max = None
+    axis.majorUnit = None
+    axis.numFmt = number_format
+    axis.numFmt.sourceLinked = False
+
+
+def _chart_text(size: int, color: str = "333333", bold: bool = False) -> RichText:
+    return RichText(p=[Paragraph(pPr=ParagraphProperties(
+        defRPr=CharacterProperties(sz=size * 100, solidFill=color, b=bold)),
+        endParaRPr=CharacterProperties(sz=size * 100, solidFill=color, b=bold))])
+
+
+def _set_native_chart_title(chart: ScatterChart, title: str) -> None:
+    chart.title = title
+    chart.title.txPr = _chart_text(14, "1F4E78", True)
+    chart.title.overlay = False
+    for paragraph in chart.title.tx.rich.p:
+        for run in paragraph.r:
+            run.rPr = CharacterProperties(sz=1400, solidFill="1F4E78", b=True)
+
+
+# Explicit RGB versions of the existing workbook theme accents travel with copies.
+_NATIVE_SERIES_COLORS = ("4F81BD", "C0504D", "9BBB59", "8064A2", "4BACC6", "F79646")
+
+
+def _style_native_series(series: Any, index: int) -> None:
+    series.graphicalProperties.line.width = 31750
+    series.graphicalProperties.line.solidFill = _NATIVE_SERIES_COLORS[index % len(_NATIVE_SERIES_COLORS)]
+    series.marker.symbol = "none"
+    series.smooth = False
+
+
+def _write_plot_templates(workbook: Workbook) -> None:
+    """Ship reusable chart objects using the production builder and isolated sample data."""
+    sheet = workbook.create_sheet("Plot Templates")
+    instructions = [
+        "Reusable native charts - sample data only",
+        "Copy a chart border (Ctrl+C), then paste (Ctrl+V) into your report or another worksheet.",
+        "Chart Design > Select Data > Edit: replace each series name, X values and Y values; keep equal-length X/Y ranges.",
+        "Edit chart/axis titles and units. Bounds and intervals are automatic; use Format Axis > Number if precision needs adjusting.",
+        "Edit existing series to keep their style. Remove unused series; for more, copy a styled series or format the added series.",
+    ]
+    for row, instruction in enumerate(instructions, 1):
+        sheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=15)
+        cell = sheet.cell(row, 1, instruction)
+        cell.font = Font(name="Calibri", size=11, color="1F4E78" if row == 1 else "333333", bold=row == 1)
+        cell.alignment = Alignment(wrap_text=True, vertical="center")
+        sheet.row_dimensions[row].height = 30
+    for column in range(1, 16):
+        sheet.column_dimensions[get_column_letter(column)].width = 13
+    headers = ["Sample X", "Sample Y1", "Sample Y2", "Sample Y3", "Sample Y4"]
+    for column, label in enumerate(headers, 1):
+        sheet.cell(8, column, label).font = Font(bold=True)
+    for row, x in enumerate((0, .5, 2, 5, 10), 9):
+        for column, value in enumerate((x, x + 1, 2 * x + 2, 3 * x + 1, 4 * x + 2), 1):
+            sheet.cell(row, column, value)
+    columns = {"x": 1, "y1": 2, "y2": 3, "y3": 4, "y4": 5}
+    variants = [
+        ("Template - Single Series", (PlotSeriesDefinition("y1", label="Sample Y1"),), None),
+        ("Template - Multiple Series", tuple(PlotSeriesDefinition(f"y{i}", label=f"Sample Y{i}") for i in range(1, 5)), None),
+        ("Template - Dual Y Axes", (PlotSeriesDefinition("y1", label="Sample left Y"),
+                                   PlotSeriesDefinition("y2", "secondary", "Sample right Y")), "Right Y [unit]"),
+    ]
+    for index, (title, series, right_label) in enumerate(variants):
+        definition = PlotDefinition(f"template_{index}", title, "x", series, "",
+                                    x_label="X [unit]", primary_y_label="Y [unit]",
+                                    secondary_y_label=right_label)
+        chart = _build_native_scatter_chart(definition, report_sheet=sheet,
+            channel_column_by_id=columns, data_start_row=9, data_end_row=13, chart_index=index)
+        chart.width = _PROFILE_PLOT_WIDTH_IN * 2.54
+        chart.height = _PROFILE_PLOT_HEIGHT_IN * 2.54
+        sheet.add_chart(chart, f"{get_column_letter(1 + index % 2 * 8)}{16 + index // 2 * 20}")
+    sheet.freeze_panes = "A6"
+
 
 
 def _write_metadata_sheet(
@@ -2452,7 +2692,8 @@ def _apply_channel_metadata(channel: ChannelInfo, metadata: Mapping[str, str] | 
 
 
 def _plain_xlsx_filename(value: object, context: str) -> str:
-    filename = _nonempty_string(value, context)
+    _nonempty_string(value, context)
+    filename = str(value)
     path = Path(filename)
     if path.name != filename or path.suffix.lower() != ".xlsx":
         raise ConfigurationError(f"{context} must be a plain .xlsx filename without directories")
