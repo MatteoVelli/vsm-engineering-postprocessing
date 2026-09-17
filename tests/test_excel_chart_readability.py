@@ -124,8 +124,15 @@ def test_two_column_profile_layout_and_presentation_rules(tmp_path, plot_count):
             for axis in (component.x_axis, component.y_axis):
                 assert axis.numFmt.formatCode == '0.00'
                 assert axis.numFmt.sourceLinked is False
-                assert axis.majorUnit is None
-                assert axis.scaling.min is None and axis.scaling.max is None
+                assert axis.majorUnit > 0
+                assert axis.scaling.min <= 0 and axis.scaling.max >= .066667
+                assert 5 <= round((axis.scaling.max - axis.scaling.min) / axis.majorUnit) + 1 <= 7
+                assert axis.tickLblPos == "nextTo"
+                if axis is component.y_axis or component is chart:
+                    assert axis.delete is False
+                    assert axis.title is not None
+                assert axis.txPr.p[0].pPr.defRPr.solidFill.srgbClr == "333333"
+                assert axis.txPr.p[0].pPr.defRPr.sz == 1000
             for series in component.series:
                 assert series.xVal.numRef.f == "'Sheet'!$A$5:$A$7"
                 assert series.graphicalProperties.line.width == 31750
@@ -141,76 +148,50 @@ def test_two_column_profile_layout_and_presentation_rules(tmp_path, plot_count):
             assert right < other_left or other_right < left or bottom < other_top or other_bottom < top
 
 
-@pytest.mark.parametrize("template_index,series_count", [(0, 1), (1, 4), (2, 2)])
-def test_templates_copy_and_repoint_without_fixed_scales(tmp_path, monkeypatch, template_index, series_count):
-    from copy import deepcopy
-    from openpyxl.chart import Reference
-    import vsm_postprocessing.excel_report_engine as engine
 
+@pytest.mark.parametrize("values,label,zero_expected", [
+    ([.02, 14.9], "Speed [kph]", True),
+    ([36.4, 40.0], "Battery Energy [kWh]", False),
+    ([65, 82], "SOC [%]", False),
+    ([-15, 15], "Gradient [%]", True),
+    ([-20, 35], "Power [kW]", True),
+    ([150, 170], "Height [m]", False),
+])
+def test_engineering_ranges_preserve_quantity_and_sign(values, label, zero_expected):
+    lo, hi, step, fmt = _engineering_axis_scale(np.array(values), label)
+    assert lo <= min(values) and hi >= max(values)
+    assert (lo <= 0 <= hi) == zero_expected
+    assert 5 <= round((hi - lo) / step) + 1 <= 7
+
+
+def test_visible_axis_flags_are_explicit_in_saved_xml(tmp_path):
+    from vsm_postprocessing.excel_report_engine import _build_native_scatter_chart
+    from vsm_postprocessing.plotting_engine import PlotDefinition, PlotSeriesDefinition
     workbook = Workbook()
-    target = workbook.active
-    target.title = "Engineer data"
-    for row in [(0, -200), (.25, 100), (8, 2000)]:
-        target.append(row)
-    calls = []
-    original_builder = engine._build_native_scatter_chart
-    def tracked_builder(*args, **kwargs):
-        chart = original_builder(*args, **kwargs)
-        calls.append(chart)
-        return chart
-    monkeypatch.setattr(engine, "_build_native_scatter_chart", tracked_builder)
-    engine._write_plot_templates(workbook)
-    templates = workbook["Plot Templates"]
-    assert templates.sheet_state == "visible"
-    assert templates._charts == calls and len(calls) == 3
-    assert templates["A8"].value == "Sample X"
-    source = templates._charts[template_index]
-    assert sum(len(c.series) for c in source._charts) == series_count
-    assert (source.legend is not None) == (series_count > 1)
-    for component in source._charts:
-        for series in component.series:
-            assert "'Plot Templates'!" in series.xVal.numRef.f
-            assert "'Plot Templates'!" in series.yVal.numRef.f
-
-    duplicate = deepcopy(source)
-    engine._set_native_chart_title(duplicate, "Engineer comparison")
-    xref = str(Reference(target, min_col=1, min_row=1, max_row=3))
-    yref = str(Reference(target, min_col=2, min_row=1, max_row=3))
-    for component in duplicate._charts:
-        for series in component.series:
-            series.xVal.numRef.f = xref
-            series.yVal.numRef.f = yref
-    target.add_chart(duplicate, "D5")
-    path = tmp_path / "repointed.xlsx"
+    sheet = workbook.active
+    for row in [(0, 0, 40), (.2, 14.9, 38), (1, 5, 36.4)]:
+        sheet.append(row)
+    definition = PlotDefinition("battery", "Battery Energy - Distance Based", "distance",
+        (PlotSeriesDefinition("speed"), PlotSeriesDefinition("energy", "secondary")), "",
+        x_label="Distance [km]", primary_y_label="Speed [kph]", secondary_y_label="Energy [kWh]")
+    chart = _build_native_scatter_chart(definition, report_sheet=sheet,
+        channel_column_by_id={"distance": 1, "speed": 2, "energy": 3},
+        data_start_row=1, data_end_row=3, chart_index=0)
+    assert chart.y_axis.scaling.min == 0 and chart.y_axis.scaling.max == 15
+    assert chart.y_axis.majorUnit == 2.5
+    assert chart._charts[1].y_axis.scaling.min > 30
+    sheet.add_chart(chart, "E1")
+    path = tmp_path / "visible_axes.xlsx"
     workbook.save(path)
     with ZipFile(path) as archive:
-        ns = {"c": "http://schemas.openxmlformats.org/drawingml/2006/chart",
-              "a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
-        for name in archive.namelist():
-            if name.startswith("xl/charts/chart") and name.endswith(".xml"):
-                root = ElementTree.fromstring(archive.read(name))
-                assert root.find(".//c:chart/c:title", ns) is not None
-                assert root.find(".//c:plotArea/c:spPr/a:solidFill/a:srgbClr", ns).get("val") == "FFFFFF"
-                assert not root.findall(".//c:scaling/c:min", ns)
-                assert not root.findall(".//c:scaling/c:max", ns)
-                assert not root.findall(".//c:majorUnit", ns)
-    reopened = load_workbook(path)
-    copied = reopened["Engineer data"]._charts[0]
-    original = reopened["Plot Templates"]._charts[template_index]
-    assert copied.title.tx.rich.p[0].r[0].t == "Engineer comparison"
-    assert copied.title.txPr == original.title.txPr
-    assert copied.legend == original.legend
-    for copy_part, original_part in zip(copied._charts, original._charts):
-        assert copy_part.scatterStyle == "line"
-        assert copy_part.y_axis.axPos == original_part.y_axis.axPos
-        for axis in (copy_part.x_axis, copy_part.y_axis):
-            assert axis.scaling.min is None and axis.scaling.max is None
-            assert axis.majorUnit is None
-        for edited, sample in zip(copy_part.series, original_part.series):
-            assert edited.xVal.numRef.f == xref and edited.yVal.numRef.f == yref
-            assert edited.graphicalProperties == sample.graphicalProperties
-            assert edited.graphicalProperties.line.solidFill.srgbClr in engine._NATIVE_SERIES_COLORS
-            assert edited.graphicalProperties.line.width == 31750
-            assert edited.marker.symbol is None and edited.smooth is False
-            assert "'Plot Templates'!" in sample.xVal.numRef.f
-    reopened.close()
+        root = ElementTree.fromstring(archive.read("xl/charts/chart1.xml"))
+        ns = {"c": "http://schemas.openxmlformats.org/drawingml/2006/chart"}
+        axes = root.findall(".//c:valAx", ns)
+        assert len(axes) == 4
+        assert sum(a.find("c:delete", ns).get("val") == "1" for a in axes) == 1
+        for axis in axes:
+            assert axis.find("c:tickLblPos", ns).get("val") == "nextTo"
+            assert axis.find("c:majorTickMark", ns).get("val") == "out"
+            assert axis.find("c:majorUnit", ns) is not None
+            assert axis.find("c:scaling/c:min", ns) is not None
+            assert axis.find("c:scaling/c:max", ns) is not None

@@ -66,3 +66,14 @@ The UI filters options against the channels actually present in the uploaded sou
 ## Output cleaning
 
 `clean_before_run: true` removes only known VSM-generated stage folders and pipeline metadata. Unknown/user-created files in the output root are deliberately preserved.
+
+
+### Windows launcher reports "Invalid characters in path"
+
+Use the current START/SETUP BAT files and their matching scripts. The launchers
+resolve their own script paths, and PowerShell resolves the project from its script
+directory, so paths with spaces work regardless of the current working directory.
+Older launchers passed a quoted directory ending in a backslash to `powershell.exe`,
+which could turn the closing quote into a literal path character. Malformed explicit
+`-ProjectRoot` input now produces a clear error instead of being silently repaired.
+New release packages copy these corrected files directly from the repository.

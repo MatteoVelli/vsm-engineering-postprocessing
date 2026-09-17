@@ -14,49 +14,28 @@ measure 637 by 360 pixels (637/96 by 3.75 inches at 96 DPI), with one existing
 column between them and two rows between chart rows. Engineering data, KPI cells,
 worksheet column widths, and row heights are unchanged.
 
-### Create an additional graph
+### Engineering axes and editing
 
-1. Open the visible **Plot Templates** sheet.
-2. Select the border of a Single Series, Multiple Series (four traces), or Dual Y
-   Axes template. Copy with Ctrl+C and paste with Ctrl+V into your chosen worksheet.
-3. Open **Chart Design > Select Data**. Select an existing series and choose
-   **Edit**; set its name, numerical X range, and Y range. X/Y lengths must match.
-4. Repeat for other series; remove unused series. Editing the existing series
-   preserves its formatting. Additional series may need their color/width set;
-   a four-series template avoids that setup for common wheel plots.
-5. Edit the native chart title and axis titles/units. For a dual-axis chart, keep
-   each channel on the correct primary or secondary Y axis.
+Every visible numerical axis explicitly displays tick labels next to the axis in
+10 pt dark text, with outward major ticks and its axis title retained. The duplicate
+X axis used internally for dual-axis charts is hidden. Limits and major intervals
+are calculated from finite plotted data, rounded outward using conventional
+1/2/2.5/5/10 steps, targeting 5-7 tick labels. Near-zero speed/time/distance includes
+zero; energy, height and SOC retain useful nonzero ranges. Constant data receives
+small padding, with a symmetric range for all-zero values. Each Y axis is scaled
+independently. Source data is never rounded or changed.
 
-To modify an existing report graph, follow steps 3-5 directly on that graph.
-Templates use clearly labeled sample data on their own sheet, never production
-KPI cells. They share the exact report chart builder and styling helpers.
+Charts remain editable using Excel's ordinary chart tools. After replacing a
+series with substantially different data, use **Format Axis** to reset bounds and
+major units to **Automatic**, or enter suitable limits and display precision.
+The workbook contains only normal report/mapping/metadata sheets; no chart-template
+or instructional worksheet is generated. Shared chart styling helpers remain.
 
-### Scaling and Excel behavior
-
-Axis bounds and major intervals are automatic so a copied/repointed chart can
-adapt to new ranges. Engineering number formats retain sensible unit/range-based
-precision for generated data. After a substantial scale or unit change, use
-**Format Axis > Number** to adjust displayed precision. Excel chooses tick density;
-5-7 labels are a readability target rather than a fixed constraint. No source data
-is rounded. Both X axes in a dual-axis chart reference the same numerical values.
-
-Inserting a brand-new chart through Excel's Insert menu still uses Excel defaults.
-Use the supplied charts to reuse the complete style. A built-in style ID alone does
-not include our explicit formatting or register a custom preset. Excel's optional
-[Save as Template workflow](https://support.microsoft.com/en-au/excel/save-a-custom-chart-as-a-template)
-creates a separate `.crtx` file; this project does not generate or install one.
-No macros or external setup are required for the supplied template sheet.
-
-Legacy configurable reports receive the same chart styling and template sheet.
-Plot-only channels excluded from their report table remain on a hidden `Chart Data`
-sheet. Existing PowerPoint and UI previews retain their matplotlib images.
-
-Desktop Office rendering is not automated in this environment. Saved chart XML,
+Desktop Excel rendering is not automated in this environment. Saved chart XML,
 reopening, source references, and numerical comparisons are checked; manual Excel
-review remains necessary for text placement and interaction. openpyxl's reader
-drops plot-area fill styling on readback, so that fill is verified in the original
-saved XML. Excel itself controls automatic plot/legend layout. Copy charts as
-chart objects, not pictures, and use source formatting when pasting across workbooks.
+review remains necessary for text placement. openpyxl's reader drops plot-area fill
+styling on readback, so that fill is verified in the original saved XML. PowerPoint
+and UI previews retain their existing matplotlib plots.
 
 ## Adding branded PowerPoint slides
 

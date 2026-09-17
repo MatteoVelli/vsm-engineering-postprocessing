@@ -25,7 +25,7 @@ from openpyxl.utils import get_column_letter
 from .errors import ConfigurationError, ExcelReportError
 from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo
-from .plotting_engine import PlotDefinition, PlotSeriesDefinition, PlottingResult, load_plotting_config, render_plots, _axis_label, _automatic_y_label
+from .plotting_engine import PlottingResult, load_plotting_config, render_plots, _axis_label, _automatic_y_label
 from .profile_math import ProfileMathResult, calculate_profile_math_channels
 from .profile_plotting import ProfilePlottingResult, render_profile_plots, _prepare_plot_definition
 from .profile_statistics import ProfileStatisticsResult, build_canonical_report_metrics, calculate_profile_statistics
@@ -881,7 +881,6 @@ def _write_profile_workbook(
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    _write_plot_templates(workbook)
     workbook.save(output_path)
 
 
@@ -1485,7 +1484,7 @@ def _write_profile_metadata_sheet(
         ("Configured plots", plotting_result.configured_plot_count),
         ("Rendered plots", plotting_result.rendered_plot_count),
         ("Plot series", plotting_result.series_count),
-        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto, Plot Templates"),
+        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto"),
         ("Hidden sheets", "Metadata"),
     ]
     sheet.cell(1, 1, "Field").fill = label_fill
@@ -1602,7 +1601,7 @@ def _profile_template_comparison_rows(
         _comparison_row(
             "Sergio template fidelity",
             "Report sheet plus channel-selection sheet",
-            "Production workbook has main report, Rename From VSM to Astauto, Plot Templates, and hidden Metadata",
+            "Production workbook has main report, Rename From VSM to Astauto, and hidden Metadata",
             "PASS",
             "Development-only QA comparison content is omitted from visible client sheets.",
         ),
@@ -1656,7 +1655,7 @@ def _profile_manifest(
         "plot_series_count": result.plotting_result.series_count,
         "report_channel_ids": [channel.channel_id for channel in result.report_channels],
         "plot_ids": [plot.plot_id for plot in result.plotting_result.rendered_plots],
-        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto", "Plot Templates"],
+        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto"],
         "hidden_sheet_names": ["Metadata"],
     }
 
@@ -1933,7 +1932,6 @@ def _write_workbook(
         border=border,
     )
 
-    _write_plot_templates(workbook)
     workbook.save(output_path)
 
 
@@ -2149,7 +2147,6 @@ def _write_sergio_reference_workbook(
         border=border,
     )
 
-    _write_plot_templates(workbook)
     workbook.save(output_path)
 
 
@@ -2296,8 +2293,14 @@ def _make_scatter_shell(
     chart.y_axis.crossAx = x_axis_id
     chart.x_axis.axPos = "b"
     chart.y_axis.axPos = y_position
-    chart.x_axis.crosses = "autoZero"
-    chart.y_axis.crosses = "autoZero"
+    # Keep numeric labels beside the outside axes, including signed data ranges.
+    chart.x_axis.crosses = "min"
+    chart.y_axis.crosses = "min"
+    for axis in (chart.x_axis, chart.y_axis):
+        axis.delete = False
+        axis.tickLblPos = "nextTo"
+        axis.majorTickMark = "out"
+        axis.minorTickMark = "none"
     chart.x_axis.title = x_title
     chart.y_axis.title = y_title
     chart.x_axis.txPr = _chart_text(10)
@@ -2313,11 +2316,15 @@ def _make_scatter_shell(
 
 
 def _engineering_axis_scale(values: np.ndarray, label: str) -> tuple[float, float, float, str] | None:
-    """Estimate a nice interval to choose precision; do not lock Excel axis bounds."""
+    """Fit finite data with outward-rounded engineering limits and about six ticks."""
     finite = values[np.isfinite(values)]
     if not finite.size:
         return None  # Leave Excel autoscaling for an empty optional axis.
     low, high = float(finite.min()), float(finite.max())
+    unit = label.rsplit("[", 1)[-1].rstrip("]").strip().casefold() if "[" in label else ""
+    # Include nearby zero for speed/time/distance, without flattening energy or SOC.
+    if unit in {"kph", "km/h", "m/s", "rpm", "km", "min", "s"} and 0 < low <= high * 0.05:
+        low = 0.0
     if low == high:
         padding = abs(low) * 0.05 if low else 1.0
         low, high = low - padding, high + padding
@@ -2334,8 +2341,7 @@ def _engineering_axis_scale(values: np.ndarray, label: str) -> tuple[float, floa
         candidates.append((abs(tick_count - 6), abs(step - desired_step), lower, upper, step))
     _, _, lower, upper, step = min(candidates)
 
-    # Labels already carry the resolved channel unit from the plotting layer.
-    unit = label.rsplit("[", 1)[-1].rstrip("]").strip().casefold() if "[" in label else ""
+    # Resolved units and the chosen interval determine display precision.
     decimals = 0 if unit in {"n", "nm", "rpm"} else 1
     step_decimals = max(0, -math.floor(math.log10(step)))
     if step_decimals <= 3 and not math.isclose(step * 10 ** step_decimals, round(step * 10 ** step_decimals), abs_tol=1e-8):
@@ -2352,11 +2358,11 @@ def _apply_native_axis_format(axis: Any, values: np.ndarray, label: str) -> None
     scale = _engineering_axis_scale(values, label)
     if scale is None:
         return
-    _, _, _, number_format = scale
-    # Bounds AND intervals must remain automatic when an engineer repoints a chart.
-    axis.scaling.min = None
-    axis.scaling.max = None
-    axis.majorUnit = None
+    lower, upper, step, number_format = scale
+    # Initial engineering view; Excel's Format Axis can reset these to Automatic.
+    axis.scaling.min = lower
+    axis.scaling.max = upper
+    axis.majorUnit = step
     axis.numFmt = number_format
     axis.numFmt.sourceLinked = False
 
@@ -2385,50 +2391,6 @@ def _style_native_series(series: Any, index: int) -> None:
     series.graphicalProperties.line.solidFill = _NATIVE_SERIES_COLORS[index % len(_NATIVE_SERIES_COLORS)]
     series.marker.symbol = "none"
     series.smooth = False
-
-
-def _write_plot_templates(workbook: Workbook) -> None:
-    """Ship reusable chart objects using the production builder and isolated sample data."""
-    sheet = workbook.create_sheet("Plot Templates")
-    instructions = [
-        "Reusable native charts - sample data only",
-        "Copy a chart border (Ctrl+C), then paste (Ctrl+V) into your report or another worksheet.",
-        "Chart Design > Select Data > Edit: replace each series name, X values and Y values; keep equal-length X/Y ranges.",
-        "Edit chart/axis titles and units. Bounds and intervals are automatic; use Format Axis > Number if precision needs adjusting.",
-        "Edit existing series to keep their style. Remove unused series; for more, copy a styled series or format the added series.",
-    ]
-    for row, instruction in enumerate(instructions, 1):
-        sheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=15)
-        cell = sheet.cell(row, 1, instruction)
-        cell.font = Font(name="Calibri", size=11, color="1F4E78" if row == 1 else "333333", bold=row == 1)
-        cell.alignment = Alignment(wrap_text=True, vertical="center")
-        sheet.row_dimensions[row].height = 30
-    for column in range(1, 16):
-        sheet.column_dimensions[get_column_letter(column)].width = 13
-    headers = ["Sample X", "Sample Y1", "Sample Y2", "Sample Y3", "Sample Y4"]
-    for column, label in enumerate(headers, 1):
-        sheet.cell(8, column, label).font = Font(bold=True)
-    for row, x in enumerate((0, .5, 2, 5, 10), 9):
-        for column, value in enumerate((x, x + 1, 2 * x + 2, 3 * x + 1, 4 * x + 2), 1):
-            sheet.cell(row, column, value)
-    columns = {"x": 1, "y1": 2, "y2": 3, "y3": 4, "y4": 5}
-    variants = [
-        ("Template - Single Series", (PlotSeriesDefinition("y1", label="Sample Y1"),), None),
-        ("Template - Multiple Series", tuple(PlotSeriesDefinition(f"y{i}", label=f"Sample Y{i}") for i in range(1, 5)), None),
-        ("Template - Dual Y Axes", (PlotSeriesDefinition("y1", label="Sample left Y"),
-                                   PlotSeriesDefinition("y2", "secondary", "Sample right Y")), "Right Y [unit]"),
-    ]
-    for index, (title, series, right_label) in enumerate(variants):
-        definition = PlotDefinition(f"template_{index}", title, "x", series, "",
-                                    x_label="X [unit]", primary_y_label="Y [unit]",
-                                    secondary_y_label=right_label)
-        chart = _build_native_scatter_chart(definition, report_sheet=sheet,
-            channel_column_by_id=columns, data_start_row=9, data_end_row=13, chart_index=index)
-        chart.width = _PROFILE_PLOT_WIDTH_IN * 2.54
-        chart.height = _PROFILE_PLOT_HEIGHT_IN * 2.54
-        sheet.add_chart(chart, f"{get_column_letter(1 + index % 2 * 8)}{16 + index // 2 * 20}")
-    sheet.freeze_panes = "A6"
-
 
 
 def _write_metadata_sheet(

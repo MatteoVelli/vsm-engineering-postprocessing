@@ -66,12 +66,10 @@ def test_profile_excel_report_generates_reopenable_electric_workbook(electric_re
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
         "Metadata",
-        "Plot Templates",
     ]
     assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "visible"] == [
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
-        "Plot Templates",
     ]
     assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "hidden"] == ["Metadata"]
 
@@ -140,6 +138,7 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
     report_sheet = electric_workbook["RoboSprayer Electric"]
     metadata_sheet = electric_workbook["Metadata"]
 
+    assert "Plot Templates" not in electric_workbook.sheetnames
     assert len(report_sheet._charts) == 15
     anchors = [(chart.anchor._from.col + 1, chart.anchor._from.row + 1) for chart in report_sheet._charts]
     assert anchors == [(319 + (i % 2) * 8, 6 + (i // 2) * 20) for i in range(15)]

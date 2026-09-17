@@ -32,6 +32,11 @@ def test_client_release_excludes_private_and_development_artifacts(tmp_path: Pat
 
     with ZipFile(result.archive_path) as archive:
         names = archive.namelist()
+        for relative in ("START_VSM_TOOL.bat", "SETUP_VSM_TOOL.bat",
+                         "scripts/client_start.ps1", "scripts/client_setup.ps1"):
+            packaged = next(name for name in names if name.endswith("/" + relative))
+            assert archive.read(packaged) == (PROJECT_ROOT / relative).read_bytes()
+
 
     assert any(name.endswith("/RELEASE_MANIFEST.json") for name in names)
     assert any(name.endswith("/SETUP_VSM_TOOL.bat") for name in names)

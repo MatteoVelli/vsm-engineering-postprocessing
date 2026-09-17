@@ -22,7 +22,20 @@ if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
 }
 
-$ProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
+try {
+    if ($ProjectRoot.IndexOfAny([System.IO.Path]::GetInvalidPathChars()) -ge 0) {
+        throw "The path contains invalid characters, including a possible literal quote."
+    }
+    $ProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
+    if (-not (Test-Path -LiteralPath $ProjectRoot -PathType Container)) {
+        throw "The project directory does not exist."
+    }
+} catch {
+    Write-Host "Invalid ProjectRoot: $ProjectRoot" -ForegroundColor Red
+    Write-Host $_.Exception.Message
+    Write-Host "Use START_VSM_TOOL.bat or SETUP_VSM_TOOL.bat from the extracted package."
+    exit 2
+}
 $VenvDir = Join-Path $ProjectRoot ".venv"
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 $LocalPythonDir = Join-Path $ProjectRoot ".python\Python311"

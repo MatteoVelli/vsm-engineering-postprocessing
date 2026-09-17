@@ -5,9 +5,9 @@ set "PACKAGE_ROOT=%~dp0"
 set "TOOL_ROOT=%PACKAGE_ROOT%Tool"
 
 if exist "%TOOL_ROOT%\scripts\client_start.ps1" (
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%TOOL_ROOT%\scripts\client_start.ps1" -ProjectRoot "%TOOL_ROOT%"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%TOOL_ROOT%\scripts\client_start.ps1"
 ) else (
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PACKAGE_ROOT%scripts\client_start.ps1" -ProjectRoot "%PACKAGE_ROOT%"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PACKAGE_ROOT%scripts\client_start.ps1"
 )
 
 if errorlevel 1 (

@@ -8,13 +8,26 @@ if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
 }
 
-$ProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
+try {
+    if ($ProjectRoot.IndexOfAny([System.IO.Path]::GetInvalidPathChars()) -ge 0) {
+        throw "The path contains invalid characters, including a possible literal quote."
+    }
+    $ProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
+    if (-not (Test-Path -LiteralPath $ProjectRoot -PathType Container)) {
+        throw "The project directory does not exist."
+    }
+} catch {
+    Write-Host "Invalid ProjectRoot: $ProjectRoot" -ForegroundColor Red
+    Write-Host $_.Exception.Message
+    Write-Host "Use START_VSM_TOOL.bat or SETUP_VSM_TOOL.bat from the extracted package."
+    exit 2
+}
 $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $SetupScript = Join-Path $ProjectRoot "scripts\client_setup.ps1"
 $LogDir = Join-Path $ProjectRoot "logs"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 
-Set-Location $ProjectRoot
+Set-Location -LiteralPath $ProjectRoot
 
 Write-Host ""
 Write-Host "Running system health check..."

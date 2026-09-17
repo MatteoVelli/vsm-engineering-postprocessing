@@ -4,6 +4,8 @@ import os
 import shutil
 import subprocess
 import sys
+
+import pytest
 from pathlib import Path
 
 
@@ -269,3 +271,46 @@ def test_client_setup_probe_modes_do_not_modify_host_python(tmp_path: Path) -> N
     )
     assert existing.returncode == 0
     assert "FOUND_PYTHON" in existing.stdout
+
+
+@pytest.mark.skipif(not POWERSHELL.exists(), reason="Windows PowerShell required")
+@pytest.mark.parametrize("entry", ["START", "SETUP"])
+@pytest.mark.parametrize("packaged", [False, True])
+def test_real_bat_handoff_from_other_directory_with_spaces(tmp_path, entry, packaged):
+    package = tmp_path / "Client package with spaces"
+    project = package / "Tool" if packaged else package
+    scripts = project / "scripts"
+    scripts.mkdir(parents=True)
+    filename = f"{entry}_VSM_TOOL.bat"
+    shutil.copy2(PROJECT_ROOT / filename, package / filename)
+    script_name = f"client_{entry.lower()}.ps1"
+    # Exercise the real parameter and root-validation code without installing or launching apps.
+    prefix = _read("scripts/" + script_name).split("$VenvPython =" if entry == "START" else "$VenvDir =", 1)[0]
+    (scripts / script_name).write_text(prefix + '\nWrite-Output ("RESOLVED=" + $ProjectRoot)\n', encoding="utf-8")
+    other = tmp_path / "Unrelated working directory"
+    other.mkdir()
+    result = subprocess.run(["cmd.exe", "/d", "/c", str(package / filename)], cwd=other,
+                            capture_output=True, text=True, input="\n", timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "RESOLVED=" + str(project) in result.stdout
+    assert "Invalid ProjectRoot" not in result.stdout
+
+
+@pytest.mark.skipif(not POWERSHELL.exists(), reason="Windows PowerShell required")
+@pytest.mark.parametrize("entry", ["start", "setup"])
+@pytest.mark.parametrize("malformed", [False, True])
+def test_powershell_explicit_root_trailing_slash_and_malformed_quote(tmp_path, entry, malformed):
+    project = tmp_path / "Project with spaces"
+    project.mkdir()
+    prefix = _read(f"scripts/client_{entry}.ps1").split("$VenvPython =" if entry == "start" else "$VenvDir =", 1)[0]
+    script = tmp_path / "probe.ps1"
+    script.write_text(prefix + '\nWrite-Output ("RESOLVED=" + $ProjectRoot)\n', encoding="utf-8")
+    root_arg = str(project) + ('"' if malformed else "\\")
+    result = subprocess.run([str(POWERSHELL), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-ProjectRoot", root_arg],
+                            capture_output=True, text=True, timeout=30)
+    if malformed:
+        assert result.returncode == 2
+        assert "Invalid ProjectRoot" in result.stdout
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "RESOLVED=" + str(project) in result.stdout
