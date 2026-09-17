@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
+
+import pytest
 import tomllib
 from pathlib import Path
 from zipfile import ZipFile
@@ -101,3 +104,55 @@ def test_client_release_does_not_require_removed_assets_directory(tmp_path: Path
 
     assert result.archive_path.exists()
     assert not (project / "assets").exists()
+
+
+@pytest.fixture
+def source_only_project(tmp_path):
+    import vsm_postprocessing.release_builder as builder
+    project = tmp_path / "source checkout"
+    for relative in (builder._CLIENT_ROOT_FILES + builder._CLIENT_DOCS +
+                     builder._CLIENT_PLACEHOLDERS + builder._CLIENT_REFERENCE_FILES):
+        assert not relative.startswith("outputs/"), "Build inputs must not require runtime outputs"
+        destination = project / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(PROJECT_ROOT / relative, destination)
+    for directory in builder._CLIENT_DIRECTORIES:
+        shutil.copytree(PROJECT_ROOT / directory, project / directory,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    assert not (project / "outputs").exists()
+    return project
+
+
+def test_release_and_doctor_work_without_existing_outputs(source_only_project, tmp_path):
+    from vsm_postprocessing.doctor import run_doctor
+    result = build_client_release(source_only_project, tmp_path / "release")
+    assert not (source_only_project / "outputs").exists()
+    with ZipFile(result.archive_path) as archive:
+        output_entries = [name for name in archive.namelist() if "/outputs/" in name]
+        assert len(output_entries) == 1 and output_entries[0].endswith("/outputs/.gitkeep")
+        assert archive.read(output_entries[0]) == b""
+    report = run_doctor(source_only_project)
+    assert report.status == "PASS", [(c.name, c.detail) for c in report.checks if c.status == "FAIL"]
+    assert (source_only_project / "outputs").is_dir()
+
+
+def test_required_missing_runtime_asset_still_blocks_release_and_doctor(source_only_project, tmp_path):
+    from vsm_postprocessing.doctor import run_doctor
+    (source_only_project / "reference_files/astauto-light-text_web.jpg").unlink()
+    with pytest.raises(FileNotFoundError, match="astauto-light-text_web.jpg"):
+        build_client_release(source_only_project, tmp_path / "release")
+    report = run_doctor(source_only_project)
+    assert report.status == "FAIL"
+    assert any(c.status == "FAIL" and "astauto-light-text_web.jpg" in c.name for c in report.checks)
+
+
+def test_runtime_assets_have_exact_source_paths_and_gitignore_exceptions():
+    from vsm_postprocessing.doctor import _REQUIRED_RUNTIME_ASSETS
+    from vsm_postprocessing.release_builder import _CLIENT_REFERENCE_FILES
+    assert set(_CLIENT_REFERENCE_FILES) == {"reference_files/" + name for name in _REQUIRED_RUNTIME_ASSETS}
+    ignore_lines = (PROJECT_ROOT / ".gitignore").read_text().splitlines()
+    for relative in _CLIENT_REFERENCE_FILES:
+        assert "!" + relative in ignore_lines
+        path = PROJECT_ROOT / relative
+        assert path.name in {entry.name for entry in path.parent.iterdir()}, "Case must match on Linux"
+        assert path.is_file() and path.stat().st_size > 0

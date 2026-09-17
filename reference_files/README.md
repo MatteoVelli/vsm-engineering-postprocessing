@@ -5,13 +5,25 @@ regression data.
 
 ## Tracked runtime assets
 
-These files are required by the profile-driven PowerPoint generator and should
-be present in a clean checkout:
+The client requires the following unchanged source assets. They must be committed
+at these exact, case-sensitive paths; `.gitignore` explicitly allows them:
 
 ```text
-RoboSprayer_Electric_Report_FINAL.pptx
-RoboSprayer_Hybrid_Engineering_Report.pptx
+astauto-light-text_web.jpg
+RoboSprayer_Electric_Report_Astauto_Colours.pptx
+Caiman_SP_Hybrid_Report_Astauto_Colours.pptx
+RoboSprayer_Electric_Report_Astauto_v7.pptx
+Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx
+Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx
 ```
+
+The JPG supplies Astauto branding; the presentations and workbooks supply runtime
+layout/reference information. They are required source inputs, not generated report
+outputs. Doctor and the release builder retain mandatory checks for these files.
+Do not replace them with generated reports or duplicate/rename the logo.
+
+The existing `RoboSprayer_Electric_Report_FINAL.pptx` and
+`RoboSprayer_Hybrid_Engineering_Report.pptx` also remain tracked for existing uses.
 
 ## Optional private local regression data
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -109,27 +110,26 @@ def test_client_setup_bootstrap_contract_is_client_safe() -> None:
     assert r"C:\Users\user\Desktop\Agro Project" not in script
 
 
-def test_sergio_package_builder_validates_real_bootstrap_installer_url() -> None:
-    builder = _read("outputs/client_delivery/build_sergio_bootstrap_package.py")
-
-    assert 'BOOTSTRAP_PYTHON_VERSION = "3.11.9"' in builder
-    assert "https://www.python.org/ftp/python/" in builder
-    assert "https://www.nuget.org/api/v2/package/python/" in builder
-    assert "python-{BOOTSTRAP_PYTHON_VERSION}-amd64.exe" in builder
-    assert "validate_bootstrap_installer_url()" in builder
-    assert "validate_bootstrap_nuget_url()" in builder
-    assert "Configured Python bootstrap {label} was not found" in builder
-    assert 'expected_prefix=b"MZ"' in builder
-    assert 'expected_prefix=b"PK"' in builder
+def test_canonical_bootstrap_validates_official_downloads() -> None:
+    script = _read("scripts/client_setup.ps1")
+    assert 'https://www.python.org/ftp/python/$BootstrapPythonVersion/python-$BootstrapPythonVersion-amd64.exe' in script
+    assert 'https://www.nuget.org/api/v2/package/python/$BootstrapPythonVersion' in script
+    assert 'Test-BootstrapUrl -Url $Url -AllowedPrefixes $AllowedPrefixes' in script
+    assert '-AllowedPrefixes @("https://www.python.org/") -Validator ${function:Test-InstallerFile}' in script
+    assert '-AllowedPrefixes @("https://www.nuget.org/") -Validator ${function:Test-NugetRuntimeFile}' in script
+    assert '-MinimumBytes $MinimumInstallerBytes -ExpectedPrefix @(77, 90)' in script
+    assert '-MinimumBytes $MinimumNugetBytes -ExpectedPrefix @(80, 75)' in script
+    assert "Configured Python bootstrap $Description was not found at the expected official URL" in script
 
 
-def test_client_readme_agrees_with_bootstrap_target() -> None:
-    builder = _read("outputs/client_delivery/build_sergio_bootstrap_package.py")
-
-    assert "Python 3.11.x runtime" in builder
-    assert "CPython 3.11.9" in builder
-    assert "64-bit runtime" in builder
-    assert "Python 3.11.15" not in builder
+def test_client_readme_agrees_with_canonical_bootstrap_target() -> None:
+    script = _read("scripts/client_setup.ps1")
+    version = re.search(r'\$BootstrapPythonVersion = "([0-9.]+)"', script).group(1)
+    minor = ".".join(version.split(".")[:2])
+    readme = _read("docs/CLIENT_QUICK_START.md")
+    assert f"CPython {version} runtime" in readme
+    assert f"Python {minor}.x runtime" in readme
+    assert "SETUP_VSM_TOOL.bat" in readme
 
 
 def test_runtime_dependency_bounds_avoid_unvalidated_streamlit_packages() -> None:

@@ -49,8 +49,9 @@ _CLIENT_DOCS = (
 
 _CLIENT_PLACEHOLDERS = (
     "reference_files/README.md",
-    "outputs/.gitkeep",
 )
+
+_GENERATED_PLACEHOLDERS = ("outputs/.gitkeep",)
 
 _CLIENT_REFERENCE_FILES = (
     "reference_files/astauto-light-text_web.jpg",
@@ -144,6 +145,9 @@ def build_client_release(project_root: str | Path, output_dir: str | Path) -> Re
             }
         )
 
+    for relative in _GENERATED_PLACEHOLDERS:
+        manifest_files.append({"path": relative, "size_bytes": 0, "sha256": _sha256_bytes(b"")})
+
     release_manifest = {
         "product": "VSM Engineering Data Post-Processing",
         "version": __version__,
@@ -159,6 +163,8 @@ def build_client_release(project_root: str | Path, output_dir: str | Path) -> Re
         for path in files:
             relative = path.relative_to(root).as_posix()
             _zip_write_bytes(archive, f"{package_root}/{relative}", path.read_bytes())
+        for relative in _GENERATED_PLACEHOLDERS:
+            _zip_write_bytes(archive, f"{package_root}/{relative}", b"")
         _zip_write_bytes(archive, f"{package_root}/RELEASE_MANIFEST.json", manifest_bytes)
 
     archive_sha256 = _sha256_file(archive_path)

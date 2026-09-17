@@ -121,7 +121,7 @@ def _check_packages() -> list[DoctorCheck]:
 
 
 def _check_project_structure(root: Path) -> DoctorCheck:
-    required = ["config", "scripts", "src", "outputs"]
+    required = ["config", "scripts", "src"]
     missing = [name for name in required if not (root / name).exists()]
     if missing:
         return DoctorCheck("Project structure", "FAIL", "missing: " + ", ".join(missing))

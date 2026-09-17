@@ -17,3 +17,10 @@ reference_files/*
 
 dist/
 .streamlit/secrets.toml
+# Required client runtime assets (source inputs, not generated reports)
+!reference_files/astauto-light-text_web.jpg
+!reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx
+!reference_files/Caiman_SP_Hybrid_Report_Astauto_Colours.pptx
+!reference_files/RoboSprayer_Electric_Report_Astauto_v7.pptx
+!reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx
+!reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx
