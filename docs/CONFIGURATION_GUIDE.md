@@ -11,7 +11,17 @@ Production client reports are driven by:
 
 The profiles define raw channel mappings, deterministic math channels, statistics, KPIs, plots, Excel layout, and PowerPoint template selection. Raw channels may be marked `required: false`; missing optional channels are omitted from generated reports without invalidating the source file.
 
-The current Electric and Hybrid profiles are synced to Sergio's Electric_03 and Hybrid_04 templates and include optional `Track_Height` mapped to visible report label `Road Height`.
+The current Electric and Hybrid profiles are synced to Sergio's Electric_05 and Hybrid_06 templates and include optional `Track_Height` mapped to visible report label `Road Height`.
+
+Both profiles require all four raw `DriveShaft_Torque_*` channels. Wheel torque
+is never synthesized. Tyre Total Energy Consumption includes rolling,
+compaction, and bulldozing resistance, integrated using actual sample timing.
+
+An extending profile can set `channels.plot_overrides` to a mapping of existing
+semantic channel names to boolean selection flags. Hybrid uses this to retain
+the four wheel-load flags while inheriting Electric's common calculations.
+Unknown names and non-boolean values are rejected. These flags describe the
+channel-selection sheet; explicit report charts remain defined under `plots`.
 
 ## Configuration Separation
 

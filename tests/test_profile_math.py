@@ -164,14 +164,14 @@ def test_profile_math_explicit_constant_zero_channel() -> None:
 
 
 def test_profile_math_raw_source_takes_precedence_over_placeholder_fallback() -> None:
-    dataset = _dataset([_channel("torque__col_001", "DriveShaft_Torque_RL", "Nm")], [[5.0], [7.0], [11.0]])
+    dataset = _dataset([_channel("torque__col_001", "Optional_Sensor", "Nm")], [[5.0], [7.0], [11.0]])
     profile = _profile(
         raw_channels=[],
         math_channels=[
             MathChannelDefinition(
-                "driveshaft_torque_rl",
-                "DriveShaft_Torque_RL",
-                "Wheel Torque RL",
+                "optional_sensor",
+                "Optional_Sensor",
+                "Optional Sensor",
                 "Nm",
                 (),
                 "0",
@@ -182,7 +182,7 @@ def test_profile_math_raw_source_takes_precedence_over_placeholder_fallback() ->
 
     result = calculate_profile_math_channels(dataset, profile)
 
-    np.testing.assert_allclose(result.values_by_semantic_name["driveshaft_torque_rl"], [5.0, 7.0, 11.0])
+    np.testing.assert_allclose(result.values_by_semantic_name["optional_sensor"], [5.0, 7.0, 11.0])
     assert result.calculated_channels[0].kind == "vsm"
     assert result.calculation_order == []
 
@@ -192,9 +192,9 @@ def test_profile_math_fallback_expression_remains_available_when_raw_source_is_a
         raw_channels=[],
         math_channels=[
             MathChannelDefinition(
-                "driveshaft_torque_rl",
-                "DriveShaft_Torque_RL",
-                "Wheel Torque RL",
+                "optional_sensor",
+                "Optional_Sensor",
+                "Optional Sensor",
                 "Nm",
                 (),
                 "0",
@@ -205,47 +205,47 @@ def test_profile_math_fallback_expression_remains_available_when_raw_source_is_a
 
     result = calculate_profile_math_channels(_dataset([], [[], [], []]), profile)
 
-    np.testing.assert_allclose(result.values_by_semantic_name["driveshaft_torque_rl"], [0.0, 0.0, 0.0])
+    np.testing.assert_allclose(result.values_by_semantic_name["optional_sensor"], [0.0, 0.0, 0.0])
     assert result.calculated_channels[0].kind == "math"
-    assert result.calculation_order == ["driveshaft_torque_rl"]
+    assert result.calculation_order == ["optional_sensor"]
 
 
-def test_profile_math_raw_torque_precedence_feeds_wheel_power() -> None:
+def test_profile_math_raw_sensor_precedence_feeds_derived_power() -> None:
     dataset = _dataset(
         [
-            _channel("speed__col_001", "Wheel_RotationalSpeed_RL", "rpm"),
-            _channel("torque__col_002", "DriveShaft_Torque_RL", "Nm", column=2),
+            _channel("speed__col_001", "Sensor_Speed", "rpm"),
+            _channel("torque__col_002", "Optional_Sensor", "Nm", column=2),
         ],
         [[9548.8, 2.0], [4774.4, 4.0], [0.0, 10.0]],
     )
     profile = _profile(
         raw_channels=[
-            RawChannelDefinition("wheel_rotationalspeed_rl", "Wheel_RotationalSpeed_RL", "Wheel Speed RL", "VSM", unit="rpm"),
+            RawChannelDefinition("sensor_speed", "Sensor_Speed", "Sensor Speed", "VSM", unit="rpm"),
         ],
         math_channels=[
             MathChannelDefinition(
-                "driveshaft_torque_rl",
-                "DriveShaft_Torque_RL",
-                "Wheel Torque RL",
+                "optional_sensor",
+                "Optional_Sensor",
+                "Optional Sensor",
                 "Nm",
                 (),
                 "0",
                 fallback_when_raw_missing=True,
             ),
             MathChannelDefinition(
-                "wheel_power_rl",
-                "Wheel Power RL",
-                "Wheel Power RL",
+                "sensor_power",
+                "Sensor Power",
+                "Sensor Power",
                 "kW",
-                ("wheel_rotationalspeed_rl", "driveshaft_torque_rl"),
-                "wheel_rotationalspeed_rl * driveshaft_torque_rl / rpm_nm_to_kw_divisor",
+                ("sensor_speed", "optional_sensor"),
+                "sensor_speed * optional_sensor / rpm_nm_to_kw_divisor",
             ),
         ],
     )
 
     result = calculate_profile_math_channels(dataset, profile)
 
-    np.testing.assert_allclose(result.values_by_semantic_name["wheel_power_rl"], [2.0, 2.0, 0.0])
+    np.testing.assert_allclose(result.values_by_semantic_name["sensor_power"], [2.0, 2.0, 0.0])
     assert result.calculated_channels[0].kind == "vsm"
     assert result.calculated_channels[1].kind == "math"
 
@@ -328,8 +328,8 @@ def test_electric_profile_full_math_execution_against_reference_csv() -> None:
     dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
-    assert result.configured_math_count == 29
-    assert result.calculated_math_count == 29
+    assert result.configured_math_count == 37
+    assert result.calculated_math_count == 37
     assert not result.unavailable_optional
     assert not result.unavailable_required
     np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
@@ -393,8 +393,8 @@ def test_hybrid_generator_power_computes_zero_against_electric_reference_csv() -
     dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(HYBRID_PROFILE))
 
-    assert result.configured_math_count == 32
-    assert result.calculated_math_count == 32
+    assert result.configured_math_count == 40
+    assert result.calculated_math_count == 40
     assert not result.unavailable_optional
     assert not result.unavailable_required
     np.testing.assert_allclose(result.values_by_semantic_name["generator_power_1"], 0.0)
@@ -405,14 +405,14 @@ def test_latest_hybrid_raw_driveshaft_torque_feeds_nonzero_wheel_power() -> None
     dataset = load_data_file(_latest_hybrid_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(HYBRID_PROFILE))
 
-    assert result.values_by_semantic_name["driveshaft_torque_rl"].max() > 14000.0
-    assert result.values_by_semantic_name["driveshaft_torque_rr"].max() > 14000.0
+    for wheel in ("rl", "rr"):
+        name = f"driveshaft_torque_{wheel}"
+        channel = result.resolution.resolved[name].channel
+        assert dataset.values[:, dataset.channel_index(channel.channel_id)].max() > 14000.0
+        assert name not in result.values_by_semantic_name
+        assert name not in result.calculation_order
     assert result.values_by_semantic_name["wheel_power_total"].max() > 100.0
-    assert {
-        channel.channel_id.rsplit("__math__", 1)[-1]: channel.kind
-        for channel in result.calculated_channels
-        if channel.channel_id.endswith(("driveshaft_torque_rl", "driveshaft_torque_rr"))
-    } == {"driveshaft_torque_rl": "vsm", "driveshaft_torque_rr": "vsm"}
+
 
 
 def test_generic_math_path_remains_available(tmp_path: Path) -> None:

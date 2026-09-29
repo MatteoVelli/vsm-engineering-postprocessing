@@ -15,6 +15,8 @@ Caiman_SP_Hybrid_Report_Astauto_Colours.pptx
 RoboSprayer_Electric_Report_Astauto_v7.pptx
 Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx
 Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx
+Robo_Sprayer_Electrification_Tamplate_Electric_05.xlsx
+Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx
 ```
 
 The JPG supplies Astauto branding; the presentations and workbooks supply runtime
@@ -44,3 +46,6 @@ Milestone 13B.2 uses `Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx` as an
 external reference-fidelity phase provider for P05, P06, P08 and P10. The
 provider configuration locks the expected filename and SHA-256; a
 modified/different workbook is intentionally rejected.
+
+Electric_05 and Hybrid_06 now supply the active channel ordering. The previous
+Electric_03 and Hybrid_04 workbooks remain unchanged for reference comparison.

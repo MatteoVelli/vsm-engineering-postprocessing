@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -224,14 +224,19 @@ class ProfileResolutionResult:
         lines = [
             f"Profile: {self.profile.profile_id} ({self.profile.metadata.name})",
             f"Resolved raw channels: {len(self.resolved)}/{len(self.profile.raw_channels)}",
-            f"Missing required: {len(self.missing_required)}",
-            f"Missing optional: {len(self.missing_optional)}",
+            f"Missing required source/VSM channels: {len(self.missing_required)}",
+            f"Missing optional source channels: {len(self.missing_optional)}",
             f"Ambiguous: {len(self.ambiguous)}",
             f"Unit mismatches: {len(self.unit_mismatches)}",
-            f"Math channels: {len(self.profile.math_channels)}",
+            f"Calculated MATH channels (not source CSV inputs): {len(self.profile.math_channels)}",
         ]
         unresolved_math = [item for item in self.math_dependencies if not item.is_resolved]
         lines.append(f"Math dependency issues: {len(unresolved_math)}")
+        lines.extend(
+            f"Required source [{item.definition.channel_type}]: {item.definition.source_name} "
+            f"({item.definition.report_name})"
+            for item in self.missing_required
+        )
         return lines
 
 
@@ -354,7 +359,7 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
     channels = raw.get("channels", {})
     if not isinstance(channels, dict):
         raise ConfigurationError("channels must be a YAML mapping")
-    _reject_unknown_keys(channels, {"raw", "math"}, "channels")
+    _reject_unknown_keys(channels, {"raw", "math", "plot_overrides"}, "channels")
 
     raw_channels = tuple(_parse_raw_channel(item, index) for index, item in enumerate(channels.get("raw", []), 1))
     math_channels = tuple(
@@ -379,12 +384,25 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
     )
     _validate_unique_semantic_names(profile)
 
-    if metadata.extends is None:
-        return profile
+    if metadata.extends is not None:
+        parent_path = (path.parent / metadata.extends).resolve()
+        parent = _load_reporting_profile(parent_path, seen=(*seen, path))
+        profile = _merge_profiles(parent, profile)
 
-    parent_path = (path.parent / metadata.extends).resolve()
-    parent = _load_reporting_profile(parent_path, seen=(*seen, path))
-    return _merge_profiles(parent, profile)
+    # Selection flags may differ between templates sharing the same channel logic.
+    overrides = channels.get("plot_overrides", {})
+    if not isinstance(overrides, dict):
+        raise ConfigurationError("channels.plot_overrides must be a YAML mapping")
+    known = set(profile.raw_by_semantic_name()) | set(profile.math_by_semantic_name())
+    for name, value in overrides.items():
+        if name not in known:
+            raise ConfigurationError(f"Unknown channels.plot_overrides channel: {name}")
+        _optional_bool(value, f"channels.plot_overrides.{name}")
+    return replace(
+        profile,
+        raw_channels=tuple(replace(c, for_plot=overrides.get(c.semantic_name, c.for_plot)) for c in profile.raw_channels),
+        math_channels=tuple(replace(c, for_plot=overrides.get(c.semantic_name, c.for_plot)) for c in profile.math_channels),
+    )
 
 
 def _parse_metadata(raw: Any) -> ProfileMetadata:

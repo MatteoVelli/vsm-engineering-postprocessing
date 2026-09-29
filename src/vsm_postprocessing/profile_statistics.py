@@ -144,7 +144,7 @@ _POWERPOINT_LABEL_OVERRIDES = {
     "energy_recuperated_last": "ENERGY RECOVERED",
     "auxiliary_energy_accumulated_max": "AUX ENERGY",
     "total_auxiliary_power_max": "MAX AUX POWER",
-    "tyre_rr_energy_accumulated_last": "TYRE RR ENERGY",
+    "tyre_total_energy_accumulated_last": "TYRE TOTAL ENERGY",
     "edu_mech_power_rl_max": "EDU MAX POWER",
     "total_edu_mech_power_max": "MAX TOTAL EDU MECH POWER",
     "wheel_power_total_max": "WHEEL MAX POWER",

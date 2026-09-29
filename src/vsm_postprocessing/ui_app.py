@@ -455,7 +455,7 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
         )
     if summary.missing_optional_names:
         st.info(
-            "Optional channels are not required for profile validation. "
+            "Optional source channels are not required for profile validation. "
             "Associated optional outputs are skipped when unavailable."
         )
         with st.expander("Optional channel details"):
@@ -463,7 +463,8 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
             for name in summary.missing_optional_names:
                 st.write(f"- {name}")
     if summary.missing_required_names:
-        st.warning("Missing required channels: " + ", ".join(summary.missing_required_names[:20]))
+        st.warning("Missing required source/VSM channels: " + ", ".join(summary.missing_required_names[:20]))
+    st.caption("MATH channels are calculated by the application and are not required in the source CSV.")
     with st.expander("Activity details"):
         st.write(f"Active resolved channels: {summary.active_resolved_count}")
         st.write(f"Constant resolved channels: {summary.constant_resolved_count}")

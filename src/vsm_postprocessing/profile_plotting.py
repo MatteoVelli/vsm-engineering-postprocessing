@@ -159,6 +159,7 @@ def _build_semantic_maps(
             resolved.channel,
             channel_id=semantic_name,
             display_name=resolved.definition.report_name,
+            kind=resolved.definition.channel_type.lower(),
             provenance=f"profile:{resolution.profile.profile_id}:{semantic_name}:{resolved.channel.channel_id}",
         )
         values[semantic_name] = np.asarray(dataset.values[:, index], dtype=np.float64)

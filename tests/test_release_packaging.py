@@ -50,7 +50,9 @@ def test_client_release_excludes_private_and_development_artifacts(tmp_path: Pat
         "Caiman_SP_Hybrid_Report_Astauto_Colours.pptx",
         "RoboSprayer_Electric_Report_Astauto_v7.pptx",
         "Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx",
+        "Robo_Sprayer_Electrification_Tamplate_Electric_05.xlsx",
         "Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx",
+        "Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx",
     ):
         assert any(name.endswith(f"/reference_files/{asset_name}") for name in names)
     retired_asset_fragment = "/assets/scenarios/" + "cai" + "man" + "_sp_hybrid/"
@@ -94,7 +96,9 @@ def test_client_release_does_not_require_removed_assets_directory(tmp_path: Path
         "reference_files/Caiman_SP_Hybrid_Report_Astauto_Colours.pptx",
         "reference_files/RoboSprayer_Electric_Report_Astauto_v7.pptx",
         "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx",
+        "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_05.xlsx",
         "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx",
+        "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx",
     ):
         path = project / relative
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -73,6 +73,9 @@ class _FakeStreamlit:
     def info(self, text: str) -> None:
         self.messages.append(("info", text))
 
+    def caption(self, text: str) -> None:
+        self.messages.append(("caption", text))
+
     def warning(self, text: str) -> None:
         self.messages.append(("warning", text))
 
@@ -144,12 +147,12 @@ def test_electric_reporting_profile_validation_summary_matches_reference_csv() -
     assert summary.is_valid
     assert summary.sample_count == 3853
     assert summary.source_raw_channel_count == 607
-    assert summary.required_raw_count == 283
-    assert summary.resolved_raw_count == 288
+    assert summary.required_raw_count == 287
+    assert summary.resolved_raw_count == 292
     assert summary.missing_required_count == 0
     assert summary.missing_optional_count == 1
     assert summary.missing_optional_names == ("Road Height",)
-    assert summary.math_count == 29
+    assert summary.math_count == 37
     assert summary.statistic_count == 35
     assert summary.kpi_count == 12
     assert summary.plot_count == 15
@@ -161,10 +164,10 @@ def test_hybrid_reporting_profile_validation_treats_inactive_channels_as_resolve
 
     assert summary.profile_name == "Hybrid"
     assert summary.is_valid
-    assert summary.required_raw_count == 289
-    assert summary.resolved_raw_count == 294
+    assert summary.required_raw_count == 293
+    assert summary.resolved_raw_count == 298
     assert summary.missing_required_count == 0
-    assert summary.math_count == 32
+    assert summary.math_count == 40
     assert summary.statistic_count == 44
     assert summary.kpi_count == 12
     assert summary.plot_count == 21
@@ -180,7 +183,7 @@ def test_reporting_profile_validation_reports_missing_required_channel(tmp_path:
 
     assert not summary.is_valid
     assert summary.missing_required_count > 0
-    assert "Battery Power" in summary.missing_required_names
+    assert any("Battery Power (ElectricSystem_Battery_Power) [VSM]" == name for name in summary.missing_required_names)
 
 
 def test_profile_validation_summary_ui_exposes_optional_channels_as_non_blocking() -> None:
@@ -195,7 +198,7 @@ def test_profile_validation_summary_ui_exposes_optional_channels_as_non_blocking
     assert not any(label == "Missing optional" for _, label, _ in st.metrics)
     assert any(
         text
-        == "Optional channels are not required for profile validation. "
+        == "Optional source channels are not required for profile validation. "
         "Associated optional outputs are skipped when unavailable."
         for kind, text in st.messages
         if kind == "info"

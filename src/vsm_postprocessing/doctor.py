@@ -60,7 +60,9 @@ _REQUIRED_RUNTIME_ASSETS = (
     "Caiman_SP_Hybrid_Report_Astauto_Colours.pptx",
     "RoboSprayer_Electric_Report_Astauto_v7.pptx",
     "Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx",
+    "Robo_Sprayer_Electrification_Tamplate_Electric_05.xlsx",
     "Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx",
+    "Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx",
 )
 
 

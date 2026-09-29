@@ -233,7 +233,10 @@ def validate_reporting_profile_source(
         active_resolved_count=sum(1 for item in resolved if item.is_active),
         constant_resolved_count=sum(1 for item in resolved if item.is_constant),
         all_zero_resolved_count=sum(1 for item in resolved if item.is_all_zero),
-        missing_required_names=tuple(item.definition.report_name for item in resolution.missing_required),
+        missing_required_names=tuple(
+            f"{item.definition.report_name} ({item.definition.source_name}) [{item.definition.channel_type}]"
+            for item in resolution.missing_required
+        ),
         missing_optional_names=tuple(item.definition.report_name for item in resolution.missing_optional),
         ambiguous_names=tuple(item.definition.report_name for item in resolution.ambiguous),
         unit_mismatch_names=tuple(item.definition.report_name for item in resolution.unit_mismatches),

@@ -215,8 +215,8 @@ def test_electric_robosprayer_profile_resolution_against_reference_csv() -> None
     result = resolve_profile(dataset, profile)
 
     assert result.is_valid
-    assert len(result.resolved) == 288
-    assert len(result.profile.raw_channels) == 289
+    assert len(result.resolved) == 292
+    assert len(result.profile.raw_channels) == 293
     assert not result.missing_required
     assert [item.definition.semantic_name for item in result.missing_optional] == ["track_height"]
     assert result.resolved_channel_ids["chassis_speed"] == "chassis_speed__col_039"
@@ -262,11 +262,11 @@ def test_hybrid_profile_extends_electric_profile() -> None:
     electric = load_reporting_profile(ELECTRIC_PROFILE)
     hybrid = load_reporting_profile(HYBRID_PROFILE)
 
-    assert len(electric.raw_channels) == 289
-    assert len(electric.math_channels) == 29
+    assert len(electric.raw_channels) == 293
+    assert len(electric.math_channels) == 37
     assert len(electric.plots) == 15
-    assert len(hybrid.raw_channels) == 295
-    assert len(hybrid.math_channels) == 32
+    assert len(hybrid.raw_channels) == 299
+    assert len(hybrid.math_channels) == 40
     assert len(hybrid.plots) == 21
     assert "wheel_steering_angles" in electric.plots_by_id()
     assert "wheel_steering_angles" in hybrid.plots_by_id()
@@ -280,7 +280,7 @@ def test_hybrid_profile_extends_electric_profile() -> None:
     }
 
 
-def test_electric_profile_marks_torque_placeholders_as_raw_fallbacks_and_plots_wheel_loads() -> None:
+def test_electric_profile_requires_raw_wheel_torques_and_retains_wheel_load_chart() -> None:
     profile = load_reporting_profile(ELECTRIC_PROFILE)
     math_by_name = profile.math_by_semantic_name()
     for semantic_name in (
@@ -289,9 +289,10 @@ def test_electric_profile_marks_torque_placeholders_as_raw_fallbacks_and_plots_w
         "driveshaft_torque_rl",
         "driveshaft_torque_rr",
     ):
-        definition = math_by_name[semantic_name]
-        assert definition.fallback_when_raw_missing is True
-        assert definition.expression == "0"
+        assert semantic_name not in math_by_name
+        definition = profile.raw_by_semantic_name()[semantic_name]
+        assert definition.channel_type == "VSM"
+        assert definition.required
 
     wheel_loads = profile.plots_by_id()["wheel_loads"]
     assert wheel_loads.title == "Wheel Loads"
@@ -301,7 +302,7 @@ def test_electric_profile_marks_torque_placeholders_as_raw_fallbacks_and_plots_w
         "wheel_load_dynamic_rl",
         "wheel_load_dynamic_rr",
     ]
-    assert all(profile.raw_by_semantic_name()[series.semantic_name].for_plot for series in wheel_loads.series)
+    assert not any(profile.raw_by_semantic_name()[series.semantic_name].for_plot for series in wheel_loads.series)
 
 
 def test_hybrid_generator_torque_uses_sergio_corrected_source_mapping() -> None:
@@ -337,8 +338,8 @@ def test_hybrid_profile_against_electric_csv_resolves_inactive_hybrid_channels()
     result = resolve_profile(dataset, load_reporting_profile(HYBRID_PROFILE))
 
     assert result.is_valid
-    assert len(result.resolved) == 294
-    assert len(result.profile.raw_channels) == 295
+    assert len(result.resolved) == 298
+    assert len(result.profile.raw_channels) == 299
     assert not result.missing_required
     assert [item.definition.semantic_name for item in result.missing_optional] == ["track_height"]
     assert result.resolved["engine_speed"].channel.channel_id == "engine_speed__col_149"

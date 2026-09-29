@@ -2,7 +2,7 @@
 
 Version 1.3.0 is a deterministic profile-reporting release for validated Electric/Hybrid workflows, subject to the following boundaries.
 
-1. Reporting profile fidelity is validated against the supplied Electric_03 and Hybrid_04 templates and representative Electric/Hybrid source CSVs.
+1. Reporting profile fidelity is validated against the supplied Electric_05 and Hybrid_06 templates and representative Electric/Hybrid source CSVs.
 2. Optional source channels, including `Track_Height`, are exported only when present in the uploaded data.
 3. The current automatic header/unit detection is validated against normal CSV/XLSX layouts. Unusual multi-sheet or multi-level-header exports may require explicit import settings.
 4. Math channels are configured expressions, not a free-form graphical formula editor.

@@ -1867,7 +1867,7 @@ def _slide_8_definition(excel_result: ProfileExcelReportResult, definition: Any)
     statistics = (
         "total_auxiliary_power_max",
         "auxiliary_energy_accumulated_max",
-        "tyre_rr_energy_accumulated_last",
+        "tyre_total_energy_accumulated_last",
         "battery_soc_last",
         "time_minutes_last",
     )

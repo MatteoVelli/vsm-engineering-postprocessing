@@ -1003,56 +1003,56 @@ channels:
     report_name: Tyre Rolling Resistance Force FL
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_rollingresistanceforce_fr
     source_name: Tyre_RollingResistanceForce_FR
     report_name: Tyre Rolling Resistance Force FR
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_rollingresistanceforce_rl
     source_name: Tyre_RollingResistanceForce_RL
     report_name: Tyre Rolling Resistance Force RL
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_rollingresistanceforce_rr
     source_name: Tyre_RollingResistanceForce_RR
     report_name: Tyre Rolling Resistance Force RR
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_rollingresistancepower_fl
     source_name: Tyre_RollingResistancePower_FL
     report_name: Tyre Rolling Resistance Power FL
     unit: kW
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_rollingresistancepower_fr
     source_name: Tyre_RollingResistancePower_FR
     report_name: Tyre Rolling Resistance Power FR
     unit: kW
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_rollingresistancepower_rl
     source_name: Tyre_RollingResistancePower_RL
     report_name: Tyre Rolling Resistance Power RL
     unit: kW
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_rollingresistancepower_rr
     source_name: Tyre_RollingResistancePower_RR
     report_name: Tyre Rolling Resistance Power FR
     unit: kW
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: tyre_slipratio_fl
     source_name: Tyre_SlipRatio_FL
@@ -1213,28 +1213,28 @@ channels:
     report_name: Wheel Load Dynamic FL
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: wheel_load_dynamic_fr
     source_name: Wheel_Load_Dynamic_FR
     report_name: Wheel Load Dynamic FR
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: wheel_load_dynamic_rl
     source_name: Wheel_Load_Dynamic_RL
     report_name: Wheel Load Dynamic RL
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: wheel_load_dynamic_rr
     source_name: Wheel_Load_Dynamic_RR
     report_name: Wheel Load Dynamic RR
     unit: N
     required: true
-    for_plot: true
+    for_plot: false
     channel_type: VSM
   - semantic_name: wheel_rotationalspeed_fl
     source_name: Wheel_RotationalSpeed_FL
@@ -2034,6 +2034,34 @@ channels:
     required: true
     for_plot: false
     channel_type: AVL
+  - semantic_name: driveshaft_torque_fl
+    source_name: DriveShaft_Torque_FL
+    report_name: Wheel Torque FL
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: driveshaft_torque_fr
+    source_name: DriveShaft_Torque_FR
+    report_name: Wheel Torque FR
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: driveshaft_torque_rl
+    source_name: DriveShaft_Torque_RL
+    report_name: Wheel Torque RL
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
+  - semantic_name: driveshaft_torque_rr
+    source_name: DriveShaft_Torque_RR
+    report_name: Wheel Torque RR
+    unit: Nm
+    required: true
+    for_plot: true
+    channel_type: VSM
   math:
   - semantic_name: time_minutes
     source_name: Time
@@ -2161,34 +2189,34 @@ channels:
     report_name: ' Total Rolling Resistance Power'
     unit: kW
     required: true
-    for_plot: true
+    for_plot: false
     dependencies:
     - tyre_rollingresistancepower_fl
     - tyre_rollingresistancepower_fr
     - tyre_rollingresistancepower_rl
     - tyre_rollingresistancepower_rr
-    formula: =EZ5+FA5+FB5+FC5
+    formula: =FH5+FI5+FJ5+FK5
     expression: tyre_rollingresistancepower_fl + tyre_rollingresistancepower_fr + tyre_rollingresistancepower_rl + tyre_rollingresistancepower_rr
   - semantic_name: tyre_rolling_resistance_energy_kwh
-    source_name: ' Tyre Rolling Resistance Energy'
-    report_name: ' Tyre Rolling Resistance Energy'
+    source_name: Tyre Rolling Resistance Energy [kWh]
+    report_name: Tyre Rolling Resistance Energy [kWh]
     unit: kWh
     required: true
-    for_plot: true
+    for_plot: false
     dependencies:
     - total_rolling_resistance_power
     - track_time
-    formula: =(FD5)*1/3600
+    formula: =(FL5)*1/3600
     expression: sample_energy_kwh(total_rolling_resistance_power, track_time)
   - semantic_name: tyre_rolling_resistance_energy_wh
-    source_name: ' Tyre Rolling Resistance Energy'
-    report_name: ' Tyre Rolling Resistance Energy'
+    source_name: Tyre Rolling Resistance Energy [Wh]
+    report_name: Tyre Rolling Resistance Energy [Wh]
     unit: Wh
     required: true
     for_plot: true
     dependencies:
     - tyre_rolling_resistance_energy_kwh
-    formula: =FE5*1000
+    formula: =FM5*1000
     expression: tyre_rolling_resistance_energy_kwh * 1000
   - semantic_name: tyre_rolling_resistance_energy_accumulated
     source_name: ' Tyre Rolling Resistance Energy Accomulated'
@@ -2198,44 +2226,8 @@ channels:
     for_plot: true
     dependencies:
     - tyre_rolling_resistance_energy_kwh
-    formula: =SUM(FE5:FE$6)
+    formula: =SUM(FM5:FM$6)
     expression: cumulative_sum(tyre_rolling_resistance_energy_kwh)
-  - semantic_name: driveshaft_torque_fl
-    source_name: DriveShaft_Torque_FL
-    report_name: Wheel Torque FL
-    unit: Nm
-    required: true
-    for_plot: true
-    fallback_when_raw_missing: true
-    formula: '0'
-    expression: '0'
-  - semantic_name: driveshaft_torque_fr
-    source_name: DriveShaft_Torque_FR
-    report_name: Wheel Torque FR
-    unit: Nm
-    required: true
-    for_plot: true
-    fallback_when_raw_missing: true
-    formula: '0'
-    expression: '0'
-  - semantic_name: driveshaft_torque_rl
-    source_name: DriveShaft_Torque_RL
-    report_name: Wheel Torque RL
-    unit: Nm
-    required: true
-    for_plot: true
-    fallback_when_raw_missing: true
-    formula: '0'
-    expression: '0'
-  - semantic_name: driveshaft_torque_rr
-    source_name: DriveShaft_Torque_RR
-    report_name: Wheel Torque RR
-    unit: Nm
-    required: true
-    for_plot: true
-    fallback_when_raw_missing: true
-    formula: '0'
-    expression: '0'
   - semantic_name: wheel_total_torque
     source_name: Wheel Total Torque
     report_name: Wheel Total Torque
@@ -2243,10 +2235,12 @@ channels:
     required: true
     for_plot: true
     dependencies:
+    - driveshaft_torque_fl
+    - driveshaft_torque_fr
     - driveshaft_torque_rl
     - driveshaft_torque_rr
-    formula: =GN5+GO5
-    expression: driveshaft_torque_rl + driveshaft_torque_rr
+    formula: =GX5+GY5+GZ5+HA5
+    expression: driveshaft_torque_fl + driveshaft_torque_fr + driveshaft_torque_rl + driveshaft_torque_rr
   - semantic_name: wheel_power_fl
     source_name: Wheel Power FL
     report_name: Wheel Power FL
@@ -2256,7 +2250,7 @@ channels:
     dependencies:
     - wheel_rotationalspeed_fl
     - driveshaft_torque_fl
-    formula: =GH5*GL5/9548.8
+    formula: =GT5*GX5/9548.8
     expression: wheel_rotationalspeed_fl * driveshaft_torque_fl / rpm_nm_to_kw_divisor
   - semantic_name: wheel_power_fr
     source_name: Wheel Power FR
@@ -2267,7 +2261,7 @@ channels:
     dependencies:
     - wheel_rotationalspeed_fr
     - driveshaft_torque_fr
-    formula: =GI5*GM5/9548.8
+    formula: =GU5*GY5/9548.8
     expression: wheel_rotationalspeed_fr * driveshaft_torque_fr / rpm_nm_to_kw_divisor
   - semantic_name: wheel_power_rl
     source_name: Wheel Power RL
@@ -2278,7 +2272,7 @@ channels:
     dependencies:
     - wheel_rotationalspeed_rl
     - driveshaft_torque_rl
-    formula: =GJ5*GN5/9548.8
+    formula: =GV5*GZ5/9548.8
     expression: wheel_rotationalspeed_rl * driveshaft_torque_rl / rpm_nm_to_kw_divisor
   - semantic_name: wheel_power_rr
     source_name: Wheel Power RR
@@ -2289,7 +2283,7 @@ channels:
     dependencies:
     - wheel_rotationalspeed_rr
     - driveshaft_torque_rr
-    formula: =GK5*GO5/9548.8
+    formula: =GW5*HA5/9548.8
     expression: wheel_rotationalspeed_rr * driveshaft_torque_rr / rpm_nm_to_kw_divisor
   - semantic_name: wheel_power_total
     source_name: Wheel Power Total
@@ -2298,10 +2292,12 @@ channels:
     required: true
     for_plot: true
     dependencies:
+    - wheel_power_fl
+    - wheel_power_fr
     - wheel_power_rl
     - wheel_power_rr
-    formula: =GS5+GT5
-    expression: wheel_power_rl + wheel_power_rr
+    formula: =HC5+HD5+HE5+HF5
+    expression: wheel_power_fl + wheel_power_fr + wheel_power_rl + wheel_power_rr
   - semantic_name: auxiliary_high_voltage_power_consumption
     source_name: Auxiliary Haigh Voltage Power Consumption
     report_name: Auxiliary Haigh Voltage Power Consumption
@@ -2319,7 +2315,7 @@ channels:
     dependencies:
     - electricsystem_auxiliary_lowvoltagepowerconsumption
     - auxiliary_high_voltage_power_consumption
-    formula: =HD5+HE5
+    formula: =HP5+HQ5
     expression: electricsystem_auxiliary_lowvoltagepowerconsumption + auxiliary_high_voltage_power_consumption
   - semantic_name: auxiliary_energy_consumption
     source_name: Auxiliary Energy Consumption
@@ -2330,7 +2326,7 @@ channels:
     dependencies:
     - total_auxiliary_power
     - track_time
-    formula: =(HF5)*1/3600
+    formula: =(HR5)*1/3600
     expression: sample_energy_kwh(total_auxiliary_power, track_time)
   - semantic_name: auxiliary_energy_consumption_accumulated
     source_name: Auxiliary Energy Consumption Accumulated
@@ -2340,8 +2336,141 @@ channels:
     for_plot: true
     dependencies:
     - auxiliary_energy_consumption
-    formula: =HG5
+    formula: =HS5
     expression: cumulative_sum(auxiliary_energy_consumption)
+  - semantic_name: total_bulldozing_resistance_power
+    source_name: Total Bulldozing Resistance Power
+    report_name: Total Bulldozing Resistance Power
+    unit: kW
+    required: true
+    for_plot: false
+    dependencies:
+    - tyre_bulldozingresistancepower_fl
+    - tyre_bulldozingresistancepower_fr
+    - tyre_bulldozingresistancepower_rl
+    - tyre_bulldozingresistancepower_rr
+    expression: tyre_bulldozingresistancepower_fl + tyre_bulldozingresistancepower_fr + tyre_bulldozingresistancepower_rl +
+      tyre_bulldozingresistancepower_rr
+    formula: =DH5+DI5+DJ5+DK5
+  - semantic_name: tyre_bulldozing_resistance_energy_kwh
+    source_name: Tyre Bulldozing Resistance Energy [kWh]
+    report_name: Tyre Bulldozing Resistance Energy [kWh]
+    unit: kWh
+    required: true
+    for_plot: false
+    dependencies:
+    - total_bulldozing_resistance_power
+    - track_time
+    expression: sample_energy_kwh(total_bulldozing_resistance_power, track_time)
+    formula: =(DL5)*1/3600
+  - semantic_name: tyre_bulldozing_resistance_energy_wh
+    source_name: Tyre Bulldozing Resistance Energy [Wh]
+    report_name: Tyre Bulldozing Resistance Energy [Wh]
+    unit: Wh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_bulldozing_resistance_energy_kwh
+    expression: tyre_bulldozing_resistance_energy_kwh * 1000
+    formula: =DM5*1000
+  - semantic_name: tyre_bulldozing_resistance_energy_accumulated
+    source_name: Tyre Bulldozing Resistance Energy Accumulated
+    report_name: Tyre Bulldozing Resistance Energy Accumulated
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_bulldozing_resistance_energy_kwh
+    expression: cumulative_sum(tyre_bulldozing_resistance_energy_kwh)
+    formula: =SUM(DM5:DM$6)
+  - semantic_name: total_compaction_resistance_power
+    source_name: Total Compaction Resistance Power
+    report_name: Total Compaction Resistance Power
+    unit: kW
+    required: true
+    for_plot: false
+    dependencies:
+    - tyre_compactionresistancepower_fl
+    - tyre_compactionresistancepower_fr
+    - tyre_compactionresistancepower_rl
+    - tyre_compactionresistancepower_rr
+    expression: tyre_compactionresistancepower_fl + tyre_compactionresistancepower_fr + tyre_compactionresistancepower_rl +
+      tyre_compactionresistancepower_rr
+    formula: =DT5+DU5+DV5+DW5
+  - semantic_name: tyre_compaction_resistance_energy_kwh
+    source_name: Tyre Compaction Resistance Energy [kWh]
+    report_name: Tyre Compaction Resistance Energy [kWh]
+    unit: kWh
+    required: true
+    for_plot: false
+    dependencies:
+    - total_compaction_resistance_power
+    - track_time
+    expression: sample_energy_kwh(total_compaction_resistance_power, track_time)
+    formula: =(DX5)*1/3600
+  - semantic_name: tyre_compaction_resistance_energy_wh
+    source_name: Tyre Compaction Resistance Energy [Wh]
+    report_name: Tyre Compaction Resistance Energy [Wh]
+    unit: Wh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_compaction_resistance_energy_kwh
+    expression: tyre_compaction_resistance_energy_kwh * 1000
+    formula: =DY5*1000
+  - semantic_name: tyre_compaction_resistance_energy_accumulated
+    source_name: Tyre Compaction Resistance Energy Accumulated
+    report_name: Tyre Compaction Resistance Energy Accumulated
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_compaction_resistance_energy_kwh
+    expression: cumulative_sum(tyre_compaction_resistance_energy_kwh)
+    formula: =SUM(DY5:DY$6)
+  - semantic_name: tyre_total_resistance_power
+    source_name: Tyre Total Resistance Power
+    report_name: Tyre Total Resistance Power
+    unit: kW
+    required: true
+    for_plot: true
+    dependencies:
+    - total_rolling_resistance_power
+    - total_compaction_resistance_power
+    - total_bulldozing_resistance_power
+    expression: total_rolling_resistance_power + total_compaction_resistance_power + total_bulldozing_resistance_power
+  - semantic_name: tyre_total_resistance_energy_kwh
+    source_name: Tyre Total Resistance Energy [kWh]
+    report_name: Tyre Total Resistance Energy [kWh]
+    unit: kWh
+    required: true
+    for_plot: false
+    dependencies:
+    - tyre_rolling_resistance_energy_kwh
+    - tyre_compaction_resistance_energy_kwh
+    - tyre_bulldozing_resistance_energy_kwh
+    expression: tyre_rolling_resistance_energy_kwh + tyre_compaction_resistance_energy_kwh + tyre_bulldozing_resistance_energy_kwh
+    formula: =FM5+DY5+DM5
+  - semantic_name: tyre_total_resistance_energy_wh
+    source_name: Tyre Total Resistance Energy [Wh]
+    report_name: Tyre Total Resistance Energy [Wh]
+    unit: Wh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_total_resistance_energy_kwh
+    expression: tyre_total_resistance_energy_kwh * 1000
+    formula: =FQ5*1000
+  - semantic_name: tyre_total_resistance_energy_accumulated
+    source_name: Tyre Total Resistance Energy Accumulated
+    report_name: Tyre Total Resistance Energy Accumulated
+    unit: kWh
+    required: true
+    for_plot: true
+    dependencies:
+    - tyre_total_resistance_energy_kwh
+    expression: cumulative_sum(tyre_total_resistance_energy_kwh)
+    formula: =SUM(FQ5:FQ$6)
 statistics:
   - statistic_id: battery_power_rms
     target: electricsystem_battery_power
@@ -2408,10 +2537,10 @@ statistics:
     unit: kWh
     placement_group: summary
     notes: Uses the accumulated auxiliary energy series rather than Sergio's ambiguous HG3858 summary reference.
-  - statistic_id: tyre_rr_energy_accumulated_last
-    target: tyre_rolling_resistance_energy_accumulated
+  - statistic_id: tyre_total_energy_accumulated_last
+    target: tyre_total_resistance_energy_accumulated
     operation: last
-    display_name: Tyre RR Energy Consumption
+    display_name: Tyre Total Energy Consumption
     unit: kWh
     placement_group: summary
   - statistic_id: battery_energy_first
@@ -2587,9 +2716,9 @@ kpis:
     unit: kWh
     placement_group: summary
   - kpi_id: total_energy_consumption_tyres_aux
-    expression: tyre_rr_energy_accumulated_last + auxiliary_energy_accumulated_max
+    expression: tyre_total_energy_accumulated_last + auxiliary_energy_accumulated_max
     dependencies:
-    - tyre_rr_energy_accumulated_last
+    - tyre_total_energy_accumulated_last
     - auxiliary_energy_accumulated_max
     display_name: Total Energy Consumption (Tyres + Aux)
     unit: kWh
@@ -2839,18 +2968,18 @@ plots:
     title: Tyres Energy Consumption
     x: time_minutes
     x_label: Time [min]
-    primary_y_label: Rolling Resistance Power [kW]
+    primary_y_label: Total Tyre Resistance Power [kW]
     secondary_y_label: Accumulated Energy [kWh]
     output_filename: 11_tyres_energy_consumption.png
     status: RECONSTRUCTED
-    evidence: Electric chart 11 contains rolling resistance power only; title and neighbouring report channel identify accumulated tyre energy.
+    evidence: Electric_05 and Hybrid_06 total tyre resistance power and accumulated energy; existing chart layout retained.
     series:
-      - semantic_name: total_rolling_resistance_power
+      - semantic_name: tyre_total_resistance_power
         axis: primary
-        label: Total Rolling Resistance Power
-      - semantic_name: tyre_rolling_resistance_energy_accumulated
+        label: Tyre Total Resistance Power
+      - semantic_name: tyre_total_resistance_energy_accumulated
         axis: secondary
-        label: Tyre Rolling Resistance Energy Accumulated
+        label: Tyre Total Resistance Energy Accumulated
   - plot_id: agrochemical_discharge_and_charge_vs_time
     order: 12
     reference_chart_number: 12
@@ -3026,7 +3155,7 @@ presentation:
         - wheel_power_total_max
         - edu_speed_rl_max
         - edu_torque_rl_max
-        - tyre_rr_energy_accumulated_last
+        - tyre_total_energy_accumulated_last
         - auxiliary_energy_accumulated_max
       plots:
         - power_at_wheels_and_edu

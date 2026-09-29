@@ -301,7 +301,7 @@ def test_electric_profile_representative_statistics_regression() -> None:
     assert stats["total_rolling_resistance_power_max"] == pytest.approx(13.471919999999999)
     assert stats["agrochemical_discharge_max"] == pytest.approx(0.0)
     assert stats["auxiliary_energy_accumulated_max"] == pytest.approx(11.508375861111489)
-    assert stats["tyre_rr_energy_accumulated_last"] == pytest.approx(13.355223967066818)
+    assert stats["tyre_total_energy_accumulated_last"] == pytest.approx(25.523473098986344)
     assert kpis["battery_capacity_used"] == pytest.approx(33.65367)
     assert kpis["battery_energy_consumption_wh_per_km"] == pytest.approx(2804.565985532851)
     assert kpis["battery_capacity_100"] == pytest.approx(50.0)

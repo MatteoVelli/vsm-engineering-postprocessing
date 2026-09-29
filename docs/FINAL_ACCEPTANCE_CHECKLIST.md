@@ -7,7 +7,7 @@
 - [ ] Profile Excel reports complete for the latest Electric and Hybrid source CSVs.
 - [ ] Profile PowerPoint reports open without repair warnings.
 - [ ] Every generated PowerPoint slide includes the Astauto logo.
-- [ ] Electric_03 and Hybrid_04 profile channel counts match the latest templates when optional source channels are present.
+- [ ] Electric_05 and Hybrid_06 profile channel counts match the latest templates when optional source channels are present.
 - [ ] Optional `Track_Height` / `Road Height` is exported when present and omitted without failure when absent.
 - [ ] Agrochemical Discharge remains mapped from `HitchRear_Force_Z_VehicleCoordinates` using `-force / 9.81`.
 - [ ] Hybrid PowerPoint KPI labels and values describe the same statistics.

@@ -24,7 +24,7 @@ Excel report
 Optional PowerPoint report
 ```
 
-The production client workflow uses Electric and Hybrid reporting profiles in `config/report_profiles/`. Machine identity is resolved from source metadata/filenames and remains editable in the UI before report generation. The profiles are synced to Sergio's latest Electric_03 and Hybrid_04 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
+The production client workflow uses Electric and Hybrid reporting profiles in `config/report_profiles/`. Machine identity is resolved from source metadata/filenames and remains editable in the UI before report generation. The profiles are synced to Sergio's latest Electric_05 and Hybrid_06 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
 
 A local Streamlit UI exposes the workflow without requiring Python or YAML editing.
 

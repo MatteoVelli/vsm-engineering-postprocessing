@@ -59,7 +59,9 @@ _CLIENT_REFERENCE_FILES = (
     "reference_files/Caiman_SP_Hybrid_Report_Astauto_Colours.pptx",
     "reference_files/RoboSprayer_Electric_Report_Astauto_v7.pptx",
     "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_03.xlsx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_05.xlsx",
     "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_04.xlsx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx",
 )
 
 _EXCLUDED_NAMES = {
