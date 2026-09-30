@@ -56,6 +56,33 @@ Road Profile and Wheel Steering captions/backgrounds now come from the normal
 content slide. Their cards, plots, explanatory note, and other geometry remain
 unchanged.
 
+## Shared Electric/Hybrid PowerPoint visual theme
+
+Both profiles now use the approved Electric Astauto template for native slide
+backgrounds, title/subtitle geometry, icons, KPI cards, plots, and the reusable
+additional-content layout. Profiles still supply their own titles, metadata,
+metric IDs, plots, summary content, and N/A/inactive behavior. The original template
+files and engineering profile definitions are unchanged.
+
+The cover uses Cambria Bold 46 pt; other titles use Cambria Bold 25 pt. Normal
+captions are Calibri 12.5 pt, italic grey. Body text uses Calibri. Slides 1, 3 and 12
+reuse Electric's original dark background images; content slides use F4F6FA.
+All footers use the Electric wording/version and page-number spacing. Electric's
+intentional corrections are the cover footer wording and replacing the historical
+Georgia titles on Road Profile/Wheel Steering with Cambria.
+
+Logo validation checks actual canonical image bytes, not merely a picture's
+position. Plot-slot validation rejects header pictures. This prevents a stale
+Hybrid slot index from replacing the logo with a plot. Shared KPI cards can expand
+for content variants without dropping requested metrics. Hybrid's full configured
+cover/executive KPI set is retained in the shared layout, whose capacity matches
+those configurations.
+
+Desktop PowerPoint export was unavailable during the original shared-theme validation. Review slides 1-12
+in PowerPoint, especially the cover, Executive Results, generator/fuel content,
+Road Profile N/A panel, steering note, and Summary. Structural validation covers
+background media, fonts, coordinates, logos, plot images and metric text.
+
 ## Names and auxiliary statistics
 
 Report filenames use the source stem with `.xlsx` and `.pptx` extensions. Machine

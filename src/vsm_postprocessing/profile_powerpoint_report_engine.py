@@ -66,7 +66,19 @@ _HYBRID_ACTIVITY_IDS = (
     "generator_torque_1_max",
     "generator_power_1_max",
 )
-_DEFAULT_REFERENCE_TEMPLATE: str | None = None
+@dataclass(frozen=True)
+class _AstautoTheme:
+    # The approved Electric deck owns native backgrounds, cards, icons and geometry.
+    template: str = "reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx"
+    title_font: str = "Cambria"
+    body_font: str = "Calibri"
+    title_size: float = 25
+    cover_title_size: float = 46
+    subtitle_size: float = 12.5
+    content_background: str = "F4F6FA"
+
+
+_PPT_THEME = _AstautoTheme()
 _ASTAUTO_LOGO_PATH = Path("reference_files/astauto-light-text_web.jpg")
 _ASTAUTO_LOGO_WIDTH = Inches(1.45)
 _ASTAUTO_LOGO_TOP = Inches(0.16)
@@ -202,19 +214,6 @@ class _TemplateLayoutSpec:
     plot_slots: dict[int, tuple[_TemplatePlotSlot, ...]]
 
 
-_HYBRID_TEXT_SLOTS: dict[int, _TemplateTextSlots] = {
-    1: _TemplateTextSlots(title=2, subtitle=3, footer=34, page_number=35, body=(5, 7, 9, 11, 13), eyebrow=1),
-    2: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(5, 7, 9, 11, 15, 16, 20, 21)),
-    3: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(34,)),
-    4: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
-    5: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
-    6: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
-    7: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(36,)),
-    8: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3, body=(26,)),
-    9: _TemplateTextSlots(title=0, subtitle=1, footer=2, page_number=3),
-    10: _TemplateTextSlots(title=1, subtitle=2, footer=35, page_number=36, body=(34,)),
-}
-
 _ELECTRIC_TEXT_SLOTS: dict[int, _TemplateTextSlots] = {
     1: _TemplateTextSlots(title=3, subtitle=4, footer=39, page_number=40, body=(6, 8, 10, 12, 14), eyebrow=2),
     2: _TemplateTextSlots(title=2, subtitle=3, footer=40, page_number=41, body=(6, 8, 10, 12, 14, 17, 18, 22, 23)),
@@ -226,19 +225,6 @@ _ELECTRIC_TEXT_SLOTS: dict[int, _TemplateTextSlots] = {
     8: _TemplateTextSlots(title=2, subtitle=3, footer=22, page_number=23),
     9: _TemplateTextSlots(title=2, subtitle=3, footer=30, page_number=31),
     10: _TemplateTextSlots(title=2, subtitle=3, footer=31, page_number=32, body=(4, 6)),
-}
-
-_HYBRID_KPI_SLOTS: dict[int, tuple[_TemplateKpiSlot, ...]] = {
-    1: (_TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28), _TemplateKpiSlot(32, 33)),
-    2: (_TemplateKpiSlot(25, 26), _TemplateKpiSlot(30, 31), _TemplateKpiSlot(35, 36), _TemplateKpiSlot(40, 41)),
-    3: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28), _TemplateKpiSlot(32, 33)),
-    4: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23)),
-    5: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28)),
-    6: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23)),
-    7: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28), _TemplateKpiSlot(32, 33)),
-    8: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23)),
-    9: (_TemplateKpiSlot(7, 8), _TemplateKpiSlot(12, 13), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(22, 23), _TemplateKpiSlot(27, 28), _TemplateKpiSlot(32, 33)),
-    10: (_TemplateKpiSlot(6, 7), _TemplateKpiSlot(11, 12), _TemplateKpiSlot(16, 17), _TemplateKpiSlot(21, 22), _TemplateKpiSlot(26, 27), _TemplateKpiSlot(31, 32)),
 }
 
 _ELECTRIC_KPI_SLOTS: dict[int, tuple[_TemplateKpiSlot, ...]] = {
@@ -254,15 +240,6 @@ _ELECTRIC_KPI_SLOTS: dict[int, tuple[_TemplateKpiSlot, ...]] = {
     10: (_TemplateKpiSlot(9, 10), _TemplateKpiSlot(13, 14), _TemplateKpiSlot(17, 18), _TemplateKpiSlot(21, 22), _TemplateKpiSlot(25, 26), _TemplateKpiSlot(29, 30)),
 }
 
-_HYBRID_PLOT_SLOTS: dict[int, tuple[_TemplatePlotSlot, ...]] = {
-    4: (_TemplatePlotSlot(25),),
-    5: (_TemplatePlotSlot(31), _TemplatePlotSlot(32)),
-    6: (_TemplatePlotSlot(26), _TemplatePlotSlot(27)),
-    7: (_TemplatePlotSlot(37), _TemplatePlotSlot(38)),
-    8: (_TemplatePlotSlot(28), _TemplatePlotSlot(29)),
-    9: (_TemplatePlotSlot(37), _TemplatePlotSlot(38)),
-}
-
 _ELECTRIC_PLOT_SLOTS: dict[int, tuple[_TemplatePlotSlot, ...]] = {
     4: (_TemplatePlotSlot(23),),
     5: (_TemplatePlotSlot(32), _TemplatePlotSlot(33)),
@@ -272,7 +249,6 @@ _ELECTRIC_PLOT_SLOTS: dict[int, tuple[_TemplatePlotSlot, ...]] = {
     9: (_TemplatePlotSlot(32), _TemplatePlotSlot(33)),
 }
 
-_HYBRID_LAYOUT = _TemplateLayoutSpec(_HYBRID_TEXT_SLOTS, _HYBRID_KPI_SLOTS, _HYBRID_PLOT_SLOTS)
 _ELECTRIC_LAYOUT = _TemplateLayoutSpec(_ELECTRIC_TEXT_SLOTS, _ELECTRIC_KPI_SLOTS, _ELECTRIC_PLOT_SLOTS)
 
 def inspect_reference_powerpoint_layout(path: str | Path) -> PowerPointReferenceDeckSpec:
@@ -462,7 +438,7 @@ def _build_template_profile_powerpoint_report(
     plot_assets_dir: Path,
 ) -> PowerPointReportResult:
     config = load_powerpoint_report_config(config_path)
-    template_path = _resolve_reference_template(excel_result.profile)
+    template_path = _resolve_visual_template()
     spec = inspect_reference_powerpoint_layout(template_path)
     if spec.slide_count != 10:
         raise PowerPointReportError(f"Reference PowerPoint template must contain 10 slides: {template_path}")
@@ -471,7 +447,7 @@ def _build_template_profile_powerpoint_report(
     statistics_by_id = {item.statistic_id: item for item in statistics_result.statistics}
     plots_by_id = {item.plot_id: item for item in excel_result.plotting_result.rendered_plots}
     assets = Path(plot_assets_dir).expanduser().resolve()
-    layout = _layout_for_profile(excel_result.profile)
+    layout = _ELECTRIC_LAYOUT
     prs = Presentation(template_path)
     prs.core_properties.title = config.title
     prs.core_properties.subject = config.subject or config.subtitle or "Deterministic VSM engineering report"
@@ -623,6 +599,9 @@ def _render_template_slide(
             "RANGE EXTENDER INACTIVE IN THIS SIMULATION\n"
             "ICE/generator channels resolved; no operating activity detected in this simulation.",
         )
+    if template_slide_number == 8 and slide_def.body and not text_slots.body and (excel_result.profile.metadata.powertrain or "").lower() == "hybrid":
+        _add_text_box(slide, "\n".join(slide_def.body), Inches(.6), Inches(6.66), Inches(12.13), Inches(.24),
+                      font_size=10.5, color=_ASTAUTO_MUTED, italic=True)
     _replace_drive_cycle_terminology(slide)
 
 
@@ -835,7 +814,7 @@ def _add_custom_header(
         font_size=25,
         color=_ASTAUTO_TEXT,
         bold=True,
-        font_name="Georgia",
+        font_name=_PPT_THEME.title_font,
     )
     # Copy the normal caption's full shape XML to preserve typography and geometry.
     caption = deepcopy(reference_slide.shapes[3].element)
@@ -1030,20 +1009,15 @@ def _add_custom_footer(
     slide_number: int,
     slide_count: int,
 ) -> None:
-    is_electric = (result.profile.metadata.powertrain or "").strip().lower() == "electric"
-    if is_electric:
-        text = f"VSM ENGINEERING   \u00b7   POST-PROCESSING TOOL  v{__version__}"
-        page_text = f"{slide_number}  /  {slide_count}"
-    else:
-        text = f"{footer or 'VSM Engineering Post-Processing Tool'}  \u00b7  v{__version__}"
-        page_text = f"{slide_number} / {slide_count}"
+    text = _canonical_footer_text()
+    page_text = f"{slide_number}  /  {slide_count}"
     _add_text_box(
         slide,
         text,
         *_rect(_V7_FOOTER_RECT),
         font_size=8.5,
-        color=_ASTAUTO_TEXT if is_electric else _ASTAUTO_MUTED,
-        bold=is_electric,
+        color=_ASTAUTO_TEXT,
+        bold=True,
         font_name="Calibri",
     )
     _add_text_box(
@@ -1070,7 +1044,7 @@ def _add_text_box(
     bold: bool = False,
     italic: bool = False,
     align: PP_ALIGN = PP_ALIGN.LEFT,
-    font_name: str = "Aptos",
+    font_name: str = _PPT_THEME.body_font,
 ) -> Any:
     shape = slide.shapes.add_textbox(left, top, width, height)
     text_frame = shape.text_frame
@@ -1141,20 +1115,8 @@ def _blank_slide_layout(prs: Presentation) -> Any:
     return prs.slide_layouts[min(6, len(prs.slide_layouts) - 1)]
 
 
-def _layout_for_profile(profile: ReportingProfile) -> _TemplateLayoutSpec:
-    if (profile.metadata.powertrain or "").strip().lower() == "electric":
-        return _ELECTRIC_LAYOUT
-    return _HYBRID_LAYOUT
-
-
-def _resolve_reference_template(profile: ReportingProfile) -> Path:
-    configured = profile.presentation.powerpoint_template if profile.presentation else None
-    raw = configured or _DEFAULT_REFERENCE_TEMPLATE
-    if raw is None:
-        raise PowerPointReportError(
-            f"Reporting profile '{profile.profile_id}' does not define a PowerPoint reference template"
-        )
-    candidate = Path(raw).expanduser()
+def _resolve_visual_template() -> Path:
+    candidate = Path(_PPT_THEME.template).expanduser()
     if candidate.is_absolute():
         path = candidate
     else:
@@ -1205,6 +1167,19 @@ def _summary_banner(result: ProfileExcelReportResult) -> str:
     return f"{distance}  covered   \u00b7   SOC  {soc}   \u00b7   {third.replace(' ', '  ', 1)}"
 
 
+def _set_overview_card_body(shape: Any, text: str) -> None:
+    """Retain the shared template's bullet/body runs for every statement."""
+    lines = text.split("\n")
+    paragraphs = list(shape.text_frame.paragraphs)
+    for _ in range(len(lines) - len(paragraphs)):
+        shape.text_frame._txBody.append(deepcopy(paragraphs[0]._p))
+    for paragraph in paragraphs[len(lines):]:
+        paragraph._p.getparent().remove(paragraph._p)
+    _set_shape_text(shape, "\n".join(
+        line if line.startswith("\u25b8  ") else f"\u25b8  {line}" for line in lines
+    ))
+
+
 def _render_overview_template_body(
     shapes: list[Any],
     result: ProfileExcelReportResult,
@@ -1218,29 +1193,15 @@ def _render_overview_template_body(
     initial_soc = _formatted_value(values, "battery_soc_first", "%")
     final_soc = _formatted_value(values, "battery_soc_last", "%")
 
-    if layout is _ELECTRIC_LAYOUT:
-        mission_title_slot = 17
-        mission_body_slot = 18
-        context_title_slot = 22
-        context_body_slot = 23
-    else:
-        pill_slots = (5, 7, 9, 11)
-        pills = (
-            f"Samples {result.sample_count:,}",
-            f"Distance {distance}",
-            f"Drive cycle time {time_value}",
-            "Hybrid profile",
-        )
-        for shape_index, text in zip(pill_slots, pills):
-            _set_shape_text(shapes[shape_index], text)
-        mission_title_slot = 15
-        mission_body_slot = 16
-        context_title_slot = 20
-        context_body_slot = 21
+    mission_title_slot, mission_body_slot = 17, 18
+    context_title_slot, context_body_slot = 22, 23
+
+    for index, text in zip((5, 7, 9, 11, 13), _cover_metadata_items(result)):
+        _set_shape_text(shapes[index], text)
 
     _set_shape_text(shapes[mission_title_slot], "Drive Cycle Structure")
-    if layout is _ELECTRIC_LAYOUT:
-        _set_shape_text(
+    if powertrain == "electric":
+        _set_overview_card_body(
             shapes[mission_body_slot],
             "\n".join(
                 (
@@ -1252,7 +1213,7 @@ def _render_overview_template_body(
             ),
         )
     else:
-        _set_shape_text(
+        _set_overview_card_body(
             shapes[mission_body_slot],
             "\n".join(
                 (
@@ -1266,7 +1227,7 @@ def _render_overview_template_body(
         )
     right_title = "Hybrid System Context" if powertrain == "hybrid" else "Computation Context"
     _set_shape_text(shapes[context_title_slot], right_title)
-    if layout is _ELECTRIC_LAYOUT:
+    if powertrain == "electric":
         inactive_count = sum(1 for item in result.resolution.resolved.values() if item.is_all_zero)
         body = (
             f"\u25b8  Calculated MATH channels: {result.math_count:,}.",
@@ -1290,7 +1251,7 @@ def _render_overview_template_body(
             f"Estimated range @ 85% battery: {_formatted_value(values, 'range_85_battery_km', 'km')}",
             "Electrical system outputs are sourced from profile KPIs and rendered plots.",
         )
-    _set_shape_text(shapes[context_body_slot], "\n".join(body))
+    _set_overview_card_body(shapes[context_body_slot], "\n".join(body))
 
 
 def _replace_kpi_slots(
@@ -1299,8 +1260,21 @@ def _replace_kpi_slots(
     statistics: list[StatisticResult],
     layout: _TemplateLayoutSpec,
 ) -> None:
-    slots = layout.kpi_slots.get(slide_number, ())
-    _fit_kpi_slot_groups(shapes, slots, len(statistics))
+    slots = list(layout.kpi_slots.get(slide_number, ()))
+    # A content variant can request more KPIs (e.g. the five-KPI inactive-agro view).
+    # Clone the shared card, never silently drop metrics or borrow nearby text shapes.
+    expanded = len(statistics) > len(slots)
+    while slots and len(slots) < len(statistics):
+        group = _kpi_card_group(shapes, slots[-1])
+        collection = group[0]._parent
+        start = len(shapes)
+        for source in group:
+            clone = deepcopy(source.element)
+            clone.xpath(".//p:cNvPr")[0].set("id", str(collection._next_shape_id))
+            collection._spTree.insert_element_before(clone, "p:extLst")
+            shapes.append(collection[-1])
+        slots.append(_TemplateKpiSlot(start + 2, start + 3))
+    _fit_kpi_slot_groups(shapes, tuple(slots), len(statistics), force=expanded)
     for index, slot in enumerate(slots):
         if index >= len(statistics):
             continue
@@ -1308,43 +1282,37 @@ def _replace_kpi_slots(
         _set_value_text_preserve_runs(shapes[slot.value], _format_statistic_value(statistics[index]))
 
 
-def _fit_kpi_slot_groups(shapes: list[Any], slots: tuple[_TemplateKpiSlot, ...], statistic_count: int) -> None:
-    if not slots or statistic_count >= len(slots):
+def _fit_kpi_slot_groups(shapes: list[Any], slots: tuple[_TemplateKpiSlot, ...], statistic_count: int, *, force: bool = False) -> None:
+    if not slots or (statistic_count >= len(slots) and not force):
         return
-    used_count = max(0, statistic_count)
     groups = [_kpi_card_group(shapes, slot) for slot in slots]
-    used_groups = groups[:used_count]
-    unused_groups = groups[used_count:]
-    if used_count >= 2 and used_groups:
-        first_left = min(shape.left for shape in groups[0])
-        last_right = max(shape.left + shape.width for shape in groups[-1])
-        card_left = min(shape.left for shape in used_groups[0])
-        card_width = max(shape.left + shape.width for shape in used_groups[0]) - card_left
-        expanded_width = min(int(card_width * 1.18), int((last_right - first_left) / used_count * 0.9))
-        gap = (last_right - first_left - used_count * expanded_width) / (used_count - 1)
-        for index, group in enumerate(used_groups):
-            group_left = min(shape.left for shape in group)
-            target_left = int(round(first_left + index * (expanded_width + gap)))
-            delta = target_left - group_left
+    used_count = min(max(0, statistic_count), len(slots))
+    rows = sorted({group[0].top for group in groups})
+    columns = math.ceil(used_count / len(rows)) if used_count else 1
+    left = min(group[0].left for group in groups)
+    right = max(group[0].left + group[0].width for group in groups)
+    gap = Inches(.16)
+    width = int((right - left - gap * (columns - 1)) / columns)
+    for index, (slot, group) in enumerate(zip(slots, groups)):
+        if index >= used_count:
             for shape in group:
-                shape.left += delta
-            width_delta = expanded_width - card_width
-            if width_delta > 0:
-                group[0].width += width_delta
-                shapes[slots[index].label].width += width_delta
-                shapes[slots[index].value].width += width_delta
-    for group in unused_groups:
+                shape.element.getparent().remove(shape.element)
+            continue
+        card = group[0]
+        dx = left + (index % columns) * (width + gap) - card.left
+        dy = rows[index // columns] - card.top
+        width_delta = width - card.width
         for shape in group:
-            element = shape._element
-            parent = element.getparent()
-            if parent is not None:
-                parent.remove(element)
+            shape.left += dx
+            shape.top += dy
+        card.width = width
+        shapes[slot.label].width += width_delta
+        shapes[slot.value].width += width_delta
 
 
 def _kpi_card_group(shapes: list[Any], slot: _TemplateKpiSlot) -> tuple[Any, ...]:
-    start = max(0, slot.label - 3)
-    end = min(len(shapes), slot.value + 1)
-    return tuple(shapes[index] for index in range(start, end))
+    # The shared Electric card consists of background, accent dot, label and value.
+    return tuple(shapes[slot.label - 2:slot.value + 1])
 
 
 def _add_astauto_logo(slide: Any, prs: Presentation) -> None:
@@ -1352,13 +1320,13 @@ def _add_astauto_logo(slide: Any, prs: Presentation) -> None:
     if logo_path is None:
         return
     left = prs.slide_width - _ASTAUTO_LOGO_RIGHT_MARGIN - _ASTAUTO_LOGO_WIDTH
-    if any(
-        shape.shape_type == 13
-        and abs(shape.left - left) < 9144
-        and abs(shape.top - _ASTAUTO_LOGO_TOP) < 9144
-        for shape in slide.shapes
-    ):
+    pictures = [shape for shape in slide.shapes if shape.shape_type == 13
+                and abs(shape.left - left) < 9144 and abs(shape.top - _ASTAUTO_LOGO_TOP) < 9144]
+    canonical = logo_path.read_bytes()
+    if len(pictures) == 1 and pictures[0].image.blob == canonical and pictures[0].width == _ASTAUTO_LOGO_WIDTH:
         return
+    for picture in pictures:
+        picture.element.getparent().remove(picture.element)
     slide.shapes.add_picture(str(logo_path), left, _ASTAUTO_LOGO_TOP, width=_ASTAUTO_LOGO_WIDTH)
 
 
@@ -1395,7 +1363,10 @@ def _replace_plot_slots(
         image_path = _profile_plot_path(rendered, assets)
         if not image_path.exists():
             raise PowerPointReportError(f"Plot asset for '{plot_id}' does not exist: {image_path}")
-        _replace_picture(slide, shapes[slot.picture], image_path)
+        picture = shapes[slot.picture]
+        if picture.shape_type != 13 or picture.top < Inches(1.4):
+            raise PowerPointReportError("Plot slot must reference a content picture, never a header/logo asset")
+        _replace_picture(slide, picture, image_path)
 
 
 def _replace_picture(slide: Any, picture_shape: Any, image_path: Path) -> None:
@@ -1504,7 +1475,7 @@ def _set_summary_banner_preserve_runs(shape: Any, text: str) -> None:
     if _text_equivalent(shape.text, text):
         return
     first_separator = "  covered   \u00b7   SOC  "
-    second_separator = "   \u00b7   consumption  "
+    second_separator = "   \u00b7   fuel  " if "   \u00b7   fuel  " in text else "   \u00b7   consumption  "
     if first_separator in text and second_separator in text:
         distance, remainder = text.split(first_separator, 1)
         soc, consumption = remainder.split(second_separator, 1)
@@ -1529,17 +1500,13 @@ def _split_value_unit(text: str) -> tuple[str, str]:
     return value, unit
 
 
+def _canonical_footer_text() -> str:
+    return f"VSM ENGINEERING   \u00b7   POST-PROCESSING TOOL  v{__version__}"
+
+
 def _update_footer_preserve_template(shape: Any, result: ProfileExcelReportResult, footer: str | None) -> None:
-    if not getattr(shape, "has_text_frame", False):
-        return
-    text = shape.text
-    if "Samples:" in text:
-        target = f"Samples: {result.sample_count:,}    |    Tool version: v{__version__}"
-    elif "v" in text:
-        target = re.sub(r"v\d+(?:\.\d+)*", f"v{__version__}", text)
-    else:
-        target = f"{footer or 'VSM Engineering Post-Processing Tool'}  \u00b7  v{__version__}"
-    _set_shape_text(shape, target)
+    if getattr(shape, "has_text_frame", False):
+        _set_shape_text(shape, _canonical_footer_text())
 
 
 def _update_page_number_preserve_template(shape: Any, slide_number: int, slide_count: int) -> None:
@@ -1607,7 +1574,7 @@ def _add_notice(slide: Any, text: str) -> None:
     p = tf.paragraphs[0]
     p.text = text
     p.alignment = PP_ALIGN.CENTER
-    p.font.name = "Arial"
+    p.font.name = _PPT_THEME.body_font
     p.font.size = Pt(12)
     p.font.bold = True
     p.font.color.rgb = RGBColor.from_string("6B7C88")
@@ -1739,8 +1706,8 @@ def _profile_powerpoint_config(
             "comments": f"Generated from deterministic profile outputs by v{__version__}.",
         },
         "theme": {
-            "title_font_size": 30,
-            "subtitle_font_size": 13.5,
+            "title_font_size": _PPT_THEME.title_size,
+            "subtitle_font_size": _PPT_THEME.subtitle_size,
             "kpi_label_font_size": 9.5,
             "kpi_value_font_size": 20,
             "body_font_size": 10.5,
@@ -1748,7 +1715,7 @@ def _profile_powerpoint_config(
             "accent_border": "17246E",
             "text_color": "0E1A4A",
             "muted_text_color": "5C6B82",
-            "background_color": "FFFFFF",
+            "background_color": _PPT_THEME.content_background,
             "rule_color": "D98A2B",
         },
         "slides": [
@@ -1762,7 +1729,7 @@ def _profile_powerpoint_config(
             _slide(
                 slide_config("system_overview"),
                 "overview",
-                "System and Simulation Overview" if is_hybrid else "System & Simulation Overview",
+                "System & Simulation Overview",
                 _overview_subtitle(excel_result),
                 body=_overview_body(excel_result),
             ),

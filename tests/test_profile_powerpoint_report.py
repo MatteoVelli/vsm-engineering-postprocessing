@@ -178,7 +178,7 @@ def test_profile_powerpoint_slide_titles_are_profile_conditional(electric_report
     ]
     assert _slide_titles(hybrid_report.presentation_path) == [
         "RoboSprayer Hybrid",
-        "System and Simulation Overview",
+        "System & Simulation Overview",
         "Executive Results",
         "Vehicle Operation",
         "Battery and Electrical Energy System",
@@ -351,8 +351,8 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
     assert len({style[3] for style in _run_styles(slide_10_banner)}) >= 3
     assert "post-processing tool" in list(electric.slides[11].shapes)[31].text.lower()
     assert list(electric.slides[11].shapes)[31].text.endswith("v1.3.0")
-    assert "post-processing tool" in list(hybrid.slides[11].shapes)[35].text.lower()
-    assert list(hybrid.slides[11].shapes)[35].text.endswith("v1.3.0")
+    assert "post-processing tool" in list(hybrid.slides[11].shapes)[31].text.lower()
+    assert list(hybrid.slides[11].shapes)[31].text.endswith("v1.3.0")
     hybrid_slide_10_text = "\n".join(
         shape.text for shape in hybrid.slides[9].shapes if getattr(shape, "text", "").strip()
     )
@@ -365,8 +365,7 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
         "RANGE EXTENDER INACTIVE IN THIS SIMULATION\n"
         "ICE/generator channels resolved; no operating activity detected in this simulation."
     )
-    assert len(hybrid_notice.text_frame.paragraphs) == 1
-    assert _run_styles(hybrid_notice) == _run_styles(reference_notice)
+    assert all(style[0] == "Calibri" for style in _run_styles(hybrid_notice))
 
 
 def test_profile_powerpoint_matches_v7_road_and_steering_slide_geometry(electric_report) -> None:
@@ -402,9 +401,9 @@ def test_profile_powerpoint_matches_v7_road_and_steering_slide_geometry(electric
             _largest_plot_picture(generated_slide),
             _largest_plot_picture(reference_slide),
         )
-        assert _run_styles(_find_text_shape(generated_slide, title)) == _run_styles(
-            _find_text_shape(reference_slide, title)
-        )
+        title_font = _first_run_font(_find_text_shape(generated_slide, title))
+        assert title_font.name == "Cambria" and title_font.size.pt == 25
+        assert title_font.bold is True
 
     _assert_geometry_close(
         _find_text_shape(generated.slides[10], "All steering-angle channels remain"),
@@ -417,9 +416,9 @@ def test_profile_powerpoint_matches_v7_road_and_steering_slide_geometry(electric
     assert reference_hashes[11][0] in generated_hashes
 
 
-def test_profile_powerpoint_preserves_hybrid_reference_plot_slots(hybrid_report) -> None:
+def test_profile_powerpoint_hybrid_uses_shared_electric_plot_slots(hybrid_report) -> None:
     generated = Presentation(hybrid_report.presentation_path)
-    reference = Presentation(HYBRID_REFERENCE_DECK)
+    reference = Presentation(ELECTRIC_REFERENCE_DECK)
 
     assert generated.slide_width == reference.slide_width
     assert generated.slide_height == reference.slide_height
@@ -428,7 +427,7 @@ def test_profile_powerpoint_preserves_hybrid_reference_plot_slots(hybrid_report)
 
     generated_slide7 = list(generated.slides[6].shapes)
     reference_slide7 = list(reference.slides[6].shapes)
-    for index in (37, 38):
+    for index in (35, 36):
         assert _shape_geometry(reference_slide7[index]) in _picture_geometries(generated_slide7)
 
 
@@ -436,7 +435,7 @@ def test_profile_powerpoint_embedded_media_matches_final_references(electric_rep
     logo_hash = _file_hash(PROJECT_ROOT / "reference_files" / "astauto-light-text_web.jpg")
     for result, reference in (
         (electric_report, ELECTRIC_REFERENCE_DECK),
-        (hybrid_report, HYBRID_REFERENCE_DECK),
+        (hybrid_report, ELECTRIC_REFERENCE_DECK),
     ):
         generated_hashes = _media_hashes(result.presentation_path)
         assert len(generated_hashes) >= len(_media_hashes(reference))
@@ -587,8 +586,61 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     assert "The active Hybrid source profile does not expose a Road Height channel." in text
     assert "All steering-angle channels remain at 0.00\u00b0 for this drive cycle." in text
 
+    overview = prs.slides[1]
+    reference = Presentation(ELECTRIC_REFERENCE_DECK).slides[1]
+    assert overview.shapes[2].text == "System & Simulation Overview"
+    assert overview.shapes[3].text == "Hybrid profile resolution and deterministic simulation scope"
+    for index, heading in ((17, "Drive Cycle Structure"), (22, "Hybrid System Context")):
+        assert overview.shapes[index].text == heading
+        run = overview.shapes[index].text_frame.paragraphs[0].runs[0]
+        assert run.font.name == "Cambria" and run.font.size.pt == 17 and run.font.bold
+        assert str(run.font.color.rgb) == "0E1A4A"
+    expected_bodies = {
+        18: [
+            "Source dataset: Profile source dataset", "Imported samples: 1,770",
+            "Drive cycle duration: 29.48 min", "Drive cycle distance: 12.00 km",
+            "Maximum speed: 33.78 kph",
+        ],
+        23: [
+            "Battery SOC: 57.40 % to 46.20 %", "Fuel consumption: 3.63 kg",
+            "Maximum generator power: 80.00 kW",
+            "Range-extender activity is reported directly from resolved simulation channels.",
+            "Inactive channels remain visible as zero deterministic outputs.",
+        ],
+    }
+    for index, statements in expected_bodies.items():
+        body = overview.shapes[index]
+        paragraphs = body.text_frame.paragraphs
+        assert [p.text for p in paragraphs] == [f"\u25b8  {line}" for line in statements]
+        source = reference.shapes[index].text_frame.paragraphs[0]
+        for paragraph in paragraphs:
+            bullet, content = paragraph.runs
+            assert bullet.text == "\u25b8  " and str(bullet.font.color.rgb) == "2E56D0"
+            assert str(content.font.color.rgb) == "29384D" and not content.font.bold
+            for run, reference_run in zip(paragraph.runs, source.runs):
+                assert run.font.name == "Calibri" and run.font.size.pt == 11.5
+                assert etree.tostring(run._r.rPr) == etree.tostring(reference_run._r.rPr)
+            assert etree.tostring(paragraph._p.pPr) == etree.tostring(source._p.pPr)
+        assert body.text_frame.margin_left == reference.shapes[index].text_frame.margin_left
+        assert body.top + body.height <= overview.shapes[24].top
+    assert [overview.shapes[i].text for i in (5, 7, 9, 11, 13)] == [
+        "Machine Caiman SP", "Powertrain Hybrid", "Source Profile source dataset",
+        "Samples 1,770", "Tool v1.3.0",
+    ]
+    assert [overview.shapes[i].text for i in (26, 30, 34, 38)] == [
+        "DRIVE CYCLE TIME", "DISTANCE", "MAX SPEED", "MAX GEN POWER",
+    ]
+    assert [overview.shapes[i].text for i in (27, 31, 35, 39)] == [
+        "29.48 min", "12.00 km", "33.78 kph", "80.00 kW",
+    ]
+    assert len(overview.shapes) == len(reference.shapes)
+    for actual, expected in zip(overview.shapes, reference.shapes):
+        assert (actual.left, actual.top, actual.width, actual.height) == (
+            expected.left, expected.top, expected.width, expected.height,
+        )
 
-def test_profile_powerpoint_template_path_is_profile_configurable() -> None:
+
+def test_profile_powerpoint_content_profiles_keep_their_definitions_and_share_visual_template() -> None:
     electric_source = ELECTRIC_PROFILE.read_text(encoding="utf-8")
     hybrid_source = HYBRID_PROFILE.read_text(encoding="utf-8")
     engine_source = Path("src/vsm_postprocessing/profile_powerpoint_report_engine.py").read_text(encoding="utf-8")
@@ -739,3 +791,97 @@ def _visible_text(path: Path) -> str:
         for shape in slide.shapes
         if getattr(shape, "text", "").strip()
     )
+
+
+@pytest.mark.parametrize("fixture_name", ["electric_report", "hybrid_report"])
+def test_all_generated_slides_share_electric_visual_system(request, fixture_name):
+    import hashlib
+    from vsm_postprocessing.profile_powerpoint_report_engine import _ASTAUTO_LOGO_WIDTH, _ASTAUTO_LOGO_TOP, _ASTAUTO_LOGO_RIGHT_MARGIN
+    result = request.getfixturevalue(fixture_name)
+    prs = Presentation(result.presentation_path)
+    reference = Presentation(ELECTRIC_REFERENCE_DECK)
+    expected_hash = hashlib.sha256((PROJECT_ROOT / "reference_files/astauto-light-text_web.jpg").read_bytes()).hexdigest()
+    for index, slide in enumerate(prs.slides):
+        role = 9 if index == 11 else 8 if index in (9, 10) else index
+        assert slide.element.cSld.bg.xml == reference.slides[role].element.cSld.bg.xml
+        expected_title = result.powerpoint_result.powerpoint_result.config.slides[index].title
+        title = _find_text_shape(slide, expected_title)
+        font = _first_run_font(title)
+        assert font.name == "Cambria" and font.bold
+        assert font.size.pt == (46 if index == 0 else 25)
+        for shape in slide.shapes:
+            if not shape.has_text_frame:
+                continue
+            for paragraph in shape.text_frame.paragraphs:
+                for run in paragraph.runs:
+                    assert run.font.name not in {"Arial", "Georgia", "Aptos"}
+        logos = [s for s in slide.shapes if s.shape_type == 13 and s.top == _ASTAUTO_LOGO_TOP
+                 and s.left == prs.slide_width - _ASTAUTO_LOGO_RIGHT_MARGIN - _ASTAUTO_LOGO_WIDTH]
+        assert len(logos) == 1, index + 1
+        assert hashlib.sha256(logos[0].image.blob).hexdigest() == expected_hash
+        assert logos[0].width == _ASTAUTO_LOGO_WIDTH
+        footer = _find_text_shape(slide, "VSM ENGINEERING   \u00b7   POST-PROCESSING TOOL  v1.3.0")
+        assert footer.left == 548640 and footer.top == 6419088
+        assert _first_run_font(footer).name == "Calibri"
+        if index not in (9, 10):
+            from vsm_postprocessing.profile_powerpoint_report_engine import _format_statistic_value
+            report = result.powerpoint_result.powerpoint_result
+            statistics = {item.statistic_id: item for item in report.statistics_result.statistics}
+            values = {" ".join(shape.text.split()) for shape in slide.shapes if shape.has_text_frame}
+            for metric_id in report.config.slides[index].statistic_ids:
+                if metric_id in statistics:
+                    assert " ".join(_format_statistic_value(statistics[metric_id]).split()) in values, (index + 1, metric_id)
+        if index in (9, 10):
+            caption = _find_text_shape(slide, result.powerpoint_result.powerpoint_result.config.slides[index].subtitle)
+            assert caption.top == reference.slides[8].shapes[3].top
+            assert caption.left == reference.slides[8].shapes[3].left
+            caption_font = _first_run_font(caption)
+            assert caption_font.name == "Calibri" and caption_font.size.pt == 12.5 and caption_font.italic
+
+
+def test_logo_slot_repairs_wrong_picture_and_is_idempotent():
+    from pptx.util import Inches
+    from vsm_postprocessing.profile_powerpoint_report_engine import _add_astauto_logo
+    prs = Presentation(ELECTRIC_REFERENCE_DECK)
+    slide = prs.slides[7]
+    for shape in list(slide.shapes):
+        if shape.shape_type == 13 and shape.top < Inches(.5) and shape.left > Inches(11):
+            shape.element.getparent().remove(shape.element)
+    slide.shapes.add_picture(str(PROJECT_ROOT / "reference_files/Wheel_Steering_Angles_Reference.png"),
+                             prs.slide_width - Inches(.28) - Inches(1.45), Inches(.16), width=Inches(1.45))
+    _add_astauto_logo(slide, prs)
+    _add_astauto_logo(slide, prs)
+    logos = [s for s in slide.shapes if s.shape_type == 13 and s.top == Inches(.16)]
+    assert len(logos) == 1
+    assert logos[0].image.blob == (PROJECT_ROOT / "reference_files/astauto-light-text_web.jpg").read_bytes()
+
+
+def test_plot_replacement_rejects_logo_slot(tmp_path):
+    from types import SimpleNamespace
+    from vsm_postprocessing.errors import PowerPointReportError
+    from vsm_postprocessing.profile_powerpoint_report_engine import _replace_plot_slots
+    prs = Presentation(ELECTRIC_REFERENCE_DECK)
+    slide = prs.slides[7]
+    shapes = list(slide.shapes)
+    index = next(i for i,s in enumerate(shapes) if s.shape_type == 13 and s.top < 300000 and s.left > 10000000)
+    layout = SimpleNamespace(plot_slots={8: (SimpleNamespace(picture=index),)})
+    rendered = SimpleNamespace(png_file=str(PROJECT_ROOT / "reference_files/astauto-light-text_web.jpg"))
+    with pytest.raises(PowerPointReportError, match="never a header/logo"):
+        _replace_plot_slots(slide, shapes, 8, ["plot"], {"plot": rendered}, tmp_path, layout)
+
+
+def test_shared_cards_expand_for_five_metric_variant_without_losing_content():
+    from types import SimpleNamespace
+    from vsm_postprocessing.profile_powerpoint_report_engine import _replace_kpi_slots, _ELECTRIC_LAYOUT
+    prs = Presentation(ELECTRIC_REFERENCE_DECK)
+    slide = prs.slides[7]
+    original_pictures = _picture_geometries(list(slide.shapes))
+    statistics = [SimpleNamespace(display_name=f"Metric {i}", value=100 + i, channel_unit="kW") for i in range(5)]
+    _replace_kpi_slots(list(slide.shapes), 8, statistics, _ELECTRIC_LAYOUT)
+    texts = [s.text for s in slide.shapes if s.has_text_frame]
+    for i in range(5):
+        assert f"Metric {i}" in texts
+        assert f"{100+i:.2f} kW" in texts
+    assert _picture_geometries(list(slide.shapes)) == original_pictures
+    title = _find_text_shape(slide, "Agrochemical & Battery Behaviour")
+    assert _first_run_font(title).name == "Cambria"
