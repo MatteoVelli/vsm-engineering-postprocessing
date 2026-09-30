@@ -40,12 +40,23 @@ Current private regression inputs include:
 RoboSprayer_3500Kg_Electric_12kph_Batt_50kW_Motor_63RPM_Susp_Cool_Rough_Crop_Field_05.csv
 Sprayer_Caiman_SP_9300Kg_Hybrid_Gen80kW_30kph_74Ht_4000KgAQ_57-4pcSOC_5-80_1C2G_02.xlsx
 Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx
+Full_Size_Sprayer_8500Kg_Diesel_Test_03_Crop_Field_MatLab_20kph_Gradient.csv
 ```
 
 Milestone 13B.2 uses `Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx` as an
 external reference-fidelity phase provider for P05, P06, P08 and P10. The
 provider configuration locks the expected filename and SHA-256; a
 modified/different workbook is intentionally rejected.
+
+The Diesel CSV is the authoritative D1/D2/D3 and final Diesel regression source.
+These names identify development stages, not different datasets. There is no
+separate Diesel reference workbook or presentation. Leave
+it unchanged. Tests use the same `VSM_TEST_REFERENCE_FILES_DIR` override and
+explicit private-data skip mechanism as the Electric/Hybrid tests; synthetic
+Diesel tests still run when private datasets are absent from a clean checkout.
+
+Final provenance, channel inventory and validation results are in
+[`docs/DIESEL_FINAL_VALIDATION.md`](../docs/DIESEL_FINAL_VALIDATION.md).
 
 Electric_05 and Hybrid_06 now supply the active channel ordering. The previous
 Electric_03 and Hybrid_04 workbooks remain unchanged for reference comparison.

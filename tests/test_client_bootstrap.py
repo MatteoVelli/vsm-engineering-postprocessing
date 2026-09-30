@@ -135,7 +135,8 @@ def test_client_readme_agrees_with_canonical_bootstrap_target() -> None:
 def test_runtime_dependency_bounds_avoid_unvalidated_streamlit_packages() -> None:
     pyproject = _read("pyproject.toml")
 
-    assert '"streamlit>=1.37,<1.50"' in pyproject
+    # The production width="stretch" calls require the validated 1.49 series.
+    assert '"streamlit>=1.49.1,<1.50"' in pyproject
     assert '"streamlit>=1.37,<2"' not in pyproject
 
 

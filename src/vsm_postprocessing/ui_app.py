@@ -308,7 +308,7 @@ def _render_engineering_report_workflow(st: Any) -> None:
 
 
 def _render_profile_engineering_report_workflow(st: Any) -> None:
-    st.write("Generate validated Electric or Hybrid Excel and PowerPoint engineering reports from one VSM result file.")
+    st.write("Generate validated Electric, Hybrid or Diesel Excel and PowerPoint engineering reports from one VSM result file.")
 
     try:
         profiles = discover_reporting_profiles(PROJECT_ROOT)
@@ -331,7 +331,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         "STEP 2 - Select Report Profile",
         [profile.profile_id for profile in profiles],
         format_func=lambda profile_id: next(profile.display_name for profile in profiles if profile.profile_id == profile_id),
-        help="Select explicitly. Do not infer Electric/Hybrid from zero or inactive channels.",
+        help="Select the powertrain explicitly; zero or inactive channels do not determine the profile.",
     )
     profile_definition = get_reporting_profile_definition(PROJECT_ROOT, selected_profile_id)
 
@@ -347,7 +347,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         machine_name_override = st.text_input(
             "Machine / Vehicle Name",
             value=detected_metadata.machine_name,
-            help="This display name is used in report titles. The Electric/Hybrid profile remains separate.",
+            help="This display name is used in report titles. The selected powertrain profile remains separate.",
         )
         validation_key = f"{source_path}:{source_path.stat().st_size}:{profile_definition.profile_id}"
         try:
@@ -358,6 +358,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
             with st.expander("Diagnostics"):
                 st.write(str(exc))
             source_path = None
+            validation_key = None
         else:
             quality = inspection.quality
             c1, c2, c3, c4 = st.columns(4)
@@ -367,12 +368,17 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
             c4.metric("Duration", _format_duration_minutes(quality.time_start, quality.time_end, quality.time_unit))
             st.caption(f"Time channel: {quality.time_channel_name or quality.time_channel_id or 'not detected'}")
 
+    if st.session_state.get("profile_input_key") != validation_key:
+        _clear_profile_report_state(st)
+        st.session_state["profile_input_key"] = validation_key
+
     validate_clicked = st.button(
         "STEP 3 - Validate",
         width="stretch",
         disabled=source_path is None,
     )
     if validate_clicked and source_path is not None and validation_key is not None:
+        _clear_profile_report_state(st)
         try:
             with st.spinner("Validating source channels against reporting profile..."):
                 summary = validate_reporting_profile_source(source_path, profile_definition.profile_path, ImportOptions(strict=True))
@@ -389,6 +395,10 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         _render_profile_validation_summary(st, summary)
     elif source_path is not None:
         st.info("Validate the uploaded file and selected profile before generating the report.")
+
+    if profile_definition.powertrain == "diesel":
+        _render_diesel_report_workflow(st, profile_definition, source_path, validation_key, summary, machine_name_override)
+        return
 
     can_generate = (
         source_path is not None
@@ -423,11 +433,53 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
             return
 
         st.session_state["profile_report_result"] = result
+        st.session_state["profile_report_result_key"] = (validation_key, machine_name_override)
         st.success(f"Engineering reports generated: {result.report_path.name} and {result.presentation_path.name}")
         _render_profile_report_completion(st, result)
 
     result = st.session_state.get("profile_report_result")
-    if result is not None:
+    if result is not None and st.session_state.get("profile_report_result_key") == (validation_key, machine_name_override):
+        st.subheader("STEP 5 - Access Output")
+        _render_profile_report_download(st, result)
+
+
+def _clear_profile_report_state(st: Any) -> None:
+    """Invalidate validation and downloads when inputs change or validation restarts."""
+    for key in ("profile_validation_key", "profile_validation_summary",
+                "profile_report_result", "profile_report_result_key",
+                "diesel_report_result", "diesel_report_result_key"):
+        st.session_state.pop(key, None)
+
+
+def _render_diesel_report_workflow(st: Any, profile_definition: Any, source_path: Path | None,
+                                 validation_key: str | None, summary: Any, machine_name: str | None) -> None:
+    st.info("Diesel Excel and PowerPoint reporting are available.")
+    can_generate = (source_path is not None and summary is not None and summary.is_valid
+                    and st.session_state.get("profile_validation_key") == validation_key)
+    if st.button("STEP 4 - Generate Engineering Report", type="primary", width="stretch", disabled=not can_generate):
+        if not can_generate:
+            return
+        if not machine_name or not machine_name.strip():
+            st.error("Enter a machine / vehicle name before generating reports.")
+            return
+        try:
+            with st.spinner("Generating Diesel Excel and PowerPoint engineering reports..."):
+                result = generate_reporting_profile_engineering_report(
+                    source_path, profile_definition.profile_path,
+                    UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f"),
+                    ImportOptions(strict=True), machine_name_override=machine_name,
+                )
+        except VSMPostProcessingError as exc:
+            st.error(_friendly_profile_error(exc))
+            with st.expander("Diagnostics"):
+                st.write(str(exc))
+            return
+        st.session_state["diesel_report_result"] = result
+        st.session_state["diesel_report_result_key"] = (validation_key, machine_name)
+        st.success(f"Engineering reports generated: {result.report_path.name} and {result.presentation_path.name}")
+        _render_profile_report_completion(st, result)
+    result = st.session_state.get("diesel_report_result")
+    if result is not None and st.session_state.get("diesel_report_result_key") == (validation_key, machine_name):
         st.subheader("STEP 5 - Access Output")
         _render_profile_report_download(st, result)
 

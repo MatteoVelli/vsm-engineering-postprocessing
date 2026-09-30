@@ -82,6 +82,11 @@ def calculate_profile_math_channels(
     if resolution is None:
         resolution = resolve_profile(dataset, profile)
 
+    if profile.metadata.powertrain == "diesel":
+        from .diesel_validation import validate_diesel_inputs
+
+        validate_diesel_inputs(dataset, resolution)
+
     constants = {**DEFAULT_PROFILE_MATH_CONSTANTS, **(constants or {})}
     definitions_by_name = {definition.semantic_name: definition for definition in profile.math_channels}
     raw_values = _resolved_raw_values(dataset, resolution)

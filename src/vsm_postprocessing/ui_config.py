@@ -150,6 +150,8 @@ class ReportingProfileEngineeringReportResult:
 
 SUPPORTED_PROFILE_UPLOAD_EXTENSIONS = (".csv", ".xlsx")
 _PROFILE_VERSION = 1
+# UI labels are independent of the profile names retained in generated reports.
+_PROFILE_DISPLAY_NAMES = {"full_size_sprayer_diesel": "Diesel"}
 
 
 def supported_profile_upload_extensions() -> tuple[str, ...]:
@@ -174,7 +176,7 @@ def discover_reporting_profiles(project_root: str | Path) -> list[ReportingProfi
         profiles.append(
             ReportingProfileDefinition(
                 profile_id=profile.profile_id,
-                display_name=profile.metadata.name,
+                display_name=_PROFILE_DISPLAY_NAMES.get(profile.profile_id, profile.metadata.name),
                 profile_path=path.resolve(),
                 powertrain=profile.metadata.powertrain,
                 description=profile.metadata.description,
@@ -213,7 +215,7 @@ def validate_reporting_profile_source(
     required_raw_count = sum(1 for channel in profile.raw_channels if channel.required)
     return ReportingProfileValidationSummary(
         profile_id=profile.profile_id,
-        profile_name=profile.metadata.name,
+        profile_name=_PROFILE_DISPLAY_NAMES.get(profile.profile_id, profile.metadata.name),
         source_filename=source.name,
         sample_count=dataset.quality.sample_count,
         source_channel_count=dataset.quality.channel_count,
@@ -273,9 +275,9 @@ def generate_reporting_profile_engineering_report(
     machine_name_override: str | None = None,
 ) -> ReportingProfileEngineeringReportResult:
     validate_profile_upload_extension(source_file)
+    profile = load_reporting_profile(profile_file)
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    profile = load_reporting_profile(profile_file)
     report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override)
     excel_result = generate_profile_excel_report(
         source_file,

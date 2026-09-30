@@ -27,6 +27,11 @@ ROBOSPRAYER_REFERENCE_DESCRIPTION = "RoboSprayer raw reference CSV"
 ROBOSPRAYER_LATEST_ELECTRIC_DESCRIPTION = "latest RoboSprayer Electric source CSV"
 ROBOSPRAYER_LATEST_HYBRID_DESCRIPTION = "latest RoboSprayer Hybrid source CSV"
 
+DIESEL_REFERENCE_CSV = (
+    REFERENCE_FILES_DIR / "Full_Size_Sprayer_8500Kg_Diesel_Test_03_Crop_Field_MatLab_20kph_Gradient.csv"
+)
+DIESEL_REFERENCE_DESCRIPTION = "Full Size Sprayer Diesel authoritative reference CSV"
+
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(

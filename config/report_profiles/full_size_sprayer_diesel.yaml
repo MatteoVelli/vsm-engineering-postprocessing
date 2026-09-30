@@ -1,0 +1,735 @@
+# Diesel is intentionally independent of the Electric/Hybrid profiles.
+version: 1
+profile:
+  profile_id: full_size_sprayer_diesel
+  name: Full Size Sprayer Diesel
+  powertrain: diesel
+  description: Verified Diesel analysis with native Excel and Astauto PowerPoint reporting.
+channels:
+  raw:
+  - semantic_name: track_time
+    source_name: Track_Time
+    report_name: Time
+    channel_type: VSM
+    unit: s
+    required: true
+    for_plot: true
+  - semantic_name: track_distance
+    source_name: Track_Distance
+    report_name: Distance
+    channel_type: VSM
+    unit: m
+    required: true
+  - semantic_name: chassis_speed
+    source_name: Chassis_Speed
+    report_name: Vehicle Speed
+    channel_type: VSM
+    unit: kph
+    required: true
+    for_plot: true
+  - semantic_name: track_gradient
+    source_name: Track_Gradient
+    report_name: Road Gradient
+    channel_type: VSM
+    unit: '%'
+    required: true
+    for_plot: true
+  - semantic_name: engine_speed
+    source_name: Engine_Speed
+    report_name: Engine Speed
+    channel_type: VSM
+    unit: rpm
+    required: true
+    for_plot: true
+  - semantic_name: engine_torque
+    source_name: Engine_Torque
+    report_name: Engine Torque
+    channel_type: VSM
+    unit: Nm
+    required: true
+    notes: Signed shaft torque. Negative mechanical power is retained, including overrun.
+    for_plot: true
+  - semantic_name: engine_fuel_consumption
+    source_name: Engine_FuelConsumption_absolut
+    report_name: Cumulative Fuel Mass
+    channel_type: VSM
+    unit: kg
+    required: true
+    notes: Monotonic source counter; consumed mass is last minus first, including nonzero initial counters.
+    for_plot: true
+  - semantic_name: track_height
+    source_name: Track_Height
+    report_name: Road Height
+    channel_type: VSM
+    unit: m
+    required: false
+  - semantic_name: fuel_flow
+    source_name: Engine_FuelConsumption_volumeflow
+    report_name: Volumetric Fuel Flow
+    channel_type: VSM
+    unit: l/h
+    required: false
+    notes: Instantaneous source flow. Integrated directly without a density assumption.
+    for_plot: true
+  - semantic_name: fuel_specific
+    source_name: Engine_FuelConsumption_specific
+    report_name: Source Specific Fuel Consumption
+    channel_type: VSM
+    unit: g/kWh
+    required: false
+    notes: Source operating-point signal only; not a cycle BSFC KPI, especially during negative shaft power.
+  - semantic_name: engine_load
+    source_name: Engine_Load
+    report_name: Engine Load Torque
+    channel_type: VSM
+    unit: Nm
+    required: false
+    notes: Source unit is Nm, not percent. Distinct from Engine_Torque.
+    for_plot: true
+  - semantic_name: engine_throttle
+    source_name: Engine_Throttle
+    report_name: Engine Throttle
+    channel_type: VSM
+    unit: '%'
+    required: false
+    for_plot: true
+  - semantic_name: engine_oil_temperature
+    source_name: Engine_Oil_Temperature
+    report_name: Engine Oil Temperature
+    channel_type: VSM
+    unit: °C
+    required: false
+    notes: Raw source temperature only; reference oil and water traces are identical.
+    for_plot: true
+  - semantic_name: engine_water_temperature
+    source_name: Engine_Water_Temperature
+    report_name: Engine Water Temperature
+    channel_type: VSM
+    unit: °C
+    required: false
+    notes: Raw source temperature only; reference oil and water traces are identical.
+  - semantic_name: chassis_acceleration_longitudinal
+    source_name: Chassis_Acceleration_Longitudinal
+    report_name: Longitudinal Acceleration
+    channel_type: VSM
+    unit: m/s^2
+    required: false
+  - semantic_name: chassis_acceleration_lateral
+    source_name: Chassis_Acceleration_Lateral
+    report_name: Lateral Acceleration
+    channel_type: VSM
+    unit: m/s^2
+    required: false
+  - semantic_name: chassis_acceleration_vertical
+    source_name: Chassis_Acceleration_Vertical
+    report_name: Vertical Acceleration
+    channel_type: VSM
+    unit: m/s^2
+    required: false
+  - semantic_name: tyre_fz_fl
+    source_name: Tyre_Fz_FL
+    report_name: Tyre Vertical Load FL
+    channel_type: VSM
+    unit: N
+    required: false
+    for_plot: true
+  - semantic_name: driveshaft_torque_fl
+    source_name: DriveShaft_Torque_FL
+    report_name: Driveshaft Torque FL
+    channel_type: VSM
+    unit: Nm
+    required: false
+    for_plot: true
+  - semantic_name: tyre_fz_fr
+    source_name: Tyre_Fz_FR
+    report_name: Tyre Vertical Load FR
+    channel_type: VSM
+    unit: N
+    required: false
+    for_plot: true
+  - semantic_name: driveshaft_torque_fr
+    source_name: DriveShaft_Torque_FR
+    report_name: Driveshaft Torque FR
+    channel_type: VSM
+    unit: Nm
+    required: false
+    for_plot: true
+  - semantic_name: tyre_fz_rl
+    source_name: Tyre_Fz_RL
+    report_name: Tyre Vertical Load RL
+    channel_type: VSM
+    unit: N
+    required: false
+    for_plot: true
+  - semantic_name: driveshaft_torque_rl
+    source_name: DriveShaft_Torque_RL
+    report_name: Driveshaft Torque RL
+    channel_type: VSM
+    unit: Nm
+    required: false
+    for_plot: true
+  - semantic_name: tyre_fz_rr
+    source_name: Tyre_Fz_RR
+    report_name: Tyre Vertical Load RR
+    channel_type: VSM
+    unit: N
+    required: false
+    for_plot: true
+  - semantic_name: driveshaft_torque_rr
+    source_name: DriveShaft_Torque_RR
+    report_name: Driveshaft Torque RR
+    channel_type: VSM
+    unit: Nm
+    required: false
+    for_plot: true
+  math:
+  - semantic_name: engine_power
+    source_name: Engine Power
+    report_name: Engine Power
+    unit: kW
+    dependencies:
+    - engine_torque
+    - engine_speed
+    expression: engine_torque * engine_speed * 2.0 * 3.141592653589793 / 60000.0
+    notes: Exact SI conversion using the double-precision value of pi; deliberately independent of the legacy Hybrid
+      divisor.
+    for_plot: true
+  - semantic_name: engine_mechanical_energy
+    source_name: Engine Mechanical Energy
+    report_name: Net Engine Mechanical Energy
+    unit: kWh
+    dependencies:
+    - engine_power
+    - track_time
+    expression: cumulative_trapezoid(engine_power, track_time) / 3600.0
+    notes: Signed trapezoidal integral over elapsed time; starts at zero. Negative power reduces net energy.
+  - semantic_name: fuel_volume
+    source_name: Fuel Volume Consumed
+    report_name: Integrated Fuel Volume
+    unit: l
+    required: false
+    dependencies:
+    - fuel_flow
+    - track_time
+    expression: cumulative_trapezoid(fuel_flow, track_time) / 3600.0
+    notes: Estimated from sampled l/h flow over elapsed seconds, without mass/density conversion.
+statistics:
+- statistic_id: track_time_first
+  target: track_time
+  operation: first
+  display_name: Time First
+  required: true
+  placement_group: diesel_support
+- statistic_id: track_time_last
+  target: track_time
+  operation: last
+  display_name: Time Last
+  required: true
+  placement_group: diesel_support
+- statistic_id: track_distance_first
+  target: track_distance
+  operation: first
+  display_name: Distance First
+  required: true
+  placement_group: diesel_support
+- statistic_id: track_distance_last
+  target: track_distance
+  operation: last
+  display_name: Distance Last
+  required: true
+  placement_group: diesel_support
+- statistic_id: engine_fuel_consumption_first
+  target: engine_fuel_consumption
+  operation: first
+  display_name: Fuel Counter First
+  required: true
+  placement_group: diesel_support
+- statistic_id: engine_fuel_consumption_last
+  target: engine_fuel_consumption
+  operation: last
+  display_name: Fuel Counter Last
+  required: true
+  placement_group: diesel_support
+- statistic_id: chassis_speed_max
+  target: chassis_speed
+  operation: max
+  display_name: Maximum Vehicle Speed
+  required: true
+  placement_group: diesel_executive
+- statistic_id: road_gradient_min
+  target: track_gradient
+  operation: min
+  display_name: Min Road Gradient
+  required: true
+  placement_group: diesel_executive
+- statistic_id: road_gradient_max
+  target: track_gradient
+  operation: max
+  display_name: Max Road Gradient
+  required: true
+  placement_group: diesel_executive
+- statistic_id: engine_speed_max
+  target: engine_speed
+  operation: max
+  display_name: Engine Speed MAX
+  required: true
+  placement_group: diesel_executive
+- statistic_id: engine_speed_min
+  target: engine_speed
+  operation: min
+  display_name: Engine Speed MIN
+  required: true
+  placement_group: diesel_summary
+- statistic_id: engine_speed_rms
+  target: engine_speed
+  operation: rms
+  display_name: Engine Speed RMS
+  required: true
+  placement_group: diesel_summary
+- statistic_id: engine_torque_max
+  target: engine_torque
+  operation: max
+  display_name: Engine Torque MAX
+  required: true
+  placement_group: diesel_executive
+- statistic_id: engine_torque_min
+  target: engine_torque
+  operation: min
+  display_name: Engine Torque MIN
+  required: true
+  placement_group: diesel_summary
+- statistic_id: engine_torque_rms
+  target: engine_torque
+  operation: rms
+  display_name: Engine Torque RMS
+  required: true
+  placement_group: diesel_summary
+- statistic_id: engine_power_max
+  target: engine_power
+  operation: max
+  display_name: Engine Power MAX
+  required: true
+  placement_group: diesel_executive
+- statistic_id: engine_power_min
+  target: engine_power
+  operation: min
+  display_name: Engine Power MIN
+  required: true
+  placement_group: diesel_summary
+- statistic_id: engine_power_rms
+  target: engine_power
+  operation: rms
+  display_name: Engine Power RMS
+  required: true
+  placement_group: diesel_executive
+- statistic_id: engine_mechanical_energy_last
+  target: engine_mechanical_energy
+  operation: last
+  display_name: Net Engine Mechanical Energy
+  required: true
+  placement_group: diesel_executive
+- statistic_id: fuel_volume_last
+  target: fuel_volume
+  operation: last
+  display_name: Integrated Fuel Volume
+  required: false
+  placement_group: diesel_summary
+- statistic_id: fuel_flow_max
+  target: fuel_flow
+  operation: max
+  display_name: Maximum Fuel Flow
+  required: false
+  placement_group: diesel_executive
+- statistic_id: engine_load_max
+  target: engine_load
+  operation: max
+  display_name: Maximum Engine Load Torque
+  required: false
+  placement_group: diesel_summary
+- statistic_id: engine_throttle_max
+  target: engine_throttle
+  operation: max
+  display_name: Maximum Engine Throttle
+  required: false
+  placement_group: diesel_summary
+- statistic_id: track_height_min
+  target: track_height
+  operation: min
+  display_name: Road Height MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: track_height_max
+  target: track_height
+  operation: max
+  display_name: Road Height MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: engine_oil_temperature_min
+  target: engine_oil_temperature
+  operation: min
+  display_name: Engine Oil Temperature MIN
+  required: false
+  placement_group: diesel_engine
+- statistic_id: engine_oil_temperature_max
+  target: engine_oil_temperature
+  operation: max
+  display_name: Engine Oil Temperature MAX
+  required: false
+  placement_group: diesel_engine
+- statistic_id: engine_water_temperature_min
+  target: engine_water_temperature
+  operation: min
+  display_name: Engine Water Temperature MIN
+  required: false
+  placement_group: diesel_engine
+- statistic_id: engine_water_temperature_max
+  target: engine_water_temperature
+  operation: max
+  display_name: Engine Water Temperature MAX
+  required: false
+  placement_group: diesel_engine
+- statistic_id: chassis_acceleration_longitudinal_rms
+  target: chassis_acceleration_longitudinal
+  operation: rms
+  display_name: Longitudinal Acceleration RMS
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: chassis_acceleration_lateral_rms
+  target: chassis_acceleration_lateral
+  operation: rms
+  display_name: Lateral Acceleration RMS
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: chassis_acceleration_vertical_rms
+  target: chassis_acceleration_vertical
+  operation: rms
+  display_name: Vertical Acceleration RMS
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_fl_min
+  target: tyre_fz_fl
+  operation: min
+  display_name: Tyre Vertical Load FL MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_fl_max
+  target: tyre_fz_fl
+  operation: max
+  display_name: Tyre Vertical Load FL MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_fl_min
+  target: driveshaft_torque_fl
+  operation: min
+  display_name: Driveshaft Torque FL MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_fl_max
+  target: driveshaft_torque_fl
+  operation: max
+  display_name: Driveshaft Torque FL MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_fl_rms
+  target: driveshaft_torque_fl
+  operation: rms
+  display_name: Driveshaft Torque FL RMS
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_fr_min
+  target: tyre_fz_fr
+  operation: min
+  display_name: Tyre Vertical Load FR MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_fr_max
+  target: tyre_fz_fr
+  operation: max
+  display_name: Tyre Vertical Load FR MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_fr_min
+  target: driveshaft_torque_fr
+  operation: min
+  display_name: Driveshaft Torque FR MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_fr_max
+  target: driveshaft_torque_fr
+  operation: max
+  display_name: Driveshaft Torque FR MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_fr_rms
+  target: driveshaft_torque_fr
+  operation: rms
+  display_name: Driveshaft Torque FR RMS
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_rl_min
+  target: tyre_fz_rl
+  operation: min
+  display_name: Tyre Vertical Load RL MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_rl_max
+  target: tyre_fz_rl
+  operation: max
+  display_name: Tyre Vertical Load RL MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_rl_min
+  target: driveshaft_torque_rl
+  operation: min
+  display_name: Driveshaft Torque RL MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_rl_max
+  target: driveshaft_torque_rl
+  operation: max
+  display_name: Driveshaft Torque RL MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_rl_rms
+  target: driveshaft_torque_rl
+  operation: rms
+  display_name: Driveshaft Torque RL RMS
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_rr_min
+  target: tyre_fz_rr
+  operation: min
+  display_name: Tyre Vertical Load RR MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: tyre_fz_rr_max
+  target: tyre_fz_rr
+  operation: max
+  display_name: Tyre Vertical Load RR MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_rr_min
+  target: driveshaft_torque_rr
+  operation: min
+  display_name: Driveshaft Torque RR MIN
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_rr_max
+  target: driveshaft_torque_rr
+  operation: max
+  display_name: Driveshaft Torque RR MAX
+  required: false
+  placement_group: diesel_chassis
+- statistic_id: driveshaft_torque_rr_rms
+  target: driveshaft_torque_rr
+  operation: rms
+  display_name: Driveshaft Torque RR RMS
+  required: false
+  placement_group: diesel_chassis
+kpis:
+- kpi_id: drive_cycle_minutes
+  expression: (track_time_last - track_time_first) / 60.0
+  dependencies:
+  - track_time_last
+  - track_time_first
+  display_name: Drive Cycle Time
+  unit: min
+  required: true
+  placement_group: diesel_executive
+- kpi_id: distance_km
+  expression: (track_distance_last - track_distance_first) / 1000.0
+  dependencies:
+  - track_distance_last
+  - track_distance_first
+  display_name: Distance
+  unit: km
+  required: true
+  placement_group: diesel_executive
+- kpi_id: fuel_consumed_kg
+  expression: engine_fuel_consumption_last - engine_fuel_consumption_first
+  dependencies:
+  - engine_fuel_consumption_last
+  - engine_fuel_consumption_first
+  display_name: Total Fuel Consumption
+  unit: kg
+  required: true
+  placement_group: diesel_executive
+- kpi_id: engine_speed_average
+  expression: time_average(engine_speed, track_time)
+  dependencies:
+  - engine_speed
+  - track_time
+  display_name: Average Engine Speed
+  unit: rpm
+  required: true
+  placement_group: diesel_executive
+  notes: Trapezoidal time-weighted average, not a sample-count mean.
+- kpi_id: fuel_flow_average
+  expression: time_average(fuel_flow, track_time)
+  dependencies:
+  - fuel_flow
+  - track_time
+  display_name: Average Fuel Flow
+  unit: l/h
+  required: false
+  placement_group: diesel_executive
+  notes: Trapezoidal time-weighted average of the source volumetric flow.
+plots:
+- plot_id: diesel_speed_gradient
+  title: Vehicle Speed & Road Gradient
+  order: 1
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Vehicle Speed [kph]
+  series:
+  - semantic_name: chassis_speed
+    label: Vehicle Speed
+    required: true
+  - semantic_name: track_gradient
+    label: Road Gradient
+    axis: secondary
+    required: true
+  secondary_y_label: Road Gradient [%]
+- plot_id: diesel_engine_speed
+  title: Engine Speed
+  order: 2
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Engine Speed [rpm]
+  series:
+  - semantic_name: engine_speed
+    label: Engine Speed
+    required: true
+- plot_id: diesel_engine_torque_power
+  title: Engine Torque & Signed Power
+  order: 3
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Engine Torque [Nm]
+  series:
+  - semantic_name: engine_torque
+    label: Engine Torque
+    required: true
+  - semantic_name: engine_power
+    label: Signed Engine Power
+    axis: secondary
+    required: true
+  secondary_y_label: Engine Power [kW]
+- plot_id: diesel_engine_load
+  title: Engine Load Torque
+  order: 4
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Engine Load [Nm]
+  series:
+  - semantic_name: engine_load
+    label: Engine Load Torque
+    required: false
+- plot_id: diesel_engine_throttle
+  title: Engine Throttle
+  order: 5
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Engine Throttle [%]
+  series:
+  - semantic_name: engine_throttle
+    label: Engine Throttle
+    required: false
+- plot_id: diesel_fuel_flow
+  title: Fuel Flow
+  order: 6
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Fuel Flow [L/h]
+  series:
+  - semantic_name: fuel_flow
+    label: Fuel Flow
+    required: false
+- plot_id: diesel_cumulative_fuel
+  title: Cumulative Fuel Mass
+  order: 7
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Cumulative Fuel Mass [kg]
+  series:
+  - semantic_name: engine_fuel_consumption
+    label: Cumulative Fuel Mass
+    required: true
+- plot_id: diesel_driveshaft_torque
+  title: Driveshaft Torque
+  order: 8
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Driveshaft Torque [Nm]
+  series:
+  - semantic_name: driveshaft_torque_fl
+    label: FL
+    required: false
+  - semantic_name: driveshaft_torque_fr
+    label: FR
+    required: false
+  - semantic_name: driveshaft_torque_rl
+    label: RL
+    required: false
+  - semantic_name: driveshaft_torque_rr
+    label: RR
+    required: false
+- plot_id: diesel_wheel_loads
+  title: Tyre Vertical Loads
+  order: 9
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Tyre Vertical Load [N]
+  series:
+  - semantic_name: tyre_fz_fl
+    label: FL
+    required: false
+  - semantic_name: tyre_fz_fr
+    label: FR
+    required: false
+  - semantic_name: tyre_fz_rl
+    label: RL
+    required: false
+  - semantic_name: tyre_fz_rr
+    label: RR
+    required: false
+- plot_id: diesel_engine_oil_temperature
+  title: Engine Oil Temperature
+  order: 10
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Oil Temperature [°C]
+  series:
+  - semantic_name: engine_oil_temperature
+    label: Oil Temperature
+    required: false
+  notes: Oil temperature plotted once; the reference coolant trace is identical. Both raw temperatures remain exported.
+presentation:
+  footer: VSM Engineering Post-Processing Tool
+  slides:
+  - slide_id: cover
+    statistics: [distance_km, drive_cycle_minutes, fuel_consumed_kg, engine_power_max, engine_torque_max, chassis_speed_max]
+  - slide_id: system_overview
+    statistics: [drive_cycle_minutes, distance_km, road_gradient_min, road_gradient_max]
+  - slide_id: executive_results
+    statistics: [drive_cycle_minutes, distance_km, chassis_speed_max, fuel_consumed_kg, engine_power_max, engine_torque_max, engine_speed_max, fuel_flow_average]
+  - slide_id: vehicle_operation
+    statistics: [distance_km, drive_cycle_minutes, chassis_speed_max, road_gradient_min, road_gradient_max]
+    plots: [diesel_speed_gradient]
+  - slide_id: diesel_engine
+    statistics: [engine_speed_max, engine_speed_average, engine_torque_max, engine_power_max, engine_power_min, engine_power_rms]
+    plots: [diesel_engine_speed, diesel_engine_torque_power]
+  - slide_id: diesel_fuel_energy
+    statistics: [fuel_consumed_kg, fuel_flow_average, fuel_flow_max, fuel_volume_last, engine_mechanical_energy_last]
+    plots: [diesel_cumulative_fuel, diesel_fuel_flow]
+  - slide_id: diesel_driveline
+    statistics: [driveshaft_torque_fl_max, driveshaft_torque_rr_max, tyre_fz_fl_max, tyre_fz_rr_max]
+    plots: [diesel_driveshaft_torque, diesel_wheel_loads]
+  - slide_id: diesel_controls
+    statistics: [engine_load_max, engine_throttle_max]
+    plots: [diesel_engine_load, diesel_engine_throttle]
+  - slide_id: diesel_thermal
+    statistics: [engine_oil_temperature_min, engine_oil_temperature_max]
+    plots: [diesel_engine_oil_temperature]
+  - slide_id: simulation_summary
+    statistics: [distance_km, drive_cycle_minutes, fuel_consumed_kg, engine_power_max, engine_torque_max, engine_mechanical_energy_last]

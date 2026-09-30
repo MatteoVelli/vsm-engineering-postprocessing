@@ -895,6 +895,18 @@ def _write_profile_workbook(
         white_bold=white_bold,
     )
 
+    if profile.metadata.powertrain == "diesel":
+        statistics_sheet = workbook.create_sheet("Statistics")
+        _write_profile_statistics_sheet(
+            statistics_sheet, statistics_result,
+            border=border, label_fill=label_fill, kpi_fill=kpi_fill, white_bold=white_bold,
+        )
+        for column, width in (("A", 42), ("B", 42), ("D", 42)):
+            statistics_sheet.column_dimensions[column].width = width
+        for row in statistics_sheet:
+            for cell in row:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(output_path)
 
@@ -951,6 +963,19 @@ def _write_profile_report_sheet(
         white_bold=white_bold,
     )
 
+    if profile.metadata.powertrain == "diesel":
+        omitted = [item.definition.report_name for item in statistics_result.resolution.missing_optional]
+        omitted_label = ", ".join(omitted) if len(omitted) <= 3 else f"{len(omitted)} (see Metadata)"
+        for row, text in (
+            (1, "Diesel Executive Results"),
+            (2, "Complete results: Statistics. Optional channels omitted: " + (omitted_label or "none")),
+        ):
+            sheet.merge_cells(start_row=row, start_column=summary_start_col, end_row=row, end_column=summary_start_col + 14)
+            cell = sheet.cell(row, summary_start_col, text)
+            cell.fill = plot_header_fill
+            cell.font = white_bold
+            cell.alignment = Alignment(wrap_text=True, vertical="center")
+
     for col_index, channel in enumerate(report_channels, start=1):
         channel_type = channel.kind.upper()
         fill = math_fill if channel_type == "MATH" else avl_fill if channel_type == "AVL" else vsm_fill
@@ -985,6 +1010,9 @@ def _write_profile_report_sheet(
         col = channel_columns.get(item.target_channel)
         if col is None:
             continue
+        if profile.metadata.powertrain == "diesel" and col == 1:
+            # Preserve operation labels; time FIRST/LAST remain on Statistics.
+            continue
         cell = sheet.cell(operation_rows[item.definition.operation], col, item.value)
         cell.number_format = "0.000"
         cell.fill = label_fill
@@ -1000,6 +1028,7 @@ def _write_profile_report_sheet(
         border=border,
         label_fill=plot_header_fill,
         white_bold=white_bold,
+        diesel_layout=profile.metadata.powertrain == "diesel",
     )
 
     sheet.freeze_panes = f"B{data_start_row}"
@@ -1012,6 +1041,8 @@ def _write_profile_report_sheet(
     sheet.row_dimensions[2].height = 24
     sheet.row_dimensions[3].height = 42
     sheet.row_dimensions[4].height = 22
+    if profile.metadata.powertrain == "diesel":
+        sheet.row_dimensions[3].height = 60
 
 
 def _top_summary_column(
@@ -1114,6 +1145,8 @@ def _write_profile_right_summary(
 def _profile_right_summary_items(statistics_result: ProfileStatisticsResult) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for metric in build_canonical_report_metrics(statistics_result):
+        if statistics_result.profile.metadata.powertrain == "diesel" and metric.placement_group != "diesel_executive":
+            continue
         items.append({"label": _summary_label(metric.excel_label, metric.unit), "value": metric.value})
     return items
 
@@ -1137,6 +1170,8 @@ def _excel_display_number(value: Any) -> Any:
 
 def _bottom_statistic_rows(statistics_result: ProfileStatisticsResult) -> dict[str, int]:
     operations = ["max", "min", "last", "first", "sum"]
+    if statistics_result.profile.metadata.powertrain == "diesel":
+        operations = ["max", "min", "last", "first", "rms"]
     present = {
         item.definition.operation
         for item in statistics_result.statistics
@@ -1192,6 +1227,7 @@ def _write_profile_plots_on_report_sheet(
     border: Border,
     label_fill: PatternFill,
     white_bold: Font,
+    diesel_layout: bool = False,
 ) -> None:
     rendered = _ordered_profile_plots(plotting_result.rendered_plots)
     # Keep data-row heights and the KPI panel above intact. The panel columns
@@ -1220,6 +1256,19 @@ def _write_profile_plots_on_report_sheet(
         _set_native_chart_title(chart, title)
         chart.width = _PROFILE_PLOT_WIDTH_IN * 2.54
         chart.height = _PROFILE_PLOT_HEIGHT_IN * 2.54
+        if diesel_layout:
+            # Excel's automatic dual-axis title placement overlaps tick labels.
+            # Reserve title gutters only for the new Diesel report family.
+            from openpyxl.chart.layout import Layout, ManualLayout
+
+            chart.layout = Layout(manualLayout=ManualLayout(
+                layoutTarget="inner", xMode="edge", yMode="edge", x=0.13, y=0.14, w=0.74, h=0.64,
+            ))
+            for component in chart._charts:
+                component.y_axis.title.layout = Layout(manualLayout=ManualLayout(
+                    xMode="edge", yMode="edge", x=0.96 if component.y_axis.axPos == "r" else 0.01,
+                    y=0.20, w=0.035, h=0.60,
+                ))
         sheet.add_chart(chart, f"{get_column_letter(col)}{row}")
 
 
@@ -1499,9 +1548,15 @@ def _write_profile_metadata_sheet(
         ("Configured plots", plotting_result.configured_plot_count),
         ("Rendered plots", plotting_result.rendered_plot_count),
         ("Plot series", plotting_result.series_count),
-        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto"),
+        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto" + (", Statistics" if profile.metadata.powertrain == "diesel" else "")),
         ("Hidden sheets", "Metadata"),
     ]
+    if profile.metadata.powertrain == "diesel":
+        metadata.extend([
+            ("Unavailable optional channels", ", ".join(item.definition.source_name for item in resolution.missing_optional) or "none"),
+            ("Unavailable optional statistics", ", ".join(item.definition.statistic_id for item in statistics_result.unavailable_optional_statistics) or "none"),
+            ("Unavailable optional KPIs", ", ".join(item.definition.kpi_id for item in statistics_result.unavailable_optional_kpis) or "none"),
+        ])
     sheet.cell(1, 1, "Field").fill = label_fill
     sheet.cell(1, 2, "Value").fill = label_fill
     for cell in (sheet.cell(1, 1), sheet.cell(1, 2)):
@@ -1548,6 +1603,12 @@ def _profile_template_comparison_rows(
     statistics_result: ProfileStatisticsResult,
     plotting_result: ProfilePlottingResult,
 ) -> list[dict[str, str]]:
+    if profile.metadata.powertrain == "diesel":
+        return [
+            _comparison_row("Channel selection", "Diesel YAML selection", f"{len(report_channels)} available channels", "PASS", "Optional missing channels omitted; no Electric/Hybrid template used."),
+            _comparison_row("Numerical authority", "Verified D1 profile results", f"{statistics_result.calculated_statistic_count} statistics and {statistics_result.calculated_kpi_count} KPIs", "PASS", "Values written directly from canonical profile results."),
+            _comparison_row("Charts", "Native editable scatter charts", f"{plotting_result.rendered_plot_count} available plots", "PASS", "Established Astauto chart dimensions, axes and two-column placement."),
+        ]
     channel_counts = _report_channel_type_counts(report_channels)
     return [
         _comparison_row(
@@ -1670,7 +1731,7 @@ def _profile_manifest(
         "plot_series_count": result.plotting_result.series_count,
         "report_channel_ids": [channel.channel_id for channel in result.report_channels],
         "plot_ids": [plot.plot_id for plot in result.plotting_result.rendered_plots],
-        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto"],
+        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto"] + (["Statistics"] if result.profile.metadata.powertrain == "diesel" else []),
         "hidden_sheet_names": ["Metadata"],
     }
 
@@ -1698,6 +1759,9 @@ def _profile_summary(result: ProfileExcelReportResult) -> str:
         "",
         "Numerical regression:",
     ]
+    if result.profile.metadata.powertrain == "diesel":
+        lines.extend(f"{item['label']}: {item['value']:.12g}" for item in _profile_right_summary_items(result.statistics_result))
+        return "\n".join(lines) + "\n"
     for statistic_id in (
         "time_minutes_last",
         "distance_km_last",

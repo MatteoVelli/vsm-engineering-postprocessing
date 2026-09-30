@@ -13,7 +13,7 @@ dependencies = [
     "openpyxl>=3.1,<4",
     "PyYAML>=6.0,<7",
     "matplotlib>=3.9,<4",
-    "streamlit>=1.37,<1.50",
+    "streamlit>=1.49.1,<1.50",
     "python-pptx>=1.0,<2",
 ]
 

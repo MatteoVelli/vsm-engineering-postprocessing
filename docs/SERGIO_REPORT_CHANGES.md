@@ -31,9 +31,10 @@ major units to **Automatic**, or enter suitable limits and display precision.
 The workbook contains only normal report/mapping/metadata sheets; no chart-template
 or instructional worksheet is generated. Shared chart styling helpers remain.
 
-Desktop Excel rendering is not automated in this environment. Saved chart XML,
-reopening, source references, and numerical comparisons are checked; manual Excel
-review remains necessary for text placement. openpyxl's reader drops plot-area fill
+The original chart-style validation checked saved chart XML, reopening, source
+references and numerical comparisons. The later Diesel final audit also opens
+the fresh workbook read-only in desktop Excel and exports it for visual review.
+openpyxl's reader drops plot-area fill
 styling on readback, so that fill is verified in the original saved XML. PowerPoint
 and UI previews retain their existing matplotlib plots.
 
@@ -82,6 +83,22 @@ Desktop PowerPoint export was unavailable during the original shared-theme valid
 in PowerPoint, especially the cover, Executive Results, generator/fuel content,
 Road Profile N/A panel, steering note, and Summary. Structural validation covers
 background media, fonts, coordinates, logos, plot images and metric text.
+
+## Full Size Sprayer Diesel finalization
+
+Diesel uses a separate profile with seven required raw channels and optional
+engine/fuel/chassis signals. Its Excel report has native editable charts; the
+ten-slide PowerPoint reuses the approved Astauto visual template with Diesel
+content and shared canonical values. Optional-only pages are removed as needed.
+The additional road/steering and electrical narratives of Electric/Hybrid do
+not apply to Diesel. Installed desktop Excel and PowerPoint were used for the
+fresh Diesel visual audit; original shared-theme work remains unchanged.
+
+Finalization corrects validation/download invalidation on source/profile changes
+and includes Diesel in UI instructions. The minimum Streamlit version is 1.49.1
+to retain the existing width API cleanup. Numerical formulas are unchanged.
+See [Diesel final validation](DIESEL_FINAL_VALIDATION.md) for authoritative status,
+independent calculations and regression/package evidence.
 
 ## Names and auxiliary statistics
 

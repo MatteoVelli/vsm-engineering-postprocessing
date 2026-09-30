@@ -411,7 +411,12 @@ def build_profile_powerpoint_report(
         ),
         encoding="utf-8",
     )
-    powerpoint_result = _build_template_profile_powerpoint_report(
+    builder = _build_template_profile_powerpoint_report
+    if profile.metadata.powertrain == "diesel":
+        from .diesel_powerpoint_report import build_diesel_powerpoint
+
+        builder = build_diesel_powerpoint
+    powerpoint_result = builder(
         excel_result,
         config_path,
         destination,
@@ -1658,6 +1663,10 @@ def _profile_powerpoint_config(
     output_filename: str,
 ) -> dict[str, Any]:
     profile = excel_result.profile
+    if profile.metadata.powertrain == "diesel":
+        from .diesel_powerpoint_report import diesel_powerpoint_config
+
+        return diesel_powerpoint_config(excel_result, output_filename=output_filename)
     powertrain = (profile.metadata.powertrain or "").strip().lower()
     is_hybrid = powertrain == "hybrid"
     is_active_hybrid = _hybrid_subsystem_active(excel_result) if is_hybrid else False

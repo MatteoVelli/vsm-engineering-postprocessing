@@ -156,6 +156,30 @@ def _sample_energy_kwh(power_kw: np.ndarray, time_s: np.ndarray) -> np.ndarray:
     return power * intervals / 3600.0
 
 
+def _cumulative_trapezoid(values: np.ndarray, time_s: np.ndarray) -> np.ndarray:
+    """Signed integral over elapsed seconds, with zero at the first sample.
+
+    No extrapolated first interval, unit conversion, rectification or NaN omission.
+    The caller's expression supplies any unit conversion (e.g. kW*s / 3600).
+    """
+    data = np.asarray(values, dtype=np.float64)
+    time = np.asarray(time_s, dtype=np.float64)
+    if data.ndim != 1 or time.shape != data.shape or time.size < 2:
+        raise MathChannelError("cumulative_trapezoid requires matching one-dimensional channels with at least two samples")
+    if not np.isfinite(data).all() or not np.isfinite(time).all():
+        raise MathChannelError("cumulative_trapezoid requires finite values and time")
+    intervals = np.diff(time)
+    if not np.isfinite(intervals).all() or np.any(intervals <= 0):
+        raise MathChannelError("cumulative_trapezoid requires finite, strictly increasing time intervals")
+    return np.concatenate(([0.0], np.cumsum((data[:-1] / 2.0 + data[1:] / 2.0) * intervals)))
+
+
+def _time_average(values: np.ndarray, time_s: np.ndarray) -> float:
+    """Trapezoidal, time-weighted mean over the observed elapsed duration."""
+    integral = _cumulative_trapezoid(values, time_s)
+    return float(integral[-1] / (time_s[-1] - time_s[0]))
+
+
 _ALLOWED_FUNCTIONS: dict[str, _FunctionSpec] = {
     "abs": _FunctionSpec(np.abs, 1, 1),
     "sqrt": _FunctionSpec(np.sqrt, 1, 1),
@@ -165,6 +189,8 @@ _ALLOWED_FUNCTIONS: dict[str, _FunctionSpec] = {
     "clip": _FunctionSpec(np.clip, 3, 3),
     "cumulative_sum": _FunctionSpec(np.cumsum, 1, 1),
     "sample_energy_kwh": _FunctionSpec(_sample_energy_kwh, 2, 2),
+    "cumulative_trapezoid": _FunctionSpec(_cumulative_trapezoid, 2, 2),
+    "time_average": _FunctionSpec(_time_average, 2, 2),
     "nominal_battery_capacity_kwh": _FunctionSpec(infer_nominal_battery_capacity_kwh, 2, 2),
 }
 
