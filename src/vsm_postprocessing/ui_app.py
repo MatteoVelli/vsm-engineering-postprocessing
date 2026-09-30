@@ -138,7 +138,7 @@ def main() -> None:
                     }
                     for cid in math_ids
                 ],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
     with tabs[2]:
@@ -195,7 +195,7 @@ def main() -> None:
 
     left, right = st.columns([1, 2])
     with left:
-        if st.button("Save selections", use_container_width=True):
+        if st.button("Save selections", width="stretch"):
             try:
                 save_ui_profile(PROFILE_PATH, current_profile)
             except VSMPostProcessingError as exc:
@@ -203,7 +203,7 @@ def main() -> None:
             else:
                 st.success(f"Saved: {PROFILE_PATH.relative_to(PROJECT_ROOT)}")
     with right:
-        run_clicked = st.button("Run complete pipeline", type="primary", use_container_width=True)
+        run_clicked = st.button("Run complete pipeline", type="primary", width="stretch")
 
     if run_clicked:
         if not export_ids:
@@ -254,7 +254,7 @@ def main() -> None:
                 }
                 for stage in result.stages
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         if set(bundle.effective_math_channel_ids) != set(math_ids):
@@ -279,9 +279,9 @@ def main() -> None:
                 data=report_bytes,
                 file_name=report_path.name,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
             )
-            if os.name == "nt" and col_b.button("Open report in Excel", use_container_width=True):
+            if os.name == "nt" and col_b.button("Open report in Excel", width="stretch"):
                 os.startfile(report_path)  # type: ignore[attr-defined]
     if powerpoint_path_text:
         powerpoint_path = Path(powerpoint_path_text)
@@ -296,9 +296,9 @@ def main() -> None:
                 data=powerpoint_bytes,
                 file_name=powerpoint_path.name,
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                use_container_width=True,
+                width="stretch",
             )
-            if os.name == "nt" and col_d.button("Open report in PowerPoint", use_container_width=True):
+            if os.name == "nt" and col_d.button("Open report in PowerPoint", width="stretch"):
                 os.startfile(powerpoint_path)  # type: ignore[attr-defined]
 
 
@@ -369,7 +369,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
 
     validate_clicked = st.button(
         "STEP 3 - Validate",
-        use_container_width=True,
+        width="stretch",
         disabled=source_path is None,
     )
     if validate_clicked and source_path is not None and validation_key is not None:
@@ -399,7 +399,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
     run_clicked = st.button(
         "STEP 4 - Generate Engineering Report",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         disabled=not can_generate,
     )
     if run_clicked and source_path is not None:
@@ -496,7 +496,7 @@ def _render_profile_report_download(st: Any, result: Any) -> None:
             data=report_bytes,
             file_name=report_path.name,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
         )
     powerpoint_path = result.presentation_path
     if powerpoint_path.exists():
@@ -507,13 +507,13 @@ def _render_profile_report_download(st: Any, result: Any) -> None:
             data=powerpoint_bytes,
             file_name=powerpoint_path.name,
             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            use_container_width=True,
+            width="stretch",
         )
     if result.excel_result.plotting_result.rendered_plots:
         with st.expander("Generated plot previews"):
             columns = st.columns(2)
             for index, plot in enumerate(result.excel_result.plotting_result.rendered_plots):
-                columns[index % 2].image(plot.png_file, caption=plot.title, use_container_width=True)
+                columns[index % 2].image(plot.png_file, caption=plot.title, width="stretch")
 
 
 def _friendly_input_error(exc: Exception) -> str:
