@@ -23,7 +23,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .errors import ConfigurationError, ExcelReportError
-from .excel_formulas import FORMULA_OPERATIONS, save_report_workbook, write_formula, write_statistic
+from .excel_formulas import FORMULA_OPERATIONS, save_report_workbook, write_formula
 from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots, _axis_label, _automatic_y_label
@@ -991,31 +991,30 @@ def _write_profile_report_sheet(
             cell = sheet.cell(data_start_row + row_offset, col_index, float(raw_value))
             cell.number_format = number_format
 
-    bottom_results = {}
     operation_rows = _bottom_statistic_rows(statistics_result)
-    for operation, row in operation_rows.items():
-        label = sheet.cell(row, 1, operation.upper())
-        label.fill = label_fill
-        label.font = Font(bold=True)
-        label.border = border
+    bottom_style = {"fill": label_fill, "border": border, "font": Font(bold=True)}
+    channel_results = _write_universal_bottom_statistics(
+        sheet, report_channels, values_by_name, data_start_row, data_end_row,
+        operation_rows, style=bottom_style, number_format="0.000",
+    )
+    bottom_results = {}
+    # Configuration still selects summary metrics and additional statistics.
+    # It no longer selects which channels receive the four basic Excel results.
     for item in statistics_result.statistics:
-        if item.definition.placement_group == "top_rms" or item.definition.operation not in operation_rows:
-            continue
+        operation = item.definition.operation
         col = channel_columns.get(item.target_channel)
         if col is None:
             continue
-        if profile.metadata.powertrain == "diesel" and col == 1:
-            # Preserve operation labels; time FIRST/LAST remain on Statistics.
-            continue
-        cell = sheet.cell(operation_rows[item.definition.operation], col)
-        write_statistic(cell, item.definition.operation, data_start_row, data_end_row,
-                        values_by_name[item.target_channel], item.value, item.definition.nan_policy)
-        if item.definition.operation in FORMULA_OPERATIONS:
-            bottom_results[item.definition.statistic_id] = cell.coordinate
-        cell.number_format = "0.000"
-        cell.fill = label_fill
-        cell.border = border
-        cell.font = Font(bold=True)
+        if operation in FORMULA_OPERATIONS:
+            if col == 1:
+                # The four Time-column cells contain labels, not statistics.
+                continue
+            bottom_results[item.definition.statistic_id] = channel_results[(operation, item.target_channel)]
+        elif item.definition.placement_group != "top_rms" and operation in operation_rows:
+            cell = sheet.cell(operation_rows[operation], col, item.value)
+            cell.number_format = "0.000"
+            for attribute, value in bottom_style.items():
+                setattr(cell, attribute, value)
 
     _write_profile_right_summary(
         sheet,
@@ -1179,6 +1178,52 @@ def _excel_display_number(value: Any) -> Any:
     return value
 
 
+def _write_universal_bottom_statistics(
+    sheet: Any,
+    report_channels: list[ChannelInfo],
+    values_by_id: Mapping[str, Any],
+    data_start_row: int,
+    data_end_row: int,
+    operation_rows: Mapping[str, int],
+    *,
+    style: Mapping[str, Any],
+    number_format: str | None = None,
+) -> dict[tuple[str, str], str]:
+    """Give every channel after Time four formulas, independently of selection.
+
+    The first exported column holds these four labels rather than Time formulas.
+    Every subsequent exported channel receives all four. Cached values follow Excel:
+    MAX/MIN ignore exported blanks; a direct reference to a blank returns zero.
+    """
+    references = {}
+    for operation, row in operation_rows.items():
+        label_col = 1 if operation in FORMULA_OPERATIONS else len(report_channels) + 1
+        label = sheet.cell(row, label_col, operation.replace("_", " ").upper())
+        for attribute, value in style.items():
+            setattr(label, attribute, value)
+    for col, channel in enumerate(report_channels, 1):
+        if col == 1:
+            continue
+        letter = get_column_letter(col)
+        extent = f"{letter}{data_start_row}:{letter}{data_end_row}"
+        values = np.asarray(values_by_id[channel.channel_id], dtype=np.float64)
+        finite = values[np.isfinite(values)]
+        formulas = {
+            "max": (f"=MAX({extent})", float(finite.max()) if finite.size else 0.0),
+            "min": (f"=MIN({extent})", float(finite.min()) if finite.size else 0.0),
+            "last": (f"={letter}{data_end_row}", float(values[-1]) if np.isfinite(values[-1]) else 0.0),
+            "first": (f"={letter}{data_start_row}", float(values[0]) if np.isfinite(values[0]) else 0.0),
+        }
+        for operation, (formula, cached_value) in formulas.items():
+            cell = sheet.cell(operation_rows[operation], col)
+            write_formula(cell, formula, cached_value)
+            cell.number_format = number_format or _number_format(channel.unit)
+            for attribute, value in style.items():
+                setattr(cell, attribute, value)
+            references[(operation, channel.channel_id)] = cell.coordinate
+    return references
+
+
 def _bottom_statistic_rows(statistics_result: ProfileStatisticsResult) -> dict[str, int]:
     operations = ["max", "min", "last", "first", "sum"]
     if statistics_result.profile.metadata.powertrain == "diesel":
@@ -1191,7 +1236,7 @@ def _bottom_statistic_rows(statistics_result: ProfileStatisticsResult) -> dict[s
     return {
         operation: _PROFILE_DATA_START_ROW + statistics_result.dataset.quality.sample_count + index
         for index, operation in enumerate(operations)
-        if operation in present
+        if operation in FORMULA_OPERATIONS or operation in present
     }
 
 
@@ -1937,32 +1982,24 @@ def _write_workbook(
 
     data_end_row = data_start_row + sample_count - 1
     bottom_start_row = data_end_row + 2
-    bottom_statistics = [
-        item
-        for item in statistics_result.statistics
-        if item.operation in config.bottom_operations and item.channel_id in config.channel_ids
-    ]
-    bottom_results = {}
-    stats_by_operation_channel = {(item.operation, item.channel_id): item for item in bottom_statistics}
-    for offset, operation in enumerate(config.bottom_operations):
-        row = bottom_start_row + offset
-        label = report.cell(row, 1, operation.replace("_", " ").upper())
-        label.fill = stat_fill
-        label.font = Font(bold=True)
-        label.border = border
-        for col_index, channel in enumerate(report_channels, start=1):
-            item = stats_by_operation_channel.get((operation, channel.channel_id))
-            if item is None:
-                continue
-            cell = report.cell(row, col_index)
-            write_statistic(cell, operation, data_start_row, data_end_row,
-                            values_by_id[channel.channel_id], item.value, item.nan_policy)
-            if operation in FORMULA_OPERATIONS:
-                bottom_results[(operation, channel.channel_id)] = cell.coordinate
-            cell.fill = stat_fill
-            cell.font = Font(bold=True)
-            cell.border = border
+    operations = list(config.bottom_operations)
+    operations.extend(op for op in ("max", "min", "last", "first") if op not in operations)
+    operation_rows = {op: bottom_start_row + i for i, op in enumerate(operations)}
+    bottom_style = {"fill": stat_fill, "font": Font(bold=True), "border": border}
+    bottom_results = _write_universal_bottom_statistics(
+        report, report_channels, values_by_id, data_start_row, data_end_row,
+        operation_rows, style=bottom_style,
+    )
+    channel_columns = {channel.channel_id: col for col, channel in enumerate(report_channels, 1)}
+    for item in statistics_result.statistics:
+        if item.operation in FORMULA_OPERATIONS or item.operation not in operation_rows:
+            continue
+        col = channel_columns.get(item.channel_id)
+        if col is not None:
+            cell = report.cell(operation_rows[item.operation], col, item.value)
             cell.number_format = _number_format(item.channel_unit)
+            for attribute, value in bottom_style.items():
+                setattr(cell, attribute, value)
 
     # KPI strip is placed to the right of the selected data channels, like the reference workbook.
     kpi_start_col = channel_count + 2
@@ -1986,7 +2023,7 @@ def _write_workbook(
     chart_columns = _native_chart_source_columns(report, report_channels, native_chart_definitions,
                                                  values_by_id, data_start_row)
     # Native charts retain the existing deterministic plot grid.
-    chart_start_row = bottom_start_row + len(config.bottom_operations) + 3
+    chart_start_row = bottom_start_row + len(operations) + 3
     horizontal_span = max(8, math.ceil(channel_count / config.plot_columns))
     vertical_span = 20
     for plot_index, plot_id in enumerate(config.native_chart_ids + config.plot_ids):
@@ -2123,29 +2160,26 @@ def _write_sergio_reference_workbook(
 
     data_end_row = data_start_row + sample_count - 1
 
-    # Per-channel bottom summary. First configured statistic for a channel goes
-    # directly below the data; a second statistic (e.g. battery MIN) uses the
-    # following row. This reproduces the MAX/MIN/last intent without a mixed
-    # operation label row.
-    bottom_results = {}
-    bottom_offsets: dict[str, int] = {}
+    operation_rows = {op: data_end_row + 1 + i for i, op in enumerate(("max", "min", "last", "first"))}
+    bottom_style = {"font": Font(name="Calibri", size=11, bold=False),
+                    "border": Border(top=border_side),
+                    "alignment": Alignment(horizontal="center", vertical="center")}
+    bottom_results = _write_universal_bottom_statistics(
+        report, report_channels, values_by_id, data_start_row, data_end_row,
+        operation_rows, style=bottom_style,
+    )
+    bottom_offsets = dict.fromkeys(channel_column_by_id, 4)
     for statistic_id in config.bottom_summary_statistic_ids:
         item = statistics_by_id[statistic_id]
-        if item.channel_id not in channel_column_by_id:
+        if item.operation in FORMULA_OPERATIONS or item.channel_id not in channel_column_by_id:
             continue
         col = channel_column_by_id[item.channel_id]
-        offset = bottom_offsets.get(item.channel_id, 0)
-        row = data_end_row + 1 + offset
-        bottom_offsets[item.channel_id] = offset + 1
-        cell = report.cell(row, col)
-        write_statistic(cell, item.operation, data_start_row, data_end_row,
-                        values_by_id[item.channel_id], item.value, item.nan_policy)
-        if item.operation in FORMULA_OPERATIONS:
-            bottom_results[(item.operation, item.channel_id)] = cell.coordinate
+        row = data_end_row + 1 + bottom_offsets[item.channel_id]
+        bottom_offsets[item.channel_id] += 1
+        cell = report.cell(row, col, item.value)
         cell.number_format = _number_format(item.channel_unit)
-        cell.font = Font(name="Calibri", size=11, bold=False)
-        cell.border = Border(top=border_side)
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        for attribute, value in bottom_style.items():
+            setattr(cell, attribute, value)
 
     # One blank separator column followed by the secondary KPI selection in rows 3-4.
     kpi_start_col = channel_count + config.blank_separator_columns + 1

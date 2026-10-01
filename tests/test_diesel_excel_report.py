@@ -14,6 +14,7 @@ from openpyxl.utils.cell import range_to_tuple
 
 from conftest import DIESEL_REFERENCE_CSV, DIESEL_REFERENCE_DESCRIPTION, require_private_reference_file
 from test_diesel_profile import PROFILE_PATH, _source
+from workbook_assertions import assert_universal_bottom_statistics
 from vsm_postprocessing.excel_report_engine import generate_profile_excel_report
 from vsm_postprocessing.profile_powerpoint_report_engine import build_profile_powerpoint_report
 from vsm_postprocessing.report_profile import load_reporting_profile
@@ -62,6 +63,7 @@ def test_reference_workbook_selection_and_units(diesel_report, workbook):
     assert workbook.sheetnames == ["Full Size Sprayer Diesel", "Rename From VSM to Astauto", "Metadata", "Statistics"]
     assert workbook["Metadata"].sheet_state == "hidden"
     assert diesel_report.sample_count == 223 and diesel_report.report_channel_count == 27
+    assert_universal_bottom_statistics(diesel_report.report_path, diesel_report.sample_count)
     assert (diesel_report.vsm_count, diesel_report.math_count, diesel_report.statistic_count, diesel_report.kpi_count) == (24, 3, 50, 5)
     ids = _columns(diesel_report)
     assert "track_height" not in ids
@@ -105,7 +107,8 @@ def test_every_exported_sample_and_statistic_matches_d1(diesel_report, workbook)
     for row, item in enumerate(diesel_report.statistics_result.kpis, 55):
         assert statistics.cell(row, 1).value == item.definition.kpi_id
         assert statistics.cell(row, 3).value == pytest.approx(item.value, rel=2e-15)
-    assert [sheet.cell(r, 1).value for r in range(228, 233)] == ["MAX", "MIN", "LAST", "FIRST", "RMS"]
+    assert [sheet.cell(r, 1).value for r in range(228, 232)] == ["MAX", "MIN", "LAST", "FIRST"]
+    assert sheet.cell(232, diesel_report.report_channel_count + 1).value == "RMS"
     assert sheet.cell(232, _columns(diesel_report)["engine_power"]).value == pytest.approx(74.57069413573709)
 
 
@@ -184,6 +187,7 @@ def test_missing_optional_channels_omit_only_dependent_outputs(tmp_path, missing
     book = load_workbook(result.report_path, data_only=True)
     assert result.plot_count == expected_charts and len(book.worksheets[0]._charts) == expected_charts
     assert result.statistics_result.is_complete
+    assert_universal_bottom_statistics(result.report_path, result.sample_count)
     assert not set(omitted) & set(_columns(result))
     assert not any("battery" in c.channel_id for c in result.report_channels)
     if missing in {"all", "fuel_flow"}:

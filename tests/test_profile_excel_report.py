@@ -8,6 +8,7 @@ from openpyxl.utils import get_column_letter
 
 from vsm_postprocessing.excel_report_engine import generate_profile_excel_report
 from vsm_postprocessing.importer import ImportOptions
+from workbook_assertions import assert_universal_bottom_statistics
 
 from conftest import (
     ROBOSPRAYER_LATEST_ELECTRIC_CSV,
@@ -52,6 +53,7 @@ def electric_workbook(electric_report):
 
 def test_profile_excel_report_generates_reopenable_electric_workbook(electric_report, electric_workbook) -> None:
     assert electric_report.report_path.exists()
+    assert_universal_bottom_statistics(electric_report.report_path, electric_report.sample_count)
     assert electric_report.report_path.name == _robosprayer_csv().with_suffix(".xlsx").name
     assert electric_report.sample_count == 3853
     assert electric_report.source_raw_channel_count == 607
@@ -281,6 +283,7 @@ def test_profile_excel_report_exports_latest_hybrid_road_height(tmp_path: Path) 
     by_semantic = {channel.channel_id: index + 1 for index, channel in enumerate(result.report_channels)}
 
     assert result.report_channel_count == 338
+    assert_universal_bottom_statistics(result.report_path, result.sample_count)
     assert result.plot_count == 21
     assert result.report_path.name == _latest_hybrid_csv().with_suffix(".xlsx").name
     assert result.report_metadata.report_title == "Caiman SP Hybrid"

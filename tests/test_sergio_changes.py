@@ -17,6 +17,7 @@ from vsm_postprocessing.profile_powerpoint_report_engine import (
 from vsm_postprocessing.report_profile import load_reporting_profile, resolve_profile
 from vsm_postprocessing.utils import source_report_filename, protect_source_path
 from test_profile_statistics import _dataset, _channel
+from workbook_assertions import assert_universal_bottom_statistics
 
 
 @pytest.mark.parametrize('profile_name', ['electric', 'hybrid'])
@@ -167,6 +168,7 @@ def test_configurable_report_converts_image_selection_to_native_chart(tmp_path, 
     assert len(workbook.active._charts) == result.native_excel_chart_count == 1
     assert not workbook.active._images
     assert result.embedded_plot_image_count == 0
+    assert_universal_bottom_statistics(result.report_path, result.sample_count)
     assert workbook.active._charts[0].legend is None
     assert workbook.active._charts[0].series[0].yVal.numRef.f == "'Chart Data'!$A$5:$A$6"
 
@@ -210,6 +212,7 @@ def test_profile_chart_optional_channel_and_source_workbook(tmp_path, include_he
     assert len(workbook.active._charts[0]._charts) == (2 if include_height else 1)
     assert list(workbook.active.values)[4][:2] == (0, 1)
     assert len(result.plotting_result.rendered_plots) == 1
+    assert_universal_bottom_statistics(result.report_path, result.sample_count)
 
 
 @pytest.mark.parametrize('filename', ['RoboSprayer_Electric_Report_Astauto_Colours.pptx',
@@ -235,30 +238,30 @@ def test_reusable_layout_retains_original_slides_and_creates_branded_slide(tmp_p
 
 
 @pytest.mark.parametrize('sample_count', [3, 7])
-@pytest.mark.parametrize('layout', ['profile', 'engineering', 'sergio_reference'])
+@pytest.mark.parametrize('layout', ['electric', 'hybrid', 'engineering', 'sergio_reference'])
 def test_october_statistics_formulas_and_summary_dependencies(tmp_path, sample_count, layout):
     import yaml
     from vsm_postprocessing.excel_report_engine import generate_excel_report, generate_profile_excel_report
     from vsm_postprocessing.statistics_engine import compute_statistic
     source = tmp_path / 'dynamic.csv'
     values = [4, -2, 9, 1, 3, 8, 5][:sample_count]
-    source.write_text('Time,Signal\ns,kW\n' + '\n'.join(f'{i},{v}' for i, v in enumerate(values)))
+    source.write_text('Time,Signal,Unselected\ns,kW,kW\n' + '\n'.join(f'{i},{v},{100-i}' for i, v in enumerate(values)))
     operations = ['max', 'min', 'last', 'first']
     def write(name, payload):
         path = tmp_path / name
         path.write_text(yaml.safe_dump({'version': 1, **payload}))
         return path
-    if layout == 'profile':
+    if layout in {'electric', 'hybrid'}:
         # Put MATH beyond Z, so a fixed channel letter cannot pass this test.
         math_channels = [{'semantic_name': f'copy_{i}', 'source_name': 'Signal',
                           'report_name': f'Copy {i}', 'unit': 'kW',
                           'dependencies': ['signal'], 'expression': 'signal * 2'} for i in range(26)]
         definitions = [{'statistic_id': f'{target}_{op}', 'target': target, 'operation': op,
                         'placement_group': 'summary'} for target in ['signal', 'copy_25'] for op in operations]
-        profile = write('profile.yaml', {'profile': {'profile_id': 'dynamic', 'name': 'Dynamic'},
+        profile = write('profile.yaml', {'profile': {'profile_id': 'dynamic', 'name': 'Dynamic', 'powertrain': layout},
             'channels': {'raw': [{'semantic_name': name.lower(), 'source_name': name,
                 'report_name': name, 'unit': unit, 'channel_type': 'VSM'}
-                for name, unit in [('Time', 's'), ('Signal', 'kW')]], 'math': math_channels},
+                for name, unit in [('Time', 's'), ('Signal', 'kW'), ('Unselected', 'kW')]], 'math': math_channels},
             'statistics': definitions, 'kpis': [{'kpi_id': 'scaled', 'expression': 'signal_max * 3',
                 'dependencies': ['signal_max'], 'unit': 'kW'}], 'plots': []})
         result = generate_profile_excel_report(source, profile, tmp_path / 'out')
@@ -270,11 +273,11 @@ def test_october_statistics_formulas_and_summary_dependencies(tmp_path, sample_c
         stats = write('statistics.yaml', {'statistics': [
             {'statistic_id': op, 'channel_id': 'signal__col_002', 'operation': op, 'placement_group': 'bottom_channel'} for op in operations]})
         plots = write('plots.yaml', {'plots': [{'plot_id': 'signal', 'title': 'Signal', 'x_channel_id': 'time__col_001', 'series': [{'channel_id': 'signal__col_002'}]}]})
-        config = write('report.yaml', {'channels': ['time__col_001', 'signal__col_002'],
+        config = write('report.yaml', {'channels': ['time__col_001', 'signal__col_002', 'unselected__col_003'],
             'layout': {'profile': layout}, 'statistics': {'kpis': operations,
                 'bottom_operations': operations, 'bottom_summary': operations}, 'plots': {'include': []}})
         result = generate_excel_report(source, config, stats, plots, tmp_path / 'out')
-        cases, summary_start = [(2, values)], 4
+        cases, summary_start = [(2, values)], 5
         first_bottom = sample_count + (6 if layout == 'engineering' else 5)
     workbook = load_workbook(result.report_path, data_only=False)
     cached = load_workbook(result.report_path, data_only=True)
@@ -299,9 +302,14 @@ def test_october_statistics_formulas_and_summary_dependencies(tmp_path, sample_c
             assert upper.value == '=' + cell.coordinate
             assert numeric[cell.coordinate].value == pytest.approx(python_value)
             assert numeric[upper.coordinate].value == pytest.approx(python_value)
-    if layout == 'profile':
+    if layout in {'electric', 'hybrid'}:
         assert sheet.cell(4, summary_start + 8).value == max(values) * 3
-        assert all(sheet.cell(first_bottom + i, 3).value is None for i in range(4))
+        # Unselected raw and MATH channels receive formulas; Time holds labels.
+        assert 'unselected' not in {item.definition.target for item in result.statistics_result.statistics}
+        assert 'copy_0' not in {item.definition.target for item in result.statistics_result.statistics}
+        assert 'time' not in {item.definition.target for item in result.statistics_result.statistics}
+    count, formulas = assert_universal_bottom_statistics(result.report_path, sample_count)
+    assert formulas == 4 * (count - 1)
 
 
 @pytest.mark.parametrize('profile_name', ['electric', 'hybrid'])
