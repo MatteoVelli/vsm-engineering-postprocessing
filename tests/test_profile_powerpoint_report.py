@@ -527,7 +527,15 @@ def test_profile_powerpoint_traction_cards_consume_canonical_metrics(tmp_path: P
     assert by_id["total_edu_mech_power_max"].display_name == "MAX TOTAL EDU MECH POWER"
     assert by_id["total_edu_mech_power_max"].channel_id == "total_edu_mech_power"
     assert by_id["total_edu_mech_power_max"].value == pytest.approx(111.06945955093833)
-    assert "EDU MAX POWER" in text
+    slide = Presentation(report.presentation_path).slides[8]
+    slide_text = [shape.text for shape in slide.shapes if shape.has_text_frame]
+    assert "RR EDU MAX POWER" in slide_text
+    assert "RR WHEEL MAX POWER" in slide_text
+    for channel in ("edu_mech_power_rr", "wheel_power_rr"):
+        item = by_id[channel + "_max"]
+        assert item.channel_id == channel
+        assert item.value == pytest.approx(report.excel_result.math_result.values_by_semantic_name[channel].max())
+        assert f"{item.value:.2f} kW" in slide_text
     assert "55.53 kW" in text
     assert "111.07 kW" not in text
     assert "WHEEL MAX POWER" in text

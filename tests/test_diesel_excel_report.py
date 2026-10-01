@@ -145,7 +145,7 @@ def test_native_chart_series_units_and_signed_axes(diesel_report, workbook, inde
 def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     sheet = workbook.worksheets[0]
     assert len(sheet._charts) == 10 and not sheet._images
-    assert sheet.freeze_panes == "B5"
+    assert sheet.freeze_panes == "B6"
     assert sheet["A3"].fill.fgColor.rgb.endswith("1F4E78")
     assert sheet["Y3"].fill.fgColor.rgb.endswith("C65911")
     assert sheet["AC3"].font.color.rgb.endswith("FFFFFF")

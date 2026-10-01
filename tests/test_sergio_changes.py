@@ -232,3 +232,122 @@ def test_reusable_layout_retains_original_slides_and_creates_branded_slide(tmp_p
     slide.shapes.title.text = 'Motor specifications'
     prs.save(path)
     assert Presentation(path).slides[-1].shapes.title.text == 'Motor specifications'
+
+
+@pytest.mark.parametrize('sample_count', [3, 7])
+@pytest.mark.parametrize('layout', ['profile', 'engineering', 'sergio_reference'])
+def test_october_statistics_formulas_and_summary_dependencies(tmp_path, sample_count, layout):
+    import yaml
+    from vsm_postprocessing.excel_report_engine import generate_excel_report, generate_profile_excel_report
+    from vsm_postprocessing.statistics_engine import compute_statistic
+    source = tmp_path / 'dynamic.csv'
+    values = [4, -2, 9, 1, 3, 8, 5][:sample_count]
+    source.write_text('Time,Signal\ns,kW\n' + '\n'.join(f'{i},{v}' for i, v in enumerate(values)))
+    operations = ['max', 'min', 'last', 'first']
+    def write(name, payload):
+        path = tmp_path / name
+        path.write_text(yaml.safe_dump({'version': 1, **payload}))
+        return path
+    if layout == 'profile':
+        # Put MATH beyond Z, so a fixed channel letter cannot pass this test.
+        math_channels = [{'semantic_name': f'copy_{i}', 'source_name': 'Signal',
+                          'report_name': f'Copy {i}', 'unit': 'kW',
+                          'dependencies': ['signal'], 'expression': 'signal * 2'} for i in range(26)]
+        definitions = [{'statistic_id': f'{target}_{op}', 'target': target, 'operation': op,
+                        'placement_group': 'summary'} for target in ['signal', 'copy_25'] for op in operations]
+        profile = write('profile.yaml', {'profile': {'profile_id': 'dynamic', 'name': 'Dynamic'},
+            'channels': {'raw': [{'semantic_name': name.lower(), 'source_name': name,
+                'report_name': name, 'unit': unit, 'channel_type': 'VSM'}
+                for name, unit in [('Time', 's'), ('Signal', 'kW')]], 'math': math_channels},
+            'statistics': definitions, 'kpis': [{'kpi_id': 'scaled', 'expression': 'signal_max * 3',
+                'dependencies': ['signal_max'], 'unit': 'kW'}], 'plots': []})
+        result = generate_profile_excel_report(source, profile, tmp_path / 'out')
+        columns = {c.channel_id: i for i, c in enumerate(result.report_channels, 1)}
+        cases = [(columns['signal'], values), (columns['copy_25'], [v * 2 for v in values])]
+        summary_start = result.report_channel_count + 2
+        first_bottom = sample_count + 5
+    else:
+        stats = write('statistics.yaml', {'statistics': [
+            {'statistic_id': op, 'channel_id': 'signal__col_002', 'operation': op, 'placement_group': 'bottom_channel'} for op in operations]})
+        plots = write('plots.yaml', {'plots': [{'plot_id': 'signal', 'title': 'Signal', 'x_channel_id': 'time__col_001', 'series': [{'channel_id': 'signal__col_002'}]}]})
+        config = write('report.yaml', {'channels': ['time__col_001', 'signal__col_002'],
+            'layout': {'profile': layout}, 'statistics': {'kpis': operations,
+                'bottom_operations': operations, 'bottom_summary': operations}, 'plots': {'include': []}})
+        result = generate_excel_report(source, config, stats, plots, tmp_path / 'out')
+        cases, summary_start = [(2, values)], 4
+        first_bottom = sample_count + (6 if layout == 'engineering' else 5)
+    workbook = load_workbook(result.report_path, data_only=False)
+    cached = load_workbook(result.report_path, data_only=True)
+    sheet, numeric = workbook.active, cached.active
+    assert sheet.freeze_panes == 'B6'
+    assert workbook.calculation.calcMode == 'auto'
+    assert workbook.calculation.fullCalcOnLoad
+    for index, (column, data) in enumerate(cases):
+        letter = get_column_letter(column)
+        extent = f'{letter}5:{letter}{sample_count + 4}'
+        for offset, operation in enumerate(operations):
+            cell = sheet.cell(first_bottom + offset, column)
+            expected = {'max': f'=MAX({extent})', 'min': f'=MIN({extent})',
+                        'first': f'={letter}5', 'last': f'={letter}{sample_count + 4}'}[operation]
+            assert cell.data_type == 'f' and cell.value == expected
+            # Evaluate the definition against the actual exported range, independently of its cache.
+            exported = [sheet.cell(row, column).value for row in range(5, sample_count + 5)]
+            evaluated = {'max': max(exported), 'min': min(exported), 'first': exported[0], 'last': exported[-1]}[operation]
+            python_value = compute_statistic(data, operation)[0]
+            assert evaluated == pytest.approx(python_value)
+            upper = sheet.cell(4, summary_start + index * 4 + offset)
+            assert upper.value == '=' + cell.coordinate
+            assert numeric[cell.coordinate].value == pytest.approx(python_value)
+            assert numeric[upper.coordinate].value == pytest.approx(python_value)
+    if layout == 'profile':
+        assert sheet.cell(4, summary_start + 8).value == max(values) * 3
+        assert all(sheet.cell(first_bottom + i, 3).value is None for i in range(4))
+
+
+@pytest.mark.parametrize('profile_name', ['electric', 'hybrid'])
+def test_slide_nine_rr_statistics_are_distinct_and_missing_channels_fail(profile_name):
+    from vsm_postprocessing.profile_powerpoint_report_engine import _profile_statistics_as_powerpoint_statistics
+    from vsm_postprocessing.errors import PowerPointReportError
+    profile = load_reporting_profile(f'config/report_profiles/robosprayer_{profile_name}.yaml')
+    slide = profile.presentation.slides_by_id()['traction_auxiliaries']
+    assert slide.statistics[:2] == ('edu_mech_power_rr_max', 'wheel_power_rr_max')
+    signals = {'edu_mech_power_rr': np.array([1., 17., 3.]), 'wheel_power_rr': np.array([11., 2., 5.]),
+               'edu_mech_power_rl': np.array([90., 91., 92.]), 'total_edu_mech_power': np.array([200., 201., 202.]),
+               'wheel_power_total': np.array([300., 301., 302.])}
+    result = SimpleNamespace(profile=profile, dataset=None, report_path=Path('report.xlsx'),
+        statistics_result=SimpleNamespace(profile=profile, statistics=[], kpis=[]),
+        plotting_result=SimpleNamespace(values_by_semantic_name=signals,
+            channels_by_semantic_name={name: _channel(name, name, 'kW') for name in signals}))
+    stats = _profile_statistics_as_powerpoint_statistics(result).statistics
+    assert [(item.display_name, item.channel_id, item.operation, item.value) for item in stats] == [
+        ('RR EDU MAX POWER', 'edu_mech_power_rr', 'max', 17.),
+        ('RR WHEEL MAX POWER', 'wheel_power_rr', 'max', 11.)]
+    for missing in ('edu_mech_power_rr', 'wheel_power_rr'):
+        value = signals.pop(missing)
+        with pytest.raises(PowerPointReportError, match=missing):
+            _profile_statistics_as_powerpoint_statistics(result)
+        signals[missing] = value
+
+
+@pytest.mark.parametrize('operation', ['max', 'min', 'first', 'last'])
+def test_formula_nonfinite_policy_and_caches(tmp_path, operation):
+    from vsm_postprocessing.excel_formulas import write_statistic, write_formula, save_report_workbook
+    from vsm_postprocessing.statistics_engine import compute_statistic
+    workbook = Workbook()
+    values = np.array([np.nan, 2., -3., 7., np.nan])
+    for row, value in enumerate(values, 5):
+        workbook.active.cell(row, 2, value)
+    value = compute_statistic(values, operation, 'omit')[0]
+    write_statistic(workbook.active['B10'], operation, 5, 9, values, value, 'omit')
+    write_formula(workbook.active['C4'], '=B10', value)
+    write_statistic(workbook.active['D10'], operation, 5, 9, values, np.nan, 'propagate')
+    path = tmp_path / 'nonfinite.xlsx'
+    save_report_workbook(workbook, path)
+    formulas = load_workbook(path).active
+    expected = {'max': '=MAX(B5:B9)', 'min': '=MIN(B5:B9)',
+                'first': '=INDEX(B5:B9,MATCH(TRUE,INDEX(ISNUMBER(B5:B9),0),0))',
+                'last': '=LOOKUP(2,1/ISNUMBER(B5:B9),B5:B9)'}
+    assert formulas['B10'].value == expected[operation]
+    assert formulas['D10'].value.startswith('=IF(COUNT(D5:D9)=ROWS(D5:D9),')
+    cached = load_workbook(path, data_only=True).active
+    assert cached['B10'].value == cached['C4'].value == pytest.approx(value)

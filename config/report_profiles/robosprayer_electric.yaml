@@ -3151,8 +3151,8 @@ presentation:
         - agrochemical_discharge_and_charge_vs_time
     - slide_id: traction_auxiliaries
       statistics:
-        - edu_mech_power_rl_max
-        - wheel_power_total_max
+        - edu_mech_power_rr_max
+        - wheel_power_rr_max
         - edu_speed_rl_max
         - edu_torque_rl_max
         - tyre_total_energy_accumulated_last

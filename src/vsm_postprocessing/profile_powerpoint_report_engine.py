@@ -36,6 +36,7 @@ from .statistics_engine import (
     StatisticsConfig,
     StatisticsOutputOptions,
     StatisticsResult,
+    compute_statistic,
 )
 from .utils import source_report_filename, client_display_filename, normalize_display_unit, sha256_file
 from .version import __version__
@@ -1878,6 +1879,29 @@ def _profile_statistics_as_powerpoint_statistics(excel_result: ProfileExcelRepor
         _canonical_metric_as_powerpoint_item(metric)
         for metric in build_canonical_report_metrics(excel_result.statistics_result)
     ]
+    # Slide 9's RR cards are presentation-specific: keep existing Excel metrics
+    # and all other slides unchanged, using the shared deterministic calculator.
+    if excel_result.profile.metadata.powertrain in {"electric", "hybrid"}:
+        for channel_id, label in (
+            ("edu_mech_power_rr", "RR EDU MAX POWER"),
+            ("wheel_power_rr", "RR WHEEL MAX POWER"),
+        ):
+            channels = excel_result.plotting_result.channels_by_semantic_name
+            values = excel_result.plotting_result.values_by_semantic_name
+            if channel_id not in channels or channel_id not in values:
+                raise PowerPointReportError(f"Slide 9 requires RR channel '{channel_id}'")
+            channel = channels[channel_id]
+            value, used, omitted = compute_statistic(values[channel_id], "max")
+            metric = CanonicalReportMetric(
+                metric_id=channel_id + "_max", excel_label=channel.display_name,
+                powerpoint_label=label, value=value, unit=channel.unit,
+                source_channel=channel_id, source_name=channel.display_name,
+                source_kind=channel.kind, statistic="MAX",
+                calculation=f"MAX({channel_id})", placement_group="traction_auxiliaries",
+                sample_count=len(values[channel_id]), used_sample_count=used,
+                omitted_sample_count=omitted,
+            )
+            statistics.append(_canonical_metric_as_powerpoint_item(metric))
     return StatisticsResult(
         dataset=excel_result.dataset,
         config_path=excel_result.report_path,

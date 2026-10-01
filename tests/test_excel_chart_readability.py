@@ -120,6 +120,10 @@ def test_two_column_profile_layout_and_presentation_rules(tmp_path, plot_count):
             assert chart.legend.position == 'b' and chart.legend.overlay is False
             assert chart.legend.txPr.p[0].pPr.defRPr.sz == 900
         assert chart.graphical_properties.solidFill.srgbClr == 'FFFFFF'
+        for axis in (chart.x_axis, chart.y_axis):
+            assert axis.majorGridlines.spPr.ln.solidFill.srgbClr == 'DCE3E8'
+            assert axis.majorGridlines.spPr.ln.w == 6350
+            assert not axis.majorGridlines.spPr.ln.noFill
         for component in chart._charts:
             for axis in (component.x_axis, component.y_axis):
                 assert axis.numFmt.formatCode == '0.00'

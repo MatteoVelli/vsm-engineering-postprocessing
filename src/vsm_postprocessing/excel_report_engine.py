@@ -23,6 +23,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .errors import ConfigurationError, ExcelReportError
+from .excel_formulas import FORMULA_OPERATIONS, save_report_workbook, write_formula, write_statistic
 from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots, _axis_label, _automatic_y_label
@@ -35,7 +36,7 @@ from .statistics_engine import StatisticResult, StatisticsResult, calculate_stat
 from .utils import source_report_filename, protect_source_path, client_display_filename, normalize_display_unit, normalized_name, sha256_file
 from .version import __version__
 
-_ALLOWED_BOTTOM_OPERATIONS = ("max", "min", "last", "sum", "rms", "time_weighted_rms")
+_ALLOWED_BOTTOM_OPERATIONS = ("max", "min", "last", "sum", "rms", "time_weighted_rms", "first")
 
 
 @dataclass(frozen=True)
@@ -218,7 +219,7 @@ def load_excel_report_config(path: str | Path) -> ExcelReportConfig:
     )
     top_rms = _string_list(statistics_raw.get("top_rms", []), "statistics.top_rms")
     kpis = _string_list(statistics_raw.get("kpis", []), "statistics.kpis")
-    bottom_raw = statistics_raw.get("bottom_operations", list(_ALLOWED_BOTTOM_OPERATIONS))
+    bottom_raw = statistics_raw.get("bottom_operations", [op for op in _ALLOWED_BOTTOM_OPERATIONS if op != "first"])
     bottom_operations = _string_list(bottom_raw, "statistics.bottom_operations")
     invalid_ops = sorted(set(bottom_operations) - set(_ALLOWED_BOTTOM_OPERATIONS))
     if invalid_ops:
@@ -908,7 +909,7 @@ def _write_profile_workbook(
                 cell.alignment = Alignment(wrap_text=True, vertical="top")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    workbook.save(output_path)
+    save_report_workbook(workbook, output_path)
 
 
 def _write_profile_report_sheet(
@@ -954,14 +955,6 @@ def _write_profile_report_sheet(
         border=border,
         white_bold=white_bold,
     )
-    _write_profile_right_summary(
-        sheet,
-        statistics_result,
-        start_col=summary_start_col,
-        border=border,
-        label_fill=plot_header_fill,
-        white_bold=white_bold,
-    )
 
     if profile.metadata.powertrain == "diesel":
         omitted = [item.definition.report_name for item in statistics_result.resolution.missing_optional]
@@ -998,6 +991,7 @@ def _write_profile_report_sheet(
             cell = sheet.cell(data_start_row + row_offset, col_index, float(raw_value))
             cell.number_format = number_format
 
+    bottom_results = {}
     operation_rows = _bottom_statistic_rows(statistics_result)
     for operation, row in operation_rows.items():
         label = sheet.cell(row, 1, operation.upper())
@@ -1013,11 +1007,25 @@ def _write_profile_report_sheet(
         if profile.metadata.powertrain == "diesel" and col == 1:
             # Preserve operation labels; time FIRST/LAST remain on Statistics.
             continue
-        cell = sheet.cell(operation_rows[item.definition.operation], col, item.value)
+        cell = sheet.cell(operation_rows[item.definition.operation], col)
+        write_statistic(cell, item.definition.operation, data_start_row, data_end_row,
+                        values_by_name[item.target_channel], item.value, item.definition.nan_policy)
+        if item.definition.operation in FORMULA_OPERATIONS:
+            bottom_results[item.definition.statistic_id] = cell.coordinate
         cell.number_format = "0.000"
         cell.fill = label_fill
         cell.border = border
         cell.font = Font(bold=True)
+
+    _write_profile_right_summary(
+        sheet,
+        statistics_result,
+        start_col=summary_start_col,
+        bottom_results=bottom_results,
+        border=border,
+        label_fill=plot_header_fill,
+        white_bold=white_bold,
+    )
 
     _write_profile_plots_on_report_sheet(
         sheet,
@@ -1031,7 +1039,7 @@ def _write_profile_report_sheet(
         diesel_layout=profile.metadata.powertrain == "diesel",
     )
 
-    sheet.freeze_panes = f"B{data_start_row}"
+    sheet.freeze_panes = "B6"
     for col_index, channel in enumerate(report_channels, start=1):
         width = min(max(len(channel.display_name), 9), 16 if channel.kind != "math" else 18)
         sheet.column_dimensions[get_column_letter(col_index)].width = width
@@ -1124,6 +1132,7 @@ def _write_profile_right_summary(
     sheet: Any,
     statistics_result: ProfileStatisticsResult,
     *,
+    bottom_results: Mapping[str, str],
     start_col: int,
     border: Border,
     label_fill: PatternFill,
@@ -1133,6 +1142,8 @@ def _write_profile_right_summary(
         col = start_col + offset
         label = sheet.cell(3, col, item["label"])
         value = sheet.cell(4, col, _excel_display_number(item["value"]))
+        if item["metric_id"] in bottom_results:
+            write_formula(value, "=" + bottom_results[item["metric_id"]], item["value"])
         label.fill = label_fill
         label.font = white_bold
         label.border = border
@@ -1147,7 +1158,7 @@ def _profile_right_summary_items(statistics_result: ProfileStatisticsResult) -> 
     for metric in build_canonical_report_metrics(statistics_result):
         if statistics_result.profile.metadata.powertrain == "diesel" and metric.placement_group != "diesel_executive":
             continue
-        items.append({"label": _summary_label(metric.excel_label, metric.unit), "value": metric.value})
+        items.append({"metric_id": metric.metric_id, "label": _summary_label(metric.excel_label, metric.unit), "value": metric.value})
     return items
 
 
@@ -1658,7 +1669,7 @@ def _profile_template_comparison_rows(
             "Main-sheet bottom statistics and engineering KPI summary",
             f"{statistics_result.calculated_statistic_count} statistics + {statistics_result.calculated_kpi_count} KPIs on main report",
             "PASS",
-            "Values are written as numbers, not stale Excel formulas.",
+            "Simple statistics use live Excel formulas and linked summary cells; engineering KPIs retain deterministic values.",
         ),
         _comparison_row(
             "Agrochemical channel",
@@ -1931,6 +1942,7 @@ def _write_workbook(
         for item in statistics_result.statistics
         if item.operation in config.bottom_operations and item.channel_id in config.channel_ids
     ]
+    bottom_results = {}
     stats_by_operation_channel = {(item.operation, item.channel_id): item for item in bottom_statistics}
     for offset, operation in enumerate(config.bottom_operations):
         row = bottom_start_row + offset
@@ -1942,7 +1954,11 @@ def _write_workbook(
             item = stats_by_operation_channel.get((operation, channel.channel_id))
             if item is None:
                 continue
-            cell = report.cell(row, col_index, item.value)
+            cell = report.cell(row, col_index)
+            write_statistic(cell, operation, data_start_row, data_end_row,
+                            values_by_id[channel.channel_id], item.value, item.nan_policy)
+            if operation in FORMULA_OPERATIONS:
+                bottom_results[(operation, channel.channel_id)] = cell.coordinate
             cell.fill = stat_fill
             cell.font = Font(bold=True)
             cell.border = border
@@ -1955,6 +1971,9 @@ def _write_workbook(
         col = kpi_start_col + index
         header = report.cell(3, col, item.display_name)
         value = report.cell(4, col, item.value)
+        reference = bottom_results.get((item.operation, item.channel_id))
+        if reference is not None:
+            write_formula(value, "=" + reference, item.value)
         for cell in (header, value):
             cell.fill = kpi_fill
             cell.font = white_bold
@@ -1986,7 +2005,7 @@ def _write_workbook(
         chart.height = config.plot_height_px * 2.54 / 96
         report.add_chart(chart, f"{get_column_letter(anchor_col)}{anchor_row}")
 
-    report.freeze_panes = "B5"
+    report.freeze_panes = "B6"
     report.row_dimensions[1].height = 28
     report.row_dimensions[2].height = 24
     report.row_dimensions[3].height = 44
@@ -2011,7 +2030,7 @@ def _write_workbook(
         border=border,
     )
 
-    workbook.save(output_path)
+    save_report_workbook(workbook, output_path)
 
 
 def _write_sergio_reference_workbook(
@@ -2108,6 +2127,7 @@ def _write_sergio_reference_workbook(
     # directly below the data; a second statistic (e.g. battery MIN) uses the
     # following row. This reproduces the MAX/MIN/last intent without a mixed
     # operation label row.
+    bottom_results = {}
     bottom_offsets: dict[str, int] = {}
     for statistic_id in config.bottom_summary_statistic_ids:
         item = statistics_by_id[statistic_id]
@@ -2117,7 +2137,11 @@ def _write_sergio_reference_workbook(
         offset = bottom_offsets.get(item.channel_id, 0)
         row = data_end_row + 1 + offset
         bottom_offsets[item.channel_id] = offset + 1
-        cell = report.cell(row, col, item.value)
+        cell = report.cell(row, col)
+        write_statistic(cell, item.operation, data_start_row, data_end_row,
+                        values_by_id[item.channel_id], item.value, item.nan_policy)
+        if item.operation in FORMULA_OPERATIONS:
+            bottom_results[(item.operation, item.channel_id)] = cell.coordinate
         cell.number_format = _number_format(item.channel_unit)
         cell.font = Font(name="Calibri", size=11, bold=False)
         cell.border = Border(top=border_side)
@@ -2130,6 +2154,9 @@ def _write_sergio_reference_workbook(
         col = kpi_start_col + index
         header = report.cell(3, col, item.display_name)
         value = report.cell(4, col, item.value)
+        reference = bottom_results.get((item.operation, item.channel_id))
+        if reference is not None:
+            write_formula(value, "=" + reference, item.value)
         for cell in (header, value):
             cell.fill = raw_fill
             cell.font = header_font
@@ -2226,7 +2253,7 @@ def _write_sergio_reference_workbook(
         border=border,
     )
 
-    workbook.save(output_path)
+    save_report_workbook(workbook, output_path)
 
 
 def _native_plot_definition(definition: Any, channels: Mapping[str, ChannelInfo]) -> Any:
@@ -2342,6 +2369,7 @@ def _build_native_scatter_chart(
         )
         secondary_chart.y_axis.crosses = "max"
         secondary_chart.y_axis.majorGridlines = None
+        secondary_chart.x_axis.majorGridlines = None
         secondary_chart.x_axis.delete = True
         chart += secondary_chart
     if not show_legend or len(definition.series) < 2:
@@ -2387,7 +2415,9 @@ def _make_scatter_shell(
     chart.x_axis.title.txPr = _chart_text(11)
     chart.y_axis.title.txPr = _chart_text(11)
     chart.legend.txPr = _chart_text(9)
-    chart.x_axis.majorGridlines = None
+    chart.x_axis.majorGridlines = ChartLines(spPr=GraphicalProperties(
+        ln=LineProperties(solidFill="DCE3E8", w=6350),
+    ))
     chart.y_axis.majorGridlines = ChartLines(spPr=GraphicalProperties(
         ln=LineProperties(solidFill="DCE3E8", w=6350),
     ))
