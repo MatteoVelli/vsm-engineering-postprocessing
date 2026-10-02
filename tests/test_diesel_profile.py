@@ -265,7 +265,7 @@ def test_reference_engine_power_independent_csv_calculation(reference, profile):
 def test_reference_fuel_semantics_statistics_and_kpis(reference, profile):
     result = calculate_profile_statistics(reference, profile)
     assert result.is_complete and result.math_result.is_complete
-    assert len(result.statistics) == 50 and len(result.kpis) == 5
+    assert len(result.statistics) == 46 and len(result.kpis) == 5
     stats = {s.definition.statistic_id: s.value for s in result.statistics}
     for key, value in dict(chassis_speed_max=22.4686, road_gradient_min=-15, road_gradient_max=15, engine_speed_max=1996.81, engine_torque_max=826.219, engine_power_max=165.93862633964403, engine_mechanical_energy_last=3.7647817811605133, fuel_volume_last=0.9421207194583333, fuel_flow_max=41.4741).items():
         assert stats[key] == pytest.approx(value, rel=1e-11)

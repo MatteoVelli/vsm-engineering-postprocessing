@@ -56,7 +56,7 @@ def _columns(report):
 
 
 def _summary(sheet, report):
-    return {sheet.cell(3, col).value: sheet.cell(4, col).value for col in range(report.report_channel_count + 2, sheet.max_column + 1) if sheet.cell(3, col).value}
+    return {sheet.cell(1, col).value: sheet.cell(2, col).value for col in range(report.report_channel_count + 2, sheet.max_column + 1) if sheet.cell(1, col).value}
 
 
 def test_reference_workbook_selection_and_units(diesel_report, workbook):
@@ -64,7 +64,7 @@ def test_reference_workbook_selection_and_units(diesel_report, workbook):
     assert workbook["Metadata"].sheet_state == "hidden"
     assert diesel_report.sample_count == 223 and diesel_report.report_channel_count == 27
     assert_universal_bottom_statistics(diesel_report.report_path, diesel_report.sample_count)
-    assert (diesel_report.vsm_count, diesel_report.math_count, diesel_report.statistic_count, diesel_report.kpi_count) == (24, 3, 50, 5)
+    assert (diesel_report.vsm_count, diesel_report.math_count, diesel_report.statistic_count, diesel_report.kpi_count) == (24, 3, 46, 5)
     ids = _columns(diesel_report)
     assert "track_height" not in ids
     assert not any("electric" in c.source_name.lower() or "battery" in c.source_name.lower() for c in diesel_report.report_channels)
@@ -74,7 +74,7 @@ def test_reference_workbook_selection_and_units(diesel_report, workbook):
     mapping = workbook["Rename From VSM to Astauto"]
     assert [mapping.cell(r, 3).value for r in range(3, 30)].count("MATH") == 3
     assert "cumulative_trapezoid" in mapping.cell(28, 8).value
-    assert "Road Height" in sheet.cell(2, 29).value
+    assert sheet.cell(1, 29).value == "Maximum Vehicle Speed [kph]"
     manifest = json.loads(diesel_report.manifest_path.read_text(encoding="utf-8"))
     assert manifest["visible_sheet_names"] == [s.title for s in workbook if s.sheet_state == "visible"]
 
@@ -86,7 +86,7 @@ def test_reference_executive_values_match_d1(diesel_report, workbook):
         "Maximum Vehicle Speed [kph]": 22.4686, "Min Road Gradient [%]": -15,
         "Max Road Gradient [%]": 15, "Engine Speed MAX [rpm]": 1996.81,
         "Average Engine Speed [rpm]": 1537.2141644144144, "Engine Torque MAX [Nm]": 826.219,
-        "Engine Power MAX [kW]": 165.93862633964403, "Engine Power RMS [kW]": 74.57069413573709,
+        "Engine Power MAX [kW]": 165.93862633964403,
         "Net Engine Mechanical Energy [kWh]": 3.7647817811605133, "Total Fuel Consumption [kg]": 0.772836,
         "Average Fuel Flow [l/h]": 15.277633288513513, "Maximum Fuel Flow [l/h]": 41.4741,
     }
@@ -104,12 +104,11 @@ def test_every_exported_sample_and_statistic_matches_d1(diesel_report, workbook)
     for row, item in enumerate(diesel_report.statistics_result.statistics, 2):
         assert statistics.cell(row, 1).value == item.definition.statistic_id
         assert statistics.cell(row, 5).value == pytest.approx(item.value, rel=2e-15, abs=1e-14)
-    for row, item in enumerate(diesel_report.statistics_result.kpis, 55):
+    for row, item in enumerate(diesel_report.statistics_result.kpis, diesel_report.statistic_count + 5):
         assert statistics.cell(row, 1).value == item.definition.kpi_id
         assert statistics.cell(row, 3).value == pytest.approx(item.value, rel=2e-15)
     assert [sheet.cell(r, 1).value for r in range(228, 232)] == ["MAX", "MIN", "LAST", "FIRST"]
-    assert sheet.cell(232, diesel_report.report_channel_count + 1).value == "RMS"
-    assert sheet.cell(232, _columns(diesel_report)["engine_power"]).value == pytest.approx(74.57069413573709)
+    assert all(sheet.cell(232, col).value is None for col in range(1, diesel_report.report_channel_count + 2))
 
 
 @pytest.mark.parametrize("index,spec", list(enumerate(CHARTS)))
@@ -151,14 +150,14 @@ def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     assert sheet.freeze_panes == "B6"
     assert sheet["A3"].fill.fgColor.rgb.endswith("1F4E78")
     assert sheet["Y3"].fill.fgColor.rgb.endswith("C65911")
-    assert sheet["AC3"].font.color.rgb.endswith("FFFFFF")
-    assert sheet["AC4"].number_format == "0.000"
+    assert sheet["AC1"].font.color.rgb.endswith("FFFFFF")
+    assert sheet["AC2"].number_format == "0.000"
     assert sheet.column_dimensions["AC"].width == 13
-    assert "AC1:AQ1" in {str(r) for r in sheet.merged_cells.ranges}
+    assert "AC1:AQ1" not in {str(r) for r in sheet.merged_cells.ranges}
     assert sheet.row_dimensions[3].height == 60
     assert workbook["Statistics"].column_dimensions["D"].width == 42
     for i, chart in enumerate(sheet._charts):
-        assert (chart.anchor._from.col, chart.anchor._from.row) == (28 + (i % 2) * 8, 5 + (i // 2) * 20)
+        assert (chart.anchor._from.col, chart.anchor._from.row) == (28 + (i % 2) * 8, 2 + (i // 2) * 20)
         assert chart.anchor.ext.cx / 914400 == pytest.approx(637 / 96)
         assert chart.anchor.ext.cy / 914400 == pytest.approx(3.75)
         assert chart.layout.manualLayout.x == pytest.approx(0.13)
@@ -201,7 +200,7 @@ def test_missing_optional_channels_omit_only_dependent_outputs(tmp_path, missing
 def test_optional_height_is_exported_when_available(tmp_path):
     profile = load_reporting_profile(PROFILE_PATH)
     result = generate_profile_excel_report(_source(tmp_path, profile), PROFILE_PATH, tmp_path / "report")
-    assert result.statistic_count == 52 and "track_height" in _columns(result)
+    assert result.statistic_count == 48 and "track_height" in _columns(result)
     assert result.plot_count == 10
 
 

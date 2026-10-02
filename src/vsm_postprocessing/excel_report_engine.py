@@ -956,19 +956,6 @@ def _write_profile_report_sheet(
         white_bold=white_bold,
     )
 
-    if profile.metadata.powertrain == "diesel":
-        omitted = [item.definition.report_name for item in statistics_result.resolution.missing_optional]
-        omitted_label = ", ".join(omitted) if len(omitted) <= 3 else f"{len(omitted)} (see Metadata)"
-        for row, text in (
-            (1, "Diesel Executive Results"),
-            (2, "Complete results: Statistics. Optional channels omitted: " + (omitted_label or "none")),
-        ):
-            sheet.merge_cells(start_row=row, start_column=summary_start_col, end_row=row, end_column=summary_start_col + 14)
-            cell = sheet.cell(row, summary_start_col, text)
-            cell.fill = plot_header_fill
-            cell.font = white_bold
-            cell.alignment = Alignment(wrap_text=True, vertical="center")
-
     for col_index, channel in enumerate(report_channels, start=1):
         channel_type = channel.kind.upper()
         fill = math_fill if channel_type == "MATH" else avl_fill if channel_type == "AVL" else vsm_fill
@@ -1020,6 +1007,7 @@ def _write_profile_report_sheet(
         sheet,
         statistics_result,
         start_col=summary_start_col,
+        start_row=1 if profile.metadata.powertrain == "diesel" else 3,
         bottom_results=bottom_results,
         border=border,
         label_fill=plot_header_fill,
@@ -1029,7 +1017,7 @@ def _write_profile_report_sheet(
     _write_profile_plots_on_report_sheet(
         sheet,
         plotting_result,
-        start_row=6,
+        start_row=3 if profile.metadata.powertrain == "diesel" else 6,
         start_col=summary_start_col,
         channel_columns=channel_columns,
         border=border,
@@ -1049,7 +1037,11 @@ def _write_profile_report_sheet(
     sheet.row_dimensions[3].height = 42
     sheet.row_dimensions[4].height = 22
     if profile.metadata.powertrain == "diesel":
+        # The summary headings now occupy row 1; retain their readable height.
+        # Charts start directly beneath the values, without an empty header gap.
+        sheet.row_dimensions[1].height = 60
         sheet.row_dimensions[3].height = 60
+        sheet.cell(2, 1).alignment = Alignment(wrap_text=True, vertical="top")
 
 
 def _top_summary_column(
@@ -1094,6 +1086,16 @@ def _write_profile_rms_blocks(
                 cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         label.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         value.number_format = "0.000"
+        if statistics_result.profile.metadata.powertrain == "diesel":
+            # Reuse the Electric top block, with a live sample-RMS formula.
+            # SUMSQ squares the existing source in place (Nm^2 / kW^2), so
+            # SQRT restores Nm / kW without adding helper data columns.
+            letter = get_column_letter(channel_columns[item.target_channel])
+            end_row = _PROFILE_DATA_START_ROW + item.sample_count - 1
+            extent = f"{letter}{_PROFILE_DATA_START_ROW}:{letter}{end_row}"
+            write_formula(value, f"=SQRT(SUMSQ({extent})/COUNT({extent}))", item.value)
+            if item.channel_unit:
+                value.number_format = f'0.000" {item.channel_unit}"'
 
 
 def _non_overlapping_rms_range(
@@ -1133,14 +1135,15 @@ def _write_profile_right_summary(
     *,
     bottom_results: Mapping[str, str],
     start_col: int,
+    start_row: int,
     border: Border,
     label_fill: PatternFill,
     white_bold: Font,
 ) -> None:
     for offset, item in enumerate(_profile_right_summary_items(statistics_result)):
         col = start_col + offset
-        label = sheet.cell(3, col, item["label"])
-        value = sheet.cell(4, col, _excel_display_number(item["value"]))
+        label = sheet.cell(start_row, col, item["label"])
+        value = sheet.cell(start_row + 1, col, _excel_display_number(item["value"]))
         if item["metric_id"] in bottom_results:
             write_formula(value, "=" + bottom_results[item["metric_id"]], item["value"])
         label.fill = label_fill
@@ -1227,7 +1230,7 @@ def _write_universal_bottom_statistics(
 def _bottom_statistic_rows(statistics_result: ProfileStatisticsResult) -> dict[str, int]:
     operations = ["max", "min", "last", "first", "sum"]
     if statistics_result.profile.metadata.powertrain == "diesel":
-        operations = ["max", "min", "last", "first", "rms"]
+        operations = ["max", "min", "last", "first"]
     present = {
         item.definition.operation
         for item in statistics_result.statistics

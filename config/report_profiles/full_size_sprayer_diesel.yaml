@@ -280,12 +280,6 @@ statistics:
   display_name: Engine Speed MIN
   required: true
   placement_group: diesel_summary
-- statistic_id: engine_speed_rms
-  target: engine_speed
-  operation: rms
-  display_name: Engine Speed RMS
-  required: true
-  placement_group: diesel_summary
 - statistic_id: engine_torque_max
   target: engine_torque
   operation: max
@@ -303,7 +297,7 @@ statistics:
   operation: rms
   display_name: Engine Torque RMS
   required: true
-  placement_group: diesel_summary
+  placement_group: top_rms
 - statistic_id: engine_power_max
   target: engine_power
   operation: max
@@ -321,7 +315,7 @@ statistics:
   operation: rms
   display_name: Engine Power RMS
   required: true
-  placement_group: diesel_executive
+  placement_group: top_rms
 - statistic_id: engine_mechanical_energy_last
   target: engine_mechanical_energy
   operation: last
@@ -388,24 +382,6 @@ statistics:
   display_name: Engine Water Temperature MAX
   required: false
   placement_group: diesel_engine
-- statistic_id: chassis_acceleration_longitudinal_rms
-  target: chassis_acceleration_longitudinal
-  operation: rms
-  display_name: Longitudinal Acceleration RMS
-  required: false
-  placement_group: diesel_chassis
-- statistic_id: chassis_acceleration_lateral_rms
-  target: chassis_acceleration_lateral
-  operation: rms
-  display_name: Lateral Acceleration RMS
-  required: false
-  placement_group: diesel_chassis
-- statistic_id: chassis_acceleration_vertical_rms
-  target: chassis_acceleration_vertical
-  operation: rms
-  display_name: Vertical Acceleration RMS
-  required: false
-  placement_group: diesel_chassis
 - statistic_id: tyre_fz_fl_min
   target: tyre_fz_fl
   operation: min
