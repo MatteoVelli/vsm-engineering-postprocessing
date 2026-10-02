@@ -3065,6 +3065,15 @@ plots:
         axis: primary
         label: Wheel Load RR
 presentation:
+  # Presentation-only selection: keep the shared Excel/Hybrid power plot intact.
+  plot_series_overrides:
+    power_at_wheels_and_edu:
+      - semantic_name: wheel_power_rr
+        axis: primary
+        label: Wheel Power RR
+      - semantic_name: edu_mech_power_rr
+        axis: primary
+        label: EDU Mech Power RR
   footer: VSM Engineering Post-Processing Tool
   powerpoint_template: reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx
   metadata_pills:

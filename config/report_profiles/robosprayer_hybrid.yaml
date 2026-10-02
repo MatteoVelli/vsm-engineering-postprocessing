@@ -262,6 +262,15 @@ plots:
         axis: secondary
         label: Engine Fuel Consumption
 presentation:
+  # Presentation-only RR power selection; keep the shared Excel plot intact.
+  plot_series_overrides:
+    power_at_wheels_and_edu:
+      - semantic_name: wheel_power_rr
+        axis: primary
+        label: Wheel Power RR
+      - semantic_name: edu_mech_power_rr
+        axis: primary
+        label: EDU Mech Power RR
   footer: VSM Engineering Post-Processing Tool
   powerpoint_template: reference_files/Caiman_SP_Hybrid_Report_Astauto_Colours.pptx
   slides:

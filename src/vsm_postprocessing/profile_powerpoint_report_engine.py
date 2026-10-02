@@ -29,6 +29,7 @@ from .powerpoint_report_engine import (
     _write_metadata as _write_powerpoint_metadata,
 )
 from .profile_statistics import CanonicalReportMetric, build_canonical_report_metrics
+from .profile_plotting import ProfilePlottingResult, render_profile_plots
 from .report_metadata import ReportMetadata
 from .report_profile import ReportingProfile
 from .statistics_engine import (
@@ -436,6 +437,35 @@ def build_profile_powerpoint_report(
     return result
 
 
+def _profile_powerpoint_plots(
+    excel_result: ProfileExcelReportResult, output_dir: Path,
+) -> ProfilePlottingResult:
+    """Render configured presentation series without changing Excel assets/data."""
+    original = excel_result.plotting_result
+    presentation = excel_result.profile.presentation
+    overrides = presentation.plot_series_overrides if presentation else {}
+    if not overrides:
+        return original
+    definitions = tuple(replace(plot, series=overrides[plot.plot_id])
+                        for plot in excel_result.profile.plots if plot.plot_id in overrides)
+    rendered = render_profile_plots(
+        excel_result.dataset, replace(excel_result.profile, plots=definitions),
+        output_dir / "presentation_plots", resolution=excel_result.resolution,
+        math_result=excel_result.math_result,
+    )
+    updated = {plot.plot_id: plot for plot in original.rendered_plots if plot.plot_id not in overrides}
+    updated.update({plot.plot_id: plot for plot in rendered.rendered_plots})
+    return replace(
+        original,
+        rendered_plots=[updated[plot.plot_id] for plot in sorted(excel_result.profile.plots, key=lambda plot: plot.order or 999_999)
+                        if plot.plot_id in updated],
+        unavailable_plots=[plot for plot in original.unavailable_plots if plot.definition.plot_id not in overrides]
+                          + rendered.unavailable_plots,
+        series_summaries={**{key: value for key, value in original.series_summaries.items() if key not in overrides},
+                          **rendered.series_summaries},
+    )
+
+
 def _build_template_profile_powerpoint_report(
     excel_result: ProfileExcelReportResult,
     config_path: Path,
@@ -451,7 +481,8 @@ def _build_template_profile_powerpoint_report(
 
     statistics_result = _profile_statistics_as_powerpoint_statistics(excel_result)
     statistics_by_id = {item.statistic_id: item for item in statistics_result.statistics}
-    plots_by_id = {item.plot_id: item for item in excel_result.plotting_result.rendered_plots}
+    plotting_result = _profile_powerpoint_plots(excel_result, output_dir)
+    plots_by_id = {item.plot_id: item for item in plotting_result.rendered_plots}
     assets = Path(plot_assets_dir).expanduser().resolve()
     layout = _ELECTRIC_LAYOUT
     prs = Presentation(template_path)
@@ -544,7 +575,7 @@ def _build_template_profile_powerpoint_report(
         config_path=config_path,
         config=config,
         statistics_result=statistics_result,
-        plotting_result=excel_result.plotting_result,  # type: ignore[arg-type]
+        plotting_result=plotting_result,  # type: ignore[arg-type]
     )
     _write_powerpoint_metadata(result)
     _write_template_fidelity_summary(result, template_path)

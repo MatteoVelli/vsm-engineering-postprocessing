@@ -122,6 +122,7 @@ class ProfilePresentationConfig:
     powerpoint_template: str | None = None
     metadata_pills: tuple[str, ...] = ()
     slides: tuple[ProfilePresentationSlideDefinition, ...] = ()
+    plot_series_overrides: Mapping[str, tuple[ProfilePlotSeriesDefinition, ...]] = field(default_factory=dict)
 
     def slides_by_id(self) -> dict[str, ProfilePresentationSlideDefinition]:
         return {definition.slide_id: definition for definition in self.slides}
@@ -388,6 +389,11 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
         parent_path = (path.parent / metadata.extends).resolve()
         parent = _load_reporting_profile(parent_path, seen=(*seen, path))
         profile = _merge_profiles(parent, profile)
+
+    if profile.presentation:
+        unknown_plots = set(profile.presentation.plot_series_overrides) - set(profile.plots_by_id())
+        if unknown_plots:
+            raise ConfigurationError("Unknown presentation.plot_series_overrides plots: " + ", ".join(sorted(unknown_plots)))
 
     # Selection flags may differ between templates sharing the same channel logic.
     overrides = channels.get("plot_overrides", {})
@@ -662,17 +668,29 @@ def _parse_presentation(raw: Any) -> ProfilePresentationConfig | None:
         return None
     if not isinstance(raw, dict):
         raise ConfigurationError("presentation must be a YAML mapping")
-    _reject_unknown_keys(raw, {"footer", "powerpoint_template", "metadata_pills", "slides"}, "presentation")
+    _reject_unknown_keys(raw, {"footer", "powerpoint_template", "metadata_pills", "slides", "plot_series_overrides"}, "presentation")
     slides_raw = raw.get("slides", [])
     if not isinstance(slides_raw, list):
         raise ConfigurationError("presentation.slides must be a YAML list")
     slides = tuple(_parse_presentation_slide(item, index) for index, item in enumerate(slides_raw, 1))
     _reject_duplicates((item.slide_id for item in slides), "presentation slide IDs")
+    overrides_raw = raw.get("plot_series_overrides", {})
+    if not isinstance(overrides_raw, dict):
+        raise ConfigurationError("presentation.plot_series_overrides must be a YAML mapping")
+    overrides = {}
+    for plot_id, series_raw in overrides_raw.items():
+        context = f"presentation.plot_series_overrides.{plot_id}"
+        if not isinstance(plot_id, str) or not _IDENTIFIER.fullmatch(plot_id):
+            raise ConfigurationError("presentation.plot_series_overrides keys must be plot IDs")
+        if not isinstance(series_raw, list) or not series_raw:
+            raise ConfigurationError(f"{context} must be a non-empty YAML list")
+        overrides[plot_id] = tuple(_parse_plot_series(item, context, index) for index, item in enumerate(series_raw, 1))
     return ProfilePresentationConfig(
         footer=_optional_string(raw.get("footer"), "presentation.footer"),
         powerpoint_template=_optional_string(raw.get("powerpoint_template"), "presentation.powerpoint_template"),
         metadata_pills=_parse_string_tuple(raw.get("metadata_pills", []), "presentation.metadata_pills"),
         slides=slides,
+        plot_series_overrides=overrides,
     )
 
 
