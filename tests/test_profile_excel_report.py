@@ -68,10 +68,12 @@ def test_profile_excel_report_generates_reopenable_electric_workbook(electric_re
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
         "Metadata",
+        "Statistics",
     ]
     assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "visible"] == [
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
+        "Statistics",
     ]
     assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "hidden"] == ["Metadata"]
 

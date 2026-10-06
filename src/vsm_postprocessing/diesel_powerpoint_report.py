@@ -24,8 +24,8 @@ _SLIDES = {
     "system_overview": (2, "overview", "System & Simulation Overview", "Diesel profile and source-data context"),
     "executive_results": (3, "kpi_grid", "Executive Results", "Vehicle, engine and fuel results from the validated profile"),
     "vehicle_operation": (4, "plot_full", "Vehicle Operation", "Measured speed and road gradient over the drive cycle"),
-    "diesel_engine": (5, "plot_pair", "Diesel Engine Performance", "Engine speed, torque and signed mechanical power; negative overrun retained"),
-    "diesel_fuel_energy": (6, "plot_pair", "Fuel Consumption & Mechanical Energy", "Cumulative fuel mass, volumetric flow and net signed engine energy"),
+    "diesel_engine": (5, "plot_pair", "Diesel Engine Performance", "Engine speed, torque and mechanical power; negative overrun retained"),
+    "diesel_fuel_energy": (6, "plot_pair", "Fuel Consumption & Mechanical Energy", "Cumulative fuel mass, volumetric flow and net engine energy"),
     "diesel_driveline": (7, "plot_pair", "Driveline & Wheel Loads", "Corner driveshaft torques and total tyre vertical loads"),
     "diesel_controls": (8, "plot_pair", "Engine Load & Throttle", "Source engine load torque [Nm] and throttle command [%]"),
     "diesel_thermal": (9, "plot_full", "Engine Thermal Behaviour", "Source oil temperature; no derived thermal assessment"),
@@ -37,7 +37,7 @@ _LABELS = {
     "chassis_speed_max": "MAX SPEED", "fuel_consumed_kg": "FUEL CONSUMED",
     "engine_speed_max": "MAX ENGINE SPEED", "engine_speed_average": "AVG ENGINE SPEED",
     "engine_torque_max": "MAX ENGINE TORQUE", "engine_power_max": "MAX ENGINE POWER",
-    "engine_power_min": "MIN SIGNED POWER", "engine_power_rms": "ENGINE POWER RMS",
+    "engine_power_min": "MIN ENGINE POWER", "engine_power_rms": "ENGINE POWER RMS",
     "engine_mechanical_energy_last": "NET MECHANICAL ENERGY",
     "fuel_volume_last": "INTEGRATED FUEL VOLUME", "fuel_flow_average": "AVG FUEL FLOW",
     "fuel_flow_max": "MAX FUEL FLOW", "engine_load_max": "MAX ENGINE LOAD TORQUE",
@@ -79,7 +79,7 @@ def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_fil
         "simulation_summary": (
             f"Run covered {value('distance_km')} in {value('drive_cycle_minutes')}; maximum speed {value('chassis_speed_max')}.",
             f"Fuel consumed: {value('fuel_consumed_kg')}; net mechanical energy: {value('engine_mechanical_energy_last')}.",
-            f"Signed power ranged from {value('engine_power_min')} to {value('engine_power_max')}; maximum engine speed {value('engine_speed_max')}.",
+            f"Engine power ranged from {value('engine_power_min')} to {value('engine_power_max')}; maximum engine speed {value('engine_speed_max')}.",
             "Results describe this simulation; acceptance conclusions require explicit engineering criteria.",
         ),
     }

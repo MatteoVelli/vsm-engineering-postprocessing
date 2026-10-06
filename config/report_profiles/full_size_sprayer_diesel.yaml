@@ -182,6 +182,164 @@ channels:
     unit: Nm
     required: false
     for_plot: true
+  - semantic_name: track_reference_position_x
+    source_name: Track_ReferencePosition_X
+    report_name: Road ReferencePosition X
+    channel_type: VSM
+    unit: m
+    required: false
+  - semantic_name: track_reference_position_y
+    source_name: Track_ReferencePosition_Y
+    report_name: Road ReferencePosition Y
+    channel_type: VSM
+    unit: m
+    required: false
+  - semantic_name: accelerator_pedal
+    source_name: Driver_AcceleratorPedal
+    report_name: Accelerator Pedal
+    channel_type: VSM
+    unit: '%'
+    required: false
+    for_plot: true
+  - semantic_name: brake_pedal
+    source_name: Driver_BrakePedal
+    report_name: Brake Pedal
+    channel_type: VSM
+    unit: '%'
+    required: false
+    for_plot: true
+  - semantic_name: brake_pressure_front
+    source_name: Brake_Pressure_Front
+    report_name: Brake Pressure FT
+    channel_type: VSM
+    unit: bar
+    required: false
+  - semantic_name: brake_pressure_rear
+    source_name: Brake_Pressure_Rear
+    report_name: Brake Pressure RR
+    channel_type: VSM
+    unit: bar
+    required: false
+  - semantic_name: steering_wheel_angle
+    source_name: Driver_HandWheel_Angle
+    report_name: Steering Wheel Angle
+    channel_type: VSM
+    unit: deg
+    required: false
+    for_plot: true
+  - semantic_name: agrochemical_discharge_force
+    source_name: HitchRear_Force_Z_VehicleCoordinates
+    report_name: Agrochemical Discharge
+    channel_type: VSM
+    unit: N
+    required: false
+    aliases:
+    - Agrochemical Discharge
+    for_plot: true
+    notes: Same proven force source as Electric/Hybrid; the Diesel template uses the report label as its source name.
+  - semantic_name: tyre_rolling_resistance_force_fl
+    source_name: Tyre_RollingResistanceForce_FL
+    report_name: Tyre Rolling Resistance Force FL
+    channel_type: VSM
+    unit: N
+    required: false
+  - semantic_name: tyre_rolling_resistance_power_fl
+    source_name: Tyre_RollingResistancePower_FL
+    report_name: Tyre Rolling Resistance Power FL
+    channel_type: VSM
+    unit: kW
+    required: false
+    for_plot: true
+  - semantic_name: wheel_speed_fl
+    source_name: Wheel_RotationalSpeed_FL
+    report_name: Wheel Speed FL
+    channel_type: VSM
+    unit: rpm
+    required: false
+    for_plot: true
+  - semantic_name: tyre_rolling_resistance_force_fr
+    source_name: Tyre_RollingResistanceForce_FR
+    report_name: Tyre Rolling Resistance Force FR
+    channel_type: VSM
+    unit: N
+    required: false
+  - semantic_name: tyre_rolling_resistance_power_fr
+    source_name: Tyre_RollingResistancePower_FR
+    report_name: Tyre Rolling Resistance Power FR
+    channel_type: VSM
+    unit: kW
+    required: false
+    for_plot: true
+  - semantic_name: wheel_speed_fr
+    source_name: Wheel_RotationalSpeed_FR
+    report_name: Wheel Speed FR
+    channel_type: VSM
+    unit: rpm
+    required: false
+    for_plot: true
+  - semantic_name: tyre_rolling_resistance_force_rl
+    source_name: Tyre_RollingResistanceForce_RL
+    report_name: Tyre Rolling Resistance Force RL
+    channel_type: VSM
+    unit: N
+    required: false
+  - semantic_name: tyre_rolling_resistance_power_rl
+    source_name: Tyre_RollingResistancePower_RL
+    report_name: Tyre Rolling Resistance Power RL
+    channel_type: VSM
+    unit: kW
+    required: false
+    for_plot: true
+  - semantic_name: wheel_speed_rl
+    source_name: Wheel_RotationalSpeed_RL
+    report_name: Wheel Speed RL
+    channel_type: VSM
+    unit: rpm
+    required: false
+    for_plot: true
+  - semantic_name: tyre_rolling_resistance_force_rr
+    source_name: Tyre_RollingResistanceForce_RR
+    report_name: Tyre Rolling Resistance Force RR
+    channel_type: VSM
+    unit: N
+    required: false
+  - semantic_name: tyre_rolling_resistance_power_rr
+    source_name: Tyre_RollingResistancePower_RR
+    report_name: Tyre Rolling Resistance Power RR
+    channel_type: VSM
+    unit: kW
+    required: false
+    for_plot: true
+  - semantic_name: wheel_speed_rr
+    source_name: Wheel_RotationalSpeed_RR
+    report_name: Wheel Speed RR
+    channel_type: VSM
+    unit: rpm
+    required: false
+    for_plot: true
+  - semantic_name: auxiliary_low_voltage_power
+    source_name: ElectricSystem_Auxiliary_LowVoltagePowerConsumption
+    report_name: Auxiliary Low Voltage Power Consumption
+    channel_type: VSM
+    unit: kW
+    required: false
+    notes: Low-voltage auxiliaries are a Diesel template channel; this does not select battery or EDU channels.
+  - semantic_name: engine_auxiliary_torque_1
+    source_name: Engine_AuxiliaryTorque_1
+    report_name: Generator Torque_1
+    channel_type: VSM
+    unit: Nm
+    required: false
+    notes: Torque source for Diesel mechanical auxiliaries. Template Generator Torque_2 incorrectly repeats source
+      _1; use distinct _2.
+  - semantic_name: engine_auxiliary_torque_2
+    source_name: Engine_AuxiliaryTorque_2
+    report_name: Generator Torque_2
+    channel_type: VSM
+    unit: Nm
+    required: false
+    notes: Torque source for Diesel mechanical auxiliaries. Template Generator Torque_2 incorrectly repeats source
+      _1; use distinct _2.
   math:
   - semantic_name: engine_power
     source_name: Engine Power
@@ -213,6 +371,187 @@ channels:
     - track_time
     expression: cumulative_trapezoid(fuel_flow, track_time) / 3600.0
     notes: Estimated from sampled l/h flow over elapsed seconds, without mass/density conversion.
+  - semantic_name: time_minutes
+    source_name: Time
+    report_name: Time (min)
+    unit: min
+    required: false
+    dependencies:
+    - track_time
+    expression: track_time / 60.0
+    for_plot: true
+  - semantic_name: distance_km
+    source_name: Distance
+    report_name: Distance (Km)
+    unit: km
+    required: false
+    dependencies:
+    - track_distance
+    expression: track_distance / 1000.0
+    for_plot: true
+  - semantic_name: engine_energy_delivered
+    source_name: Engine Energy Delivered [kWh]
+    report_name: Engine Energy Delivered [kWh]
+    unit: kWh
+    required: false
+    dependencies:
+    - engine_power
+    - track_time
+    expression: sample_energy_kwh(engine_power, track_time)
+    notes: Template per-interval energy, distinct from preserved baseline cumulative trapezoidal net energy. Uses
+      actual intervals; first interval follows existing sample_energy_kwh convention.
+  - semantic_name: agrochemical_discharge
+    source_name: Agrochemical Discharge
+    report_name: Agrochemical Discharge
+    unit: kg
+    required: false
+    dependencies:
+    - agrochemical_discharge_force
+    expression: -agrochemical_discharge_force / 9.80665
+    for_plot: true
+    notes: Diesel template gravity conversion; preserve the force sign and do not claim discharged mass from a static
+      hitch load.
+  - semantic_name: total_rolling_resistance_power
+    source_name: Total Rolling Resistance Power
+    report_name: Total Rolling Resistance Power
+    unit: kW
+    required: false
+    dependencies:
+    - tyre_rolling_resistance_power_fl
+    - tyre_rolling_resistance_power_fr
+    - tyre_rolling_resistance_power_rl
+    - tyre_rolling_resistance_power_rr
+    expression: tyre_rolling_resistance_power_fl + tyre_rolling_resistance_power_fr + tyre_rolling_resistance_power_rl
+      + tyre_rolling_resistance_power_rr
+  - semantic_name: tyre_rolling_resistance_energy_kwh
+    source_name: Tyre Rolling Resistance Energy [kWh]
+    report_name: Tyre Rolling Resistance Energy [kWh]
+    unit: kWh
+    required: false
+    dependencies:
+    - total_rolling_resistance_power
+    - track_time
+    expression: sample_energy_kwh(total_rolling_resistance_power, track_time)
+    notes: Template per-interval energy; actual sample intervals replace the hardcoded one-second interval.
+  - semantic_name: tyre_rolling_resistance_energy_wh
+    source_name: Tyre Rolling Resistance Energy [Wh]
+    report_name: Tyre Rolling Resistance Energy [Wh]
+    unit: Wh
+    required: false
+    dependencies:
+    - tyre_rolling_resistance_energy_kwh
+    expression: tyre_rolling_resistance_energy_kwh * 1000.0
+    for_plot: true
+  - semantic_name: tyre_rolling_resistance_energy_accumulated
+    source_name: Tyre Rolling Resistance Energy Accumulated
+    report_name: Tyre Rolling Resistance Energy Accumulated
+    unit: kWh
+    required: false
+    dependencies:
+    - tyre_rolling_resistance_energy_kwh
+    expression: cumulative_sum(tyre_rolling_resistance_energy_kwh)
+    for_plot: true
+    notes: Accumulates every interval once; corrects the template initial forward reference and omitted first interval.
+  - semantic_name: wheel_total_torque
+    source_name: Wheel Total Torque
+    report_name: Wheel Total Torque
+    unit: Nm
+    required: false
+    dependencies:
+    - driveshaft_torque_fl
+    - driveshaft_torque_fr
+    - driveshaft_torque_rl
+    - driveshaft_torque_rr
+    expression: driveshaft_torque_fl + driveshaft_torque_fr + driveshaft_torque_rl + driveshaft_torque_rr
+    for_plot: true
+  - semantic_name: wheel_power_fl
+    source_name: Wheel Power FL
+    report_name: Wheel Power FL
+    unit: kW
+    required: false
+    dependencies:
+    - wheel_speed_fl
+    - driveshaft_torque_fl
+    expression: wheel_speed_fl * driveshaft_torque_fl * 2.0 * 3.141592653589793 / 60000.0
+    for_plot: true
+    notes: Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+  - semantic_name: wheel_power_fr
+    source_name: Wheel Power FR
+    report_name: Wheel Power FR
+    unit: kW
+    required: false
+    dependencies:
+    - wheel_speed_fr
+    - driveshaft_torque_fr
+    expression: wheel_speed_fr * driveshaft_torque_fr * 2.0 * 3.141592653589793 / 60000.0
+    for_plot: true
+    notes: Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+  - semantic_name: wheel_power_rl
+    source_name: Wheel Power RL
+    report_name: Wheel Power RL
+    unit: kW
+    required: false
+    dependencies:
+    - wheel_speed_rl
+    - driveshaft_torque_rl
+    expression: wheel_speed_rl * driveshaft_torque_rl * 2.0 * 3.141592653589793 / 60000.0
+    for_plot: true
+    notes: Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+  - semantic_name: wheel_power_rr
+    source_name: Wheel Power RR
+    report_name: Wheel Power RR
+    unit: kW
+    required: false
+    dependencies:
+    - wheel_speed_rr
+    - driveshaft_torque_rr
+    expression: wheel_speed_rr * driveshaft_torque_rr * 2.0 * 3.141592653589793 / 60000.0
+    for_plot: true
+    notes: Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+  - semantic_name: wheel_power_total
+    source_name: Wheel Power Total
+    report_name: Wheel Power Total
+    unit: kW
+    required: false
+    dependencies:
+    - wheel_power_fl
+    - wheel_power_fr
+    - wheel_power_rl
+    - wheel_power_rr
+    expression: wheel_power_fl + wheel_power_fr + wheel_power_rl + wheel_power_rr
+    for_plot: true
+  - semantic_name: auxiliary_power_1
+    source_name: Auxiliary Power_1
+    report_name: Auxiliary Power_1
+    unit: kW
+    required: false
+    dependencies:
+    - engine_speed
+    - engine_auxiliary_torque_1
+    expression: engine_speed * engine_auxiliary_torque_1 * 2.0 * 3.141592653589793 / 60000.0
+    for_plot: true
+  - semantic_name: auxiliary_power_2
+    source_name: Auxiliary Power_2
+    report_name: Auxiliary Power_2
+    unit: kW
+    required: false
+    dependencies:
+    - engine_speed
+    - engine_auxiliary_torque_2
+    expression: engine_speed * engine_auxiliary_torque_2 * 2.0 * 3.141592653589793 / 60000.0
+    for_plot: true
+  - semantic_name: total_auxiliary_power
+    source_name: Total Auxiliary Power
+    report_name: Total Auxiliary Power
+    unit: kW
+    required: false
+    dependencies:
+    - auxiliary_power_1
+    - auxiliary_power_2
+    expression: auxiliary_power_1 + auxiliary_power_2
+    for_plot: true
+    notes: Matches template mechanical auxiliary total; low-voltage power is exported separately and not added to
+      this total.
 statistics:
 - statistic_id: track_time_first
   target: track_time
@@ -502,6 +841,36 @@ statistics:
   display_name: Driveshaft Torque RR RMS
   required: false
   placement_group: diesel_chassis
+- statistic_id: chassis_acceleration_longitudinal_max
+  target: chassis_acceleration_longitudinal
+  operation: max
+  display_name: Longitudinal Acceleration MAX
+  required: false
+  placement_group: diesel_template
+- statistic_id: agrochemical_discharge_max
+  target: agrochemical_discharge
+  operation: max
+  display_name: Agrochemical Mass MAX
+  required: false
+  placement_group: diesel_template
+- statistic_id: wheel_power_total_max
+  target: wheel_power_total
+  operation: max
+  display_name: Wheel Power Total MAX
+  required: false
+  placement_group: diesel_template
+- statistic_id: total_auxiliary_power_max
+  target: total_auxiliary_power
+  operation: max
+  display_name: Total Auxiliary Power MAX
+  required: false
+  placement_group: diesel_template
+- statistic_id: tyre_rolling_resistance_energy_accumulated_last
+  target: tyre_rolling_resistance_energy_accumulated
+  operation: last
+  display_name: Rolling Resistance Energy LAST
+  required: false
+  placement_group: diesel_template
 kpis:
 - kpi_id: drive_cycle_minutes
   expression: (track_time_last - track_time_first) / 60.0
@@ -577,7 +946,7 @@ plots:
     label: Engine Speed
     required: true
 - plot_id: diesel_engine_torque_power
-  title: Engine Torque & Signed Power
+  title: Engine Torque & Power
   order: 3
   x: track_time
   x_label: Time [s]
@@ -587,7 +956,7 @@ plots:
     label: Engine Torque
     required: true
   - semantic_name: engine_power
-    label: Signed Engine Power
+    label: Engine Power
     axis: secondary
     required: true
   secondary_y_label: Engine Power [kW]
@@ -680,6 +1049,129 @@ plots:
     label: Oil Temperature
     required: false
   notes: Oil temperature plotted once; the reference coolant trace is identical. Both raw temperatures remain exported.
+- plot_id: diesel_fuel_vs_distance
+  title: Fuel Consumption Vs Distance
+  order: 11
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Fuel Consumption [kg]
+  series:
+  - semantic_name: engine_fuel_consumption
+    label: Cumulative Fuel Mass
+    axis: primary
+    required: true
+  - semantic_name: fuel_flow
+    label: Fuel Flow
+    axis: secondary
+    required: false
+  reference_chart_number: 1
+  secondary_y_label: Fuel Flow [L/h]
+- plot_id: diesel_rr_power_rl_vs_distance
+  title: Tyre Rolling Resistance Power RL Vs Distance
+  order: 12
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Rolling Resistance Power [kW]
+  series:
+  - semantic_name: tyre_rolling_resistance_power_rl
+    label: Rolling Resistance Power RL
+    axis: primary
+    required: false
+  reference_chart_number: 2
+- plot_id: diesel_speed_vs_time_minutes
+  title: Speed Vs Time
+  order: 13
+  x: time_minutes
+  x_label: Time [min]
+  primary_y_label: Vehicle Speed [kph]
+  series:
+  - semantic_name: chassis_speed
+    label: Vehicle Speed
+    axis: primary
+    required: true
+  reference_chart_number: 3
+- plot_id: diesel_engine_wheel_power_vs_distance
+  title: Engine Power and at Wheels
+  order: 14
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Power [kW]
+  series:
+  - semantic_name: engine_power
+    label: Engine Power
+    axis: primary
+    required: true
+  - semantic_name: wheel_power_total
+    label: Wheel Power Total
+    axis: primary
+    required: true
+  - semantic_name: wheel_power_rl
+    label: Wheel Power RL
+    axis: primary
+    required: true
+  reference_chart_number: 4
+- plot_id: diesel_auxiliary_power_vs_distance
+  title: Auxiliary Power
+  order: 15
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Auxiliary Power [kW]
+  series:
+  - semantic_name: total_auxiliary_power
+    label: Total Auxiliary Power
+    axis: primary
+    required: true
+  - semantic_name: auxiliary_power_1
+    label: Auxiliary Power 1
+    axis: primary
+    required: true
+  - semantic_name: auxiliary_power_2
+    label: Auxiliary Power 2
+    axis: primary
+    required: true
+  reference_chart_number: 5
+  evidence: Corrects chart5 auxiliary_2 x extent typo 117876; all series use the current aligned distance samples.
+- plot_id: diesel_agrochemical_vs_distance
+  title: Agrochemical Discharge-Charge Cycle Vs Distance
+  order: 16
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Agrochemical Mass [kg]
+  series:
+  - semantic_name: agrochemical_discharge
+    label: Agrochemical Mass
+    axis: primary
+    required: false
+  reference_chart_number: 6
+- plot_id: diesel_fuel_vs_time_minutes
+  title: Fuel Consumption Vs Time
+  order: 17
+  x: time_minutes
+  x_label: Time [min]
+  primary_y_label: Fuel Consumption [kg]
+  series:
+  - semantic_name: engine_fuel_consumption
+    label: Cumulative Fuel Mass
+    axis: primary
+    required: true
+  - semantic_name: fuel_flow
+    label: Fuel Flow
+    axis: secondary
+    required: false
+  reference_chart_number: 7
+  secondary_y_label: Fuel Flow [L/h]
+- plot_id: diesel_agrochemical_vs_time_minutes
+  title: Agrochemical Discharge-Charge Cycle Vs Time
+  order: 18
+  x: time_minutes
+  x_label: Time [min]
+  primary_y_label: Agrochemical Mass [kg]
+  series:
+  - semantic_name: agrochemical_discharge
+    label: Agrochemical Mass
+    axis: primary
+    required: false
+  reference_chart_number: 8
 presentation:
   footer: VSM Engineering Post-Processing Tool
   slides:

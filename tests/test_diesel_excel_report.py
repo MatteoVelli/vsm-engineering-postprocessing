@@ -23,7 +23,7 @@ from vsm_postprocessing.report_profile import load_reporting_profile
 CHARTS = [
     ("Vehicle Speed & Road Gradient", ["chassis_speed", "track_gradient"], ["Vehicle Speed [kph]", "Road Gradient [%]"]),
     ("Engine Speed", ["engine_speed"], ["Engine Speed [rpm]"]),
-    ("Engine Torque & Signed Power", ["engine_torque", "engine_power"], ["Engine Torque [Nm]", "Engine Power [kW]"]),
+    ("Engine Torque & Power", ["engine_torque", "engine_power"], ["Engine Torque [Nm]", "Engine Power [kW]"]),
     ("Engine Load Torque", ["engine_load"], ["Engine Load [Nm]"]),
     ("Engine Throttle", ["engine_throttle"], ["Engine Throttle [%]"]),
     ("Fuel Flow", ["fuel_flow"], ["Fuel Flow [L/h]"]),
@@ -62,19 +62,19 @@ def _summary(sheet, report):
 def test_reference_workbook_selection_and_units(diesel_report, workbook):
     assert workbook.sheetnames == ["Full Size Sprayer Diesel", "Rename From VSM to Astauto", "Metadata", "Statistics"]
     assert workbook["Metadata"].sheet_state == "hidden"
-    assert diesel_report.sample_count == 223 and diesel_report.report_channel_count == 27
+    assert diesel_report.sample_count == 223 and diesel_report.report_channel_count == 67
     assert_universal_bottom_statistics(diesel_report.report_path, diesel_report.sample_count)
-    assert (diesel_report.vsm_count, diesel_report.math_count, diesel_report.statistic_count, diesel_report.kpi_count) == (24, 3, 46, 5)
+    assert (diesel_report.vsm_count, diesel_report.math_count, diesel_report.statistic_count, diesel_report.kpi_count) == (47, 20, 51, 5)
     ids = _columns(diesel_report)
     assert "track_height" not in ids
-    assert not any("electric" in c.source_name.lower() or "battery" in c.source_name.lower() for c in diesel_report.report_channels)
+    assert not any("electricsystem_em" in c.source_name.lower() or "battery" in c.source_name.lower() for c in diesel_report.report_channels)
     sheet = workbook.worksheets[0]
     for name, unit in [("engine_torque", "Nm"), ("engine_load", "Nm"), ("engine_speed", "rpm"), ("engine_power", "kW"), ("fuel_flow", "l/h"), ("engine_fuel_consumption", "kg"), ("engine_mechanical_energy", "kWh"), ("fuel_volume", "l")]:
         assert sheet.cell(4, ids[name]).value == unit
     mapping = workbook["Rename From VSM to Astauto"]
-    assert [mapping.cell(r, 3).value for r in range(3, 30)].count("MATH") == 3
-    assert "cumulative_trapezoid" in mapping.cell(28, 8).value
-    assert sheet.cell(1, 29).value == "Maximum Vehicle Speed [kph]"
+    assert [mapping.cell(r, 3).value for r in range(3, diesel_report.report_channel_count + 3)].count("MATH") == 20
+    assert "cumulative_trapezoid" in mapping.cell(ids["engine_mechanical_energy"] + 2, 8).value
+    assert sheet.cell(1, diesel_report.report_channel_count + 2).value == "Maximum Vehicle Speed [kph]"
     manifest = json.loads(diesel_report.manifest_path.read_text(encoding="utf-8"))
     assert manifest["visible_sheet_names"] == [s.title for s in workbook if s.sheet_state == "visible"]
 
@@ -146,18 +146,18 @@ def test_native_chart_series_units_and_signed_axes(diesel_report, workbook, inde
 
 def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     sheet = workbook.worksheets[0]
-    assert len(sheet._charts) == 10 and not sheet._images
+    assert len(sheet._charts) == 18 and not sheet._images
     assert sheet.freeze_panes == "B6"
     assert sheet["A3"].fill.fgColor.rgb.endswith("1F4E78")
-    assert sheet["Y3"].fill.fgColor.rgb.endswith("C65911")
-    assert sheet["AC1"].font.color.rgb.endswith("FFFFFF")
-    assert sheet["AC2"].number_format == "0.000"
-    assert sheet.column_dimensions["AC"].width == 13
+    assert sheet.cell(3, _columns(diesel_report)["engine_power"]).fill.fgColor.rgb.endswith("C65911")
+    assert sheet.cell(1, diesel_report.report_channel_count + 2).font.color.rgb.endswith("FFFFFF")
+    assert sheet.cell(2, diesel_report.report_channel_count + 2).number_format == "0.000"
+    assert sheet.column_dimensions[get_column_letter(diesel_report.report_channel_count + 2)].width == 13
     assert "AC1:AQ1" not in {str(r) for r in sheet.merged_cells.ranges}
     assert sheet.row_dimensions[3].height == 60
     assert workbook["Statistics"].column_dimensions["D"].width == 42
     for i, chart in enumerate(sheet._charts):
-        assert (chart.anchor._from.col, chart.anchor._from.row) == (28 + (i % 2) * 8, 2 + (i // 2) * 20)
+        assert (chart.anchor._from.col, chart.anchor._from.row) == (diesel_report.report_channel_count + 1 + (i % 2) * 8, 2 + (i // 2) * 20)
         assert chart.anchor.ext.cx / 914400 == pytest.approx(637 / 96)
         assert chart.anchor.ext.cy / 914400 == pytest.approx(3.75)
         assert chart.layout.manualLayout.x == pytest.approx(0.13)
@@ -169,7 +169,7 @@ def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     assert 637 < 8 * 91 and 3.75 * 72 < 20 * 15
     with ZipFile(diesel_report.report_path) as archive:
         files = archive.namelist()
-        assert len([p for p in files if p.startswith("xl/charts/chart") and p.endswith(".xml")]) == 10
+        assert len([p for p in files if p.startswith("xl/charts/chart") and p.endswith(".xml")]) == 18
         assert not any(p.startswith("xl/media/") or p.startswith("xl/externalLinks/") for p in files)
         for path in files:
             if path.endswith(".xml"):
@@ -177,7 +177,7 @@ def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     assert not any(c.data_type == "e" for s in workbook for row in s for c in row)
 
 
-@pytest.mark.parametrize("missing,expected_charts", [("all", 4), ("fuel_flow", 9), ("engine_load", 9), ("engine_throttle", 9), ("engine_oil_temperature", 9), ("driveshaft_torque_fl", 10)])
+@pytest.mark.parametrize("missing,expected_charts", [("all", 7), ("fuel_flow", 17), ("engine_load", 17), ("engine_throttle", 17), ("engine_oil_temperature", 17), ("driveshaft_torque_fl", 17)])
 def test_missing_optional_channels_omit_only_dependent_outputs(tmp_path, missing, expected_charts):
     profile = load_reporting_profile(PROFILE_PATH)
     omitted = [c.semantic_name for c in profile.raw_channels if not c.required] if missing == "all" else [missing, "track_height"]
@@ -193,15 +193,15 @@ def test_missing_optional_channels_omit_only_dependent_outputs(tmp_path, missing
         assert "fuel_volume" not in _columns(result)
         assert "Average Fuel Flow [l/h]" not in _summary(book.worksheets[0], result)
     if missing == "all":
-        assert result.report_channel_count == 9
+        assert result.report_channel_count == 12
     book.close()
 
 
 def test_optional_height_is_exported_when_available(tmp_path):
     profile = load_reporting_profile(PROFILE_PATH)
     result = generate_profile_excel_report(_source(tmp_path, profile), PROFILE_PATH, tmp_path / "report")
-    assert result.statistic_count == 48 and "track_height" in _columns(result)
-    assert result.plot_count == 10
+    assert result.statistic_count == 53 and "track_height" in _columns(result)
+    assert result.plot_count == 18
 
 
 def test_powerpoint_reuses_and_preserves_the_excel_workbook(diesel_report, tmp_path):

@@ -108,6 +108,9 @@ def test_two_column_profile_layout_and_presentation_rules(tmp_path, plot_count):
         anchor = chart.anchor._from
         assert chart.anchor.ext.cx / 914400 == pytest.approx(637 / 96)
         assert chart.anchor.ext.cy / 914400 == pytest.approx(3.75)
+        assert chart.layout.manualLayout.layoutTarget == "inner"
+        assert (chart.layout.manualLayout.x, chart.layout.manualLayout.y,
+                chart.layout.manualLayout.w, chart.layout.manualLayout.h) == pytest.approx((0.13, 0.14, 0.74, 0.64))
         assert "".join(r.t for p in chart.title.tx.rich.p for r in p.r) == definitions[i].title
         assert chart.title.txPr.p[0].pPr.defRPr.sz == 1400
         assert chart.title.txPr.p[0].pPr.defRPr.solidFill.srgbClr == "1F4E78"
@@ -125,6 +128,9 @@ def test_two_column_profile_layout_and_presentation_rules(tmp_path, plot_count):
             assert axis.majorGridlines.spPr.ln.w == 6350
             assert not axis.majorGridlines.spPr.ln.noFill
         for component in chart._charts:
+            title_layout = component.y_axis.title.layout.manualLayout
+            assert title_layout.x == pytest.approx(0.96 if component.y_axis.axPos == "r" else 0.01)
+            assert (title_layout.y, title_layout.w, title_layout.h) == pytest.approx((0.20, 0.035, 0.60))
             for axis in (component.x_axis, component.y_axis):
                 assert axis.numFmt.formatCode == '0.00'
                 assert axis.numFmt.sourceLinked is False

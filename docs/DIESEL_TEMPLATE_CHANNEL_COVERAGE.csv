@@ -1,0 +1,57 @@
+template_row,template_source,template_label,type,semantic_name,source_name,report_name,unit,notes
+3,Track_Time,Time (s),VSM,track_time,Track_Time,Time,s,
+4,Time,Time (min),MATH,time_minutes,Time,Time (min),min,
+5,Chassis_Acceleration_Longitudinal,Longitudinal Acceleration,VSM,chassis_acceleration_longitudinal,Chassis_Acceleration_Longitudinal,Longitudinal Acceleration,m/s^2,
+6,Chassis_Acceleration_Vertical,Vertical Acceleration,VSM,chassis_acceleration_vertical,Chassis_Acceleration_Vertical,Vertical Acceleration,m/s^2,
+7,Chassis_Speed,Speed,VSM,chassis_speed,Chassis_Speed,Vehicle Speed,kph,
+8,Track_Distance,Distance (m),VSM,track_distance,Track_Distance,Distance,m,
+9,Distance,Distance (Km),MATH,distance_km,Distance,Distance (Km),km,
+10,Track_Gradient,Road Gradient,VSM,track_gradient,Track_Gradient,Road Gradient,%,
+11,Track_ReferencePosition_X,Road ReferencePosition X,VSM,track_reference_position_x,Track_ReferencePosition_X,Road ReferencePosition X,m,
+12,Track_ReferencePosition_Y,Road ReferencePosition Y,VSM,track_reference_position_y,Track_ReferencePosition_Y,Road ReferencePosition Y,m,
+13,Driver_AcceleratorPedal,Accelerator Pedal,VSM,accelerator_pedal,Driver_AcceleratorPedal,Accelerator Pedal,%,
+14,Driver_BrakePedal,Brake Pedal,VSM,brake_pedal,Driver_BrakePedal,Brake Pedal,%,
+15,Brake_Pressure_Front,Brake Pressure FT,VSM,brake_pressure_front,Brake_Pressure_Front,Brake Pressure FT,bar,
+16,Brake_Pressure_Rear,Brake Pressure RR,VSM,brake_pressure_rear,Brake_Pressure_Rear,Brake Pressure RR,bar,
+17,Driver_HandWheel_Angle,Steering Wheel Angle,VSM,steering_wheel_angle,Driver_HandWheel_Angle,Steering Wheel Angle,deg,
+18,Engine Fuel Consumption_absolut,Engine Fuel Consumption,VSM,engine_fuel_consumption,Engine_FuelConsumption_absolut,Cumulative Fuel Mass,kg,"Monotonic source counter; consumed mass is last minus first, including nonzero initial counters."
+19,Engine_FuelConsumption_specific,Engine Fuel Consumption specific,VSM,fuel_specific,Engine_FuelConsumption_specific,Source Specific Fuel Consumption,g/kWh,"Source operating-point signal only; not a cycle BSFC KPI, especially during negative shaft power."
+20,Engine_FuelConsumption_volumeflow,Fuel Flow,VSM,fuel_flow,Engine_FuelConsumption_volumeflow,Volumetric Fuel Flow,l/h,Instantaneous source flow. Integrated directly without a density assumption.
+21,Engine_Speed,Engine Speed,VSM,engine_speed,Engine_Speed,Engine Speed,rpm,
+22,Engine_Torque,Engine Torque,VSM,engine_torque,Engine_Torque,Engine Torque,Nm,"Signed shaft torque. Negative mechanical power is retained, including overrun."
+23,Engine Power Required,Engine Power Required,MATH,engine_power,Engine Power,Engine Power,kW,Exact SI conversion using the double-precision value of pi; deliberately independent of the legacy Hybrid divisor.
+24,Engine Energy Delivered [kWh],Engine Energy Delivered [kWh],MATH,engine_energy_delivered,Engine Energy Delivered [kWh],Engine Energy Delivered [kWh],kWh,"Template per-interval energy, distinct from preserved baseline cumulative trapezoidal net energy. Uses actual intervals; first interval follows existing sample_energy_kwh convention."
+25,Agrochemical Discharge,Agrochemical Discharge,VSM,agrochemical_discharge_force,HitchRear_Force_Z_VehicleCoordinates,Agrochemical Discharge,N,Same proven force source as Electric/Hybrid; the Diesel template uses the report label as its source name.
+26,Agrochemical Discharge,Agrochemical Discharge,MATH,agrochemical_discharge,Agrochemical Discharge,Agrochemical Discharge,kg,Diesel template gravity conversion; preserve the force sign and do not claim discharged mass from a static hitch load.
+27,Tyre_RollingResistanceForce_FL,Tyre Rolling Resistance Force FL,VSM,tyre_rolling_resistance_force_fl,Tyre_RollingResistanceForce_FL,Tyre Rolling Resistance Force FL,N,
+28,Tyre_RollingResistanceForce_FR,Tyre Rolling Resistance Force FR,VSM,tyre_rolling_resistance_force_fr,Tyre_RollingResistanceForce_FR,Tyre Rolling Resistance Force FR,N,
+29,Tyre_RollingResistanceForce_RL,Tyre Rolling Resistance Force RL,VSM,tyre_rolling_resistance_force_rl,Tyre_RollingResistanceForce_RL,Tyre Rolling Resistance Force RL,N,
+30,Tyre_RollingResistanceForce_RR,Tyre Rolling Resistance Force RR,VSM,tyre_rolling_resistance_force_rr,Tyre_RollingResistanceForce_RR,Tyre Rolling Resistance Force RR,N,
+31,Tyre_RollingResistancePower_FL,Tyre Rolling Resistance Power FL,VSM,tyre_rolling_resistance_power_fl,Tyre_RollingResistancePower_FL,Tyre Rolling Resistance Power FL,kW,
+32,Tyre_RollingResistancePower_FR,Tyre Rolling Resistance Power FR,VSM,tyre_rolling_resistance_power_fr,Tyre_RollingResistancePower_FR,Tyre Rolling Resistance Power FR,kW,
+33,Tyre_RollingResistancePower_RL,Tyre Rolling Resistance Power RL,VSM,tyre_rolling_resistance_power_rl,Tyre_RollingResistancePower_RL,Tyre Rolling Resistance Power RL,kW,
+34,Tyre_RollingResistancePower_RR,Tyre Rolling Resistance Power FR,VSM,tyre_rolling_resistance_power_rr,Tyre_RollingResistancePower_RR,Tyre Rolling Resistance Power RR,kW,Correct duplicate FR display label to RR; source remains the distinct RR channel.
+35,Total Rolling Resistance Power,Total Rolling Resistance Power,MATH,total_rolling_resistance_power,Total Rolling Resistance Power,Total Rolling Resistance Power,kW,
+36,Tyre Rolling Resistance Energy [kWh],Tyre Rolling Resistance Energy [kWh],MATH,tyre_rolling_resistance_energy_kwh,Tyre Rolling Resistance Energy [kWh],Tyre Rolling Resistance Energy [kWh],kWh,Template per-interval energy; actual sample intervals replace the hardcoded one-second interval.
+37,Tyre Rolling Resistance Energy [Wh],Tyre Rolling Resistance Energy [Wh],MATH,tyre_rolling_resistance_energy_wh,Tyre Rolling Resistance Energy [Wh],Tyre Rolling Resistance Energy [Wh],Wh,
+38,Tyre Rolling Resistance Energy Accomulated,Tyre Rolling Resistance Energy Accomulated,MATH,tyre_rolling_resistance_energy_accumulated,Tyre Rolling Resistance Energy Accumulated,Tyre Rolling Resistance Energy Accumulated,kWh,Accumulates every interval once; corrects the template initial forward reference and omitted first interval.
+39,Wheel_RotationalSpeed_FL,Wheel Speed FL,VSM,wheel_speed_fl,Wheel_RotationalSpeed_FL,Wheel Speed FL,rpm,
+40,Wheel_RotationalSpeed_FR,Wheel Speed FR,VSM,wheel_speed_fr,Wheel_RotationalSpeed_FR,Wheel Speed FR,rpm,
+41,Wheel_RotationalSpeed_RL,Wheel Speed RL,VSM,wheel_speed_rl,Wheel_RotationalSpeed_RL,Wheel Speed RL,rpm,
+42,Wheel_RotationalSpeed_RR,Wheel Speed RR,VSM,wheel_speed_rr,Wheel_RotationalSpeed_RR,Wheel Speed RR,rpm,
+43,DriveShaft_Torque_FL,Wheel Torque FL,VSM,driveshaft_torque_fl,DriveShaft_Torque_FL,Driveshaft Torque FL,Nm,
+44,DriveShaft_Torque_FR,Wheel Torque FR,VSM,driveshaft_torque_fr,DriveShaft_Torque_FR,Driveshaft Torque FR,Nm,
+45,DriveShaft_Torque_RL,Wheel Torque RL,VSM,driveshaft_torque_rl,DriveShaft_Torque_RL,Driveshaft Torque RL,Nm,
+46,DriveShaft_Torque_RR,Wheel Torque RR,VSM,driveshaft_torque_rr,DriveShaft_Torque_RR,Driveshaft Torque RR,Nm,
+47,Wheel Total Torque,Wheel Total Torque,MATH,wheel_total_torque,Wheel Total Torque,Wheel Total Torque,Nm,
+48,Wheel Power FL,Wheel Power FL,MATH,wheel_power_fl,Wheel Power FL,Wheel Power FL,kW,Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+49,Wheel Power FR,Wheel Power FR,MATH,wheel_power_fr,Wheel Power FR,Wheel Power FR,kW,Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+50,Wheel Power RL,Wheel Power RL,MATH,wheel_power_rl,Wheel Power RL,Wheel Power RL,kW,Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+51,Wheel Power RR,Wheel Power RR,MATH,wheel_power_rr,Wheel Power RR,Wheel Power RR,kW,Exact SI conversion consistent with existing Diesel engine power; signed corner shaft power retained.
+52,Wheel Power Total,Wheel Power Total,MATH,wheel_power_total,Wheel Power Total,Wheel Power Total,kW,
+53,ElectricSystem_Auxiliary_LowVoltagePowerConsumption,Auxiliary Low Voltage Power Consumption,VSM,auxiliary_low_voltage_power,ElectricSystem_Auxiliary_LowVoltagePowerConsumption,Auxiliary Low Voltage Power Consumption,kW,Low-voltage auxiliaries are a Diesel template channel; this does not select battery or EDU channels.
+54,Engine_AuxiliaryTorque_1,Generator Torque_1,VSM,engine_auxiliary_torque_1,Engine_AuxiliaryTorque_1,Generator Torque_1,Nm,Torque source for Diesel mechanical auxiliaries. Template Generator Torque_2 incorrectly repeats source _1; use distinct _2.
+55,Auxiliary Power_1,Auxiliary Power_1,MATH,auxiliary_power_1,Auxiliary Power_1,Auxiliary Power_1,kW,
+56,Engine_AuxiliaryTorque_1,Generator Torque_2,VSM,engine_auxiliary_torque_2,Engine_AuxiliaryTorque_2,Generator Torque_2,Nm,Torque source for Diesel mechanical auxiliaries. Template Generator Torque_2 incorrectly repeats source _1; use distinct _2.
+57,Auxiliary Power_2,Auxiliary Power_2,MATH,auxiliary_power_2,Auxiliary Power_2,Auxiliary Power_2,kW,
+58,Total Auxiliary Power,Total Auxiliary Power,MATH,total_auxiliary_power,Total Auxiliary Power,Total Auxiliary Power,kW,Matches template mechanical auxiliary total; low-voltage power is exported separately and not added to this total.

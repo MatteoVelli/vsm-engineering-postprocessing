@@ -534,8 +534,12 @@ def generate_profile_excel_report(
     destination.mkdir(parents=True, exist_ok=True)
     plot_assets_dir = destination / "profile_plot_assets"
     plotting_result = render_profile_plots(dataset, profile, plot_assets_dir, resolution, math_result)
+    required_channels = {
+        channel.semantic_name for channel in (*profile.raw_channels, *profile.math_channels) if channel.required
+    }
     required_unavailable_plots = [
         item for item in plotting_result.unavailable_plots if item.missing_semantic_names
+        and (profile.metadata.powertrain != "diesel" or required_channels.intersection(item.missing_semantic_names))
     ]
     if required_unavailable_plots:
         raise ExcelReportError(
@@ -613,6 +617,7 @@ def _profile_template_file(profile: ReportingProfile, template_file: str | Path 
             raise ExcelReportError(f"Profile Excel template file does not exist: {path}")
         return path
     template_by_profile = {
+        "full_size_sprayer_diesel": "reference_files/Diesel Template.xlsx",
         "robosprayer_electric": "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_05.xlsx",
         "robosprayer_hybrid": "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx",
     }
@@ -629,7 +634,7 @@ def _profile_report_channels(
     *,
     template_file: Path | None = None,
 ) -> list[ChannelInfo]:
-    if template_file is not None:
+    if template_file is not None and profile.metadata.powertrain != "diesel":
         return _profile_report_channels_from_template(profile, channels_by_name, template_file)
 
     channels: list[ChannelInfo] = []
@@ -896,12 +901,12 @@ def _write_profile_workbook(
         white_bold=white_bold,
     )
 
+    statistics_sheet = workbook.create_sheet("Statistics")
+    _write_profile_statistics_sheet(
+        statistics_sheet, statistics_result,
+        border=border, label_fill=label_fill, kpi_fill=kpi_fill, white_bold=white_bold,
+    )
     if profile.metadata.powertrain == "diesel":
-        statistics_sheet = workbook.create_sheet("Statistics")
-        _write_profile_statistics_sheet(
-            statistics_sheet, statistics_result,
-            border=border, label_fill=label_fill, kpi_fill=kpi_fill, white_bold=white_bold,
-        )
         for column, width in (("A", 42), ("B", 42), ("D", 42)):
             statistics_sheet.column_dimensions[column].width = width
         for row in statistics_sheet:
@@ -947,7 +952,7 @@ def _write_profile_report_sheet(
     title.border = border
     sheet.cell(2, 1, f"{client_display_filename(source_path)} | {sample_count} samples | {report_type}").border = border
 
-    _write_profile_rms_blocks(
+    rms_results = _write_profile_rms_blocks(
         sheet,
         statistics_result,
         channel_columns,
@@ -984,7 +989,7 @@ def _write_profile_report_sheet(
         sheet, report_channels, values_by_name, data_start_row, data_end_row,
         operation_rows, style=bottom_style, number_format="0.000",
     )
-    bottom_results = {}
+    bottom_results = dict(rms_results)
     # Configuration still selects summary metrics and additional statistics.
     # It no longer selects which channels receive the four basic Excel results.
     for item in statistics_result.statistics:
@@ -999,6 +1004,7 @@ def _write_profile_report_sheet(
             bottom_results[item.definition.statistic_id] = channel_results[(operation, item.target_channel)]
         elif item.definition.placement_group != "top_rms" and operation in operation_rows:
             cell = sheet.cell(operation_rows[operation], col, item.value)
+            bottom_results[item.definition.statistic_id] = cell.coordinate
             cell.number_format = "0.000"
             for attribute, value in bottom_style.items():
                 setattr(cell, attribute, value)
@@ -1023,7 +1029,6 @@ def _write_profile_report_sheet(
         border=border,
         label_fill=plot_header_fill,
         white_bold=white_bold,
-        diesel_layout=profile.metadata.powertrain == "diesel",
     )
 
     sheet.freeze_panes = "B6"
@@ -1066,8 +1071,9 @@ def _write_profile_rms_blocks(
     title_fill: PatternFill,
     border: Border,
     white_bold: Font,
-) -> None:
+) -> dict[str, str]:
     occupied: list[tuple[int, int]] = []
+    references: dict[str, str] = {}
     for item in statistics_result.statistics:
         if item.definition.placement_group != "top_rms":
             continue
@@ -1077,6 +1083,7 @@ def _write_profile_rms_blocks(
         sheet.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=end_col)
         label = sheet.cell(1, start_col, item.definition.display_name or item.channel_display_name)
         value = sheet.cell(2, value_col, _excel_display_number(item.value))
+        references[item.definition.statistic_id] = value.coordinate
         for col in range(start_col, end_col + 1):
             for row in (1, 2):
                 cell = sheet.cell(row, col)
@@ -1096,6 +1103,7 @@ def _write_profile_rms_blocks(
             write_formula(value, f"=SQRT(SUMSQ({extent})/COUNT({extent}))", item.value)
             if item.channel_unit:
                 value.number_format = f'0.000" {item.channel_unit}"'
+    return references
 
 
 def _non_overlapping_rms_range(
@@ -1140,12 +1148,20 @@ def _write_profile_right_summary(
     label_fill: PatternFill,
     white_bold: Font,
 ) -> None:
+    canonical_references = {
+        item.definition.statistic_id: f"'Statistics'!E{row}"
+        for row, item in enumerate(statistics_result.statistics, start=2)
+    }
+    canonical_references.update({
+        item.definition.kpi_id: f"'Statistics'!C{row}"
+        for row, item in enumerate(statistics_result.kpis, start=len(statistics_result.statistics) + 5)
+    })
     for offset, item in enumerate(_profile_right_summary_items(statistics_result)):
         col = start_col + offset
         label = sheet.cell(start_row, col, item["label"])
-        value = sheet.cell(start_row + 1, col, _excel_display_number(item["value"]))
-        if item["metric_id"] in bottom_results:
-            write_formula(value, "=" + bottom_results[item["metric_id"]], item["value"])
+        value = sheet.cell(start_row + 1, col)
+        reference = bottom_results.get(item["metric_id"], canonical_references[item["metric_id"]])
+        write_formula(value, "=" + reference, item["value"])
         label.fill = label_fill
         label.font = white_bold
         label.border = border
@@ -1286,7 +1302,6 @@ def _write_profile_plots_on_report_sheet(
     border: Border,
     label_fill: PatternFill,
     white_bold: Font,
-    diesel_layout: bool = False,
 ) -> None:
     rendered = _ordered_profile_plots(plotting_result.rendered_plots)
     # Keep data-row heights and the KPI panel above intact. The panel columns
@@ -1315,20 +1330,22 @@ def _write_profile_plots_on_report_sheet(
         _set_native_chart_title(chart, title)
         chart.width = _PROFILE_PLOT_WIDTH_IN * 2.54
         chart.height = _PROFILE_PLOT_HEIGHT_IN * 2.54
-        if diesel_layout:
-            # Excel's automatic dual-axis title placement overlaps tick labels.
-            # Reserve title gutters only for the new Diesel report family.
-            from openpyxl.chart.layout import Layout, ManualLayout
-
-            chart.layout = Layout(manualLayout=ManualLayout(
-                layoutTarget="inner", xMode="edge", yMode="edge", x=0.13, y=0.14, w=0.74, h=0.64,
-            ))
-            for component in chart._charts:
-                component.y_axis.title.layout = Layout(manualLayout=ManualLayout(
-                    xMode="edge", yMode="edge", x=0.96 if component.y_axis.axPos == "r" else 0.01,
-                    y=0.20, w=0.035, h=0.60,
-                ))
+        _apply_profile_chart_layout(chart)
         sheet.add_chart(chart, f"{get_column_letter(col)}{row}")
+
+
+def _apply_profile_chart_layout(chart: ScatterChart) -> None:
+    """Reuse the established Diesel inner plot area and axis-title gutters."""
+    from openpyxl.chart.layout import Layout, ManualLayout
+
+    chart.layout = Layout(manualLayout=ManualLayout(
+        layoutTarget="inner", xMode="edge", yMode="edge", x=0.13, y=0.14, w=0.74, h=0.64,
+    ))
+    for component in chart._charts:
+        component.y_axis.title.layout = Layout(manualLayout=ManualLayout(
+            xMode="edge", yMode="edge", x=0.96 if component.y_axis.axPos == "r" else 0.01,
+            y=0.20, w=0.035, h=0.60,
+        ))
 
 
 def _ordered_profile_plots(rendered_plots: list[Any]) -> list[Any]:
@@ -1607,11 +1624,15 @@ def _write_profile_metadata_sheet(
         ("Configured plots", plotting_result.configured_plot_count),
         ("Rendered plots", plotting_result.rendered_plot_count),
         ("Plot series", plotting_result.series_count),
-        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto" + (", Statistics" if profile.metadata.powertrain == "diesel" else "")),
+        ("Visible sheets", f"{_profile_sheet_name(profile, report_metadata)}, Rename From VSM to Astauto, Statistics"),
         ("Hidden sheets", "Metadata"),
     ]
     if profile.metadata.powertrain == "diesel":
+        reference_file = _profile_template_file(profile, None)
         metadata.extend([
+            ("Excel content reference", "reference_files/Diesel Template.xlsx"),
+            ("Excel reference SHA-256", sha256_file(reference_file) if reference_file else "not installed"),
+            ("Unavailable plots", "; ".join(f"{item.definition.plot_id}: {item.reason}" for item in plotting_result.unavailable_plots) or "none"),
             ("Unavailable optional channels", ", ".join(item.definition.source_name for item in resolution.missing_optional) or "none"),
             ("Unavailable optional statistics", ", ".join(item.definition.statistic_id for item in statistics_result.unavailable_optional_statistics) or "none"),
             ("Unavailable optional KPIs", ", ".join(item.definition.kpi_id for item in statistics_result.unavailable_optional_kpis) or "none"),
@@ -1664,9 +1685,9 @@ def _profile_template_comparison_rows(
 ) -> list[dict[str, str]]:
     if profile.metadata.powertrain == "diesel":
         return [
-            _comparison_row("Channel selection", "Diesel YAML selection", f"{len(report_channels)} available channels", "PASS", "Optional missing channels omitted; no Electric/Hybrid template used."),
-            _comparison_row("Numerical authority", "Verified D1 profile results", f"{statistics_result.calculated_statistic_count} statistics and {statistics_result.calculated_kpi_count} KPIs", "PASS", "Values written directly from canonical profile results."),
-            _comparison_row("Charts", "Native editable scatter charts", f"{plotting_result.rendered_plot_count} available plots", "PASS", "Established Astauto chart dimensions, axes and two-column placement."),
+            _comparison_row("Channel selection", "Diesel Template.xlsx selection and existing Diesel baseline", f"{len(report_channels)} available channels", "PASS", "Baseline channels retained; template additions are optional when source signals are absent."),
+            _comparison_row("Numerical authority", "Existing Diesel calculations plus documented template additions", f"{statistics_result.calculated_statistic_count} statistics and {statistics_result.calculated_kpi_count} KPIs", "PASS", "Summary values reference canonical workbook cells; baseline signed values and exact SI power conversion retained."),
+            _comparison_row("Charts", "10 baseline plots plus 8 Diesel Template.xlsx charts", f"{plotting_result.rendered_plot_count} available plots; {plotting_result.unavailable_plot_count} unavailable", "PASS" if not plotting_result.unavailable_plots else "PARTIAL", "Native editable charts; stale template ranges corrected to actual source sample extents."),
         ]
     channel_counts = _report_channel_type_counts(report_channels)
     return [
@@ -1790,7 +1811,7 @@ def _profile_manifest(
         "plot_series_count": result.plotting_result.series_count,
         "report_channel_ids": [channel.channel_id for channel in result.report_channels],
         "plot_ids": [plot.plot_id for plot in result.plotting_result.rendered_plots],
-        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto"] + (["Statistics"] if result.profile.metadata.powertrain == "diesel" else []),
+        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto", "Statistics"],
         "hidden_sheet_names": ["Metadata"],
     }
 
@@ -2389,7 +2410,6 @@ def _build_native_scatter_chart(
         _style_native_series(series, series_index)
         if item.axis == "secondary":
             has_secondary = True
-            series.graphicalProperties.line.dashStyle = "dash"
             secondary_chart.series.append(series)
         else:
             chart.series.append(series)
@@ -2528,13 +2548,12 @@ def _set_native_chart_title(chart: ScatterChart, title: str) -> None:
             run.rPr = CharacterProperties(sz=1400, solidFill="1F4E78", b=True)
 
 
-# Explicit RGB versions of the existing workbook theme accents travel with copies.
-_NATIVE_SERIES_COLORS = ("4F81BD", "C0504D", "9BBB59", "8064A2", "4BACC6", "F79646")
-
-
 def _style_native_series(series: Any, index: int) -> None:
+    from .plot_colours import series_colour
+
     series.graphicalProperties.line.width = 31750
-    series.graphicalProperties.line.solidFill = _NATIVE_SERIES_COLORS[index % len(_NATIVE_SERIES_COLORS)]
+    series.graphicalProperties.line.solidFill = series_colour(index)
+    series.graphicalProperties.line.dashStyle = "solid"
     series.marker.symbol = "none"
     series.smooth = False
 

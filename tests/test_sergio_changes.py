@@ -303,7 +303,13 @@ def test_october_statistics_formulas_and_summary_dependencies(tmp_path, sample_c
             assert numeric[cell.coordinate].value == pytest.approx(python_value)
             assert numeric[upper.coordinate].value == pytest.approx(python_value)
     if layout in {'electric', 'hybrid'}:
-        assert sheet.cell(4, summary_start + 8).value == max(values) * 3
+        upper = sheet.cell(4, summary_start + 8)
+        statistic_sheet = workbook['Statistics']
+        kpi_row = next(row for row in range(1, statistic_sheet.max_row + 1)
+                       if statistic_sheet.cell(row, 1).value == 'scaled')
+        assert upper.value == f"='Statistics'!C{kpi_row}"
+        assert cached['Statistics'].cell(kpi_row, 3).value == pytest.approx(max(values) * 3)
+        assert numeric[upper.coordinate].value == pytest.approx(max(values) * 3)
         # Unselected raw and MATH channels receive formulas; Time holds labels.
         assert 'unselected' not in {item.definition.target for item in result.statistics_result.statistics}
         assert 'copy_0' not in {item.definition.target for item in result.statistics_result.statistics}

@@ -1,0 +1,9 @@
+reference_chart,plot_id,title,x,series,notes
+1,diesel_fuel_vs_distance,Fuel Consumption Vs Distance,distance_km,engine_fuel_consumption;fuel_flow,Current source sample extent; original baseline figures retained.
+2,diesel_rr_power_rl_vs_distance,Tyre Rolling Resistance Power RL Vs Distance,distance_km,tyre_rolling_resistance_power_rl,Current source sample extent; original baseline figures retained.
+3,diesel_speed_vs_time_minutes,Speed Vs Time,time_minutes,chassis_speed,Current source sample extent; original baseline figures retained.
+4,diesel_engine_wheel_power_vs_distance,Engine Power and at Wheels,distance_km,engine_power;wheel_power_total;wheel_power_rl,Current source sample extent; original baseline figures retained.
+5,diesel_auxiliary_power_vs_distance,Auxiliary Power,distance_km,total_auxiliary_power;auxiliary_power_1;auxiliary_power_2,Corrects chart5 auxiliary_2 x extent typo 117876; all series use the current aligned distance samples.
+6,diesel_agrochemical_vs_distance,Agrochemical Discharge-Charge Cycle Vs Distance,distance_km,agrochemical_discharge,Current source sample extent; original baseline figures retained.
+7,diesel_fuel_vs_time_minutes,Fuel Consumption Vs Time,time_minutes,engine_fuel_consumption;fuel_flow,Current source sample extent; original baseline figures retained.
+8,diesel_agrochemical_vs_time_minutes,Agrochemical Discharge-Charge Cycle Vs Time,time_minutes,agrochemical_discharge,Current source sample extent; original baseline figures retained.

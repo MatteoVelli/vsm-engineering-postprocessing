@@ -2761,7 +2761,7 @@ kpis:
     dependencies:
     - usable_battery_capacity_85
     - battery_energy_consumption_wh_per_km
-    display_name: Range for 85% Battery + Range Extender
+    display_name: Range for 85% Battery
     unit: Km
     placement_group: summary
   - kpi_id: max_battery_discharge_power

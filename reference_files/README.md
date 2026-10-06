@@ -49,14 +49,18 @@ provider configuration locks the expected filename and SHA-256; a
 modified/different workbook is intentionally rejected.
 
 The Diesel CSV is the authoritative D1/D2/D3 and final Diesel regression source.
-These names identify development stages, not different datasets. There is no
-separate Diesel reference workbook or presentation. Leave
-it unchanged. Tests use the same `VSM_TEST_REFERENCE_FILES_DIR` override and
+These names identify development stages, not different datasets. The final
+`Diesel Template.xlsx` now supplies the authoritative Diesel Excel content and
+plot reference. It extends the existing profile; the Diesel CSV remains the
+baseline numerical regression source. Leave both unchanged. Tests use the same
+`VSM_TEST_REFERENCE_FILES_DIR` override and
 explicit private-data skip mechanism as the Electric/Hybrid tests; synthetic
 Diesel tests still run when private datasets are absent from a clean checkout.
 
 Final provenance, channel inventory and validation results are in
 [`docs/DIESEL_FINAL_VALIDATION.md`](../docs/DIESEL_FINAL_VALIDATION.md).
+The final template comparison and common presentation changes are documented in
+[`docs/DIESEL_TEMPLATE_EXTENSION.md`](../docs/DIESEL_TEMPLATE_EXTENSION.md).
 
 Electric_05 and Hybrid_06 now supply the active channel ordering. The previous
 Electric_03 and Hybrid_04 workbooks remain unchanged for reference comparison.

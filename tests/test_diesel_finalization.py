@@ -99,7 +99,7 @@ def test_actual_app_generates_both_reports_and_respects_machine_name(app):
     cover = Presentation(result.presentation_path).slides[0]
     assert any(s.has_text_frame and s.text == "Acceptance Sprayer Diesel" for s in cover.shapes)
     assert len(at.get("download_button")) == 2
-    assert len(at.get("image") or at.get("imgs")) == 10
+    assert len(at.get("image") or at.get("imgs")) == 18
     at.text_input[0].set_value("Another Sprayer").run()
     assert not at.get("download_button")
     assert not at.exception
@@ -130,7 +130,7 @@ profile = root / 'config/report_profiles/full_size_sprayer_diesel.yaml'
 assert ui.validate_reporting_profile_source(sys.argv[1], profile).is_valid
 result = ui.generate_reporting_profile_engineering_report(sys.argv[1], profile, root / 'outputs/diesel')
 assert result.report_path.exists() and result.presentation_path.exists()
-assert (result.sample_count, result.math_count, result.plot_count, result.slide_count) == (3, 2, 4, 7)
+assert (result.sample_count, result.math_count, result.plot_count, result.slide_count) == (3, 5, 7, 7)
 print('Extracted Diesel package: PASS')
 """
     env = dict(os.environ, PYTHONPATH=str(root / "src"))

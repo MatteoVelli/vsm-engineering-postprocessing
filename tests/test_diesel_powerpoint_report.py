@@ -180,9 +180,9 @@ def test_all_zero_optional_plots_are_omitted_without_changing_excel(tmp_path):
     with source.open("w", encoding="utf-8", newline="") as handle:
         csv.writer(handle).writerows(rows)
     result = generate_reporting_profile_engineering_report(source, PROFILE_PATH, tmp_path / "report")
-    assert result.excel_result.plot_count == 10
+    assert result.excel_result.plot_count == 18
     assert result.slide_count == 7 and result.powerpoint_result.plot_count == 4
-    assert result.excel_result.report_channel_count == 28
+    assert result.excel_result.report_channel_count == 68
 
 
 def test_synthetic_shifted_counters_and_time_use_d1_cycle_deltas(tmp_path):

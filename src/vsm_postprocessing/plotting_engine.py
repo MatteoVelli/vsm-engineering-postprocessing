@@ -40,7 +40,7 @@ class PlotStyle:
     grid_alpha: float = 0.28
     grid_linewidth: float = 0.6
     primary_line_style: str = "-"
-    secondary_line_style: str = "--"
+    secondary_line_style: str = "-"
     background: str = "white"
     transparent: bool = False
     constrained_layout: bool = False
@@ -286,7 +286,7 @@ def _load_style(raw: object | None) -> PlotStyle:
         grid_alpha=_ratio(raw.get("grid_alpha", 0.28), "style.grid_alpha"),
         grid_linewidth=_positive_number(raw.get("grid_linewidth", 0.6), "style.grid_linewidth"),
         primary_line_style=_nonempty_string(raw.get("primary_line_style", "-"), "style.primary_line_style"),
-        secondary_line_style=_nonempty_string(raw.get("secondary_line_style", "--"), "style.secondary_line_style"),
+        secondary_line_style=_nonempty_string(raw.get("secondary_line_style", "-"), "style.secondary_line_style"),
         background=_nonempty_string(raw.get("background", "white"), "style.background"),
         transparent=raw.get("transparent", False),
         constrained_layout=raw.get("constrained_layout", False),
@@ -456,7 +456,9 @@ def _render_one_plot(
     legend_labels: list[str] = []
 
     try:
-        for item in definition.series:
+        from .plot_colours import series_colour
+
+        for series_index, item in enumerate(definition.series):
             channel = channels_by_id[item.channel_id]
             values = np.asarray(values_by_id[item.channel_id], dtype=np.float64)
             _validate_series_values(values, item.channel_id, "series")
@@ -475,7 +477,9 @@ def _render_one_plot(
                 values,
                 label=label,
                 linewidth=defaults.line_width,
-                linestyle=style.secondary_line_style if item.axis == "secondary" else style.primary_line_style,
+                linestyle="-",
+                color="#" + series_colour(series_index),
+                marker=None,
                 antialiased=True,
             )
 
