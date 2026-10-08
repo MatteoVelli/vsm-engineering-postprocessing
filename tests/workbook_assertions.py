@@ -28,7 +28,10 @@ def assert_universal_bottom_statistics(path, sample_count, *, data_start_row=5):
         for col in range(2, channel_count + 1):
             letter = get_column_letter(col)
             extent = f'{letter}{data_start_row}:{letter}{data_end_row}'
-            data = [sheet.cell(row, col).value for row in range(data_start_row, data_end_row + 1)]
+            # Mathematical data cells may now be executable expressions. Their
+            # numeric initial values, rather than formula strings, are the data
+            # authority for checking the unchanged bottom-statistic caches.
+            data = [numeric.cell(row, col).value for row in range(data_start_row, data_end_row + 1)]
             finite = [v for v in data if isinstance(v, (int, float))]
             expected = {'MAX': (f'=MAX({extent})', max(finite) if finite else 0),
                         'MIN': (f'=MIN({extent})', min(finite) if finite else 0),

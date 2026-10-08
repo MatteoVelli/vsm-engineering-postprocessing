@@ -34,7 +34,7 @@ def test_every_summary_value_is_a_direct_canonical_reference(tmp_path, profile_i
     cached = load_workbook(report.report_path, data_only=True)
     try:
         sheet = formulas.worksheets[0]
-        row = 2 if profile_id == "full_size_sprayer_diesel" else 4
+        row = 4
         count = 0
         for col in range(report.report_channel_count + 2, sheet.max_column + 1):
             cell = sheet.cell(row, col)

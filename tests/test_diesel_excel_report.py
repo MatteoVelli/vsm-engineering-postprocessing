@@ -56,7 +56,7 @@ def _columns(report):
 
 
 def _summary(sheet, report):
-    return {sheet.cell(1, col).value: sheet.cell(2, col).value for col in range(report.report_channel_count + 2, sheet.max_column + 1) if sheet.cell(1, col).value}
+    return {sheet.cell(3, col).value: sheet.cell(4, col).value for col in range(report.report_channel_count + 2, sheet.max_column + 1) if sheet.cell(3, col).value}
 
 
 def test_reference_workbook_selection_and_units(diesel_report, workbook):
@@ -74,7 +74,7 @@ def test_reference_workbook_selection_and_units(diesel_report, workbook):
     mapping = workbook["Rename From VSM to Astauto"]
     assert [mapping.cell(r, 3).value for r in range(3, diesel_report.report_channel_count + 3)].count("MATH") == 20
     assert "cumulative_trapezoid" in mapping.cell(ids["engine_mechanical_energy"] + 2, 8).value
-    assert sheet.cell(1, diesel_report.report_channel_count + 2).value == "Maximum Vehicle Speed [kph]"
+    assert sheet.cell(3, diesel_report.report_channel_count + 2).value == "Maximum Vehicle Speed [kph]"
     manifest = json.loads(diesel_report.manifest_path.read_text(encoding="utf-8"))
     assert manifest["visible_sheet_names"] == [s.title for s in workbook if s.sheet_state == "visible"]
 
@@ -150,14 +150,18 @@ def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     assert sheet.freeze_panes == "B6"
     assert sheet["A3"].fill.fgColor.rgb.endswith("1F4E78")
     assert sheet.cell(3, _columns(diesel_report)["engine_power"]).fill.fgColor.rgb.endswith("C65911")
-    assert sheet.cell(1, diesel_report.report_channel_count + 2).font.color.rgb.endswith("FFFFFF")
-    assert sheet.cell(2, diesel_report.report_channel_count + 2).number_format == "0.000"
+    assert sheet.cell(3, diesel_report.report_channel_count + 2).font.color.rgb.endswith("FFFFFF")
+    assert sheet.cell(4, diesel_report.report_channel_count + 2).number_format == "0.000"
+    assert get_column_letter(diesel_report.report_channel_count + 2) == "BQ"
+    assert len(_summary(sheet, diesel_report)) == 13
+    assert all(sheet.cell(row, col).value is None for row in (1, 2)
+               for col in range(69, 82))
     assert sheet.column_dimensions[get_column_letter(diesel_report.report_channel_count + 2)].width == 13
     assert "AC1:AQ1" not in {str(r) for r in sheet.merged_cells.ranges}
     assert sheet.row_dimensions[3].height == 60
     assert workbook["Statistics"].column_dimensions["D"].width == 42
     for i, chart in enumerate(sheet._charts):
-        assert (chart.anchor._from.col, chart.anchor._from.row) == (diesel_report.report_channel_count + 1 + (i % 2) * 8, 2 + (i // 2) * 20)
+        assert (chart.anchor._from.col, chart.anchor._from.row) == (diesel_report.report_channel_count + 1 + (i % 2) * 8, 7 + (i // 2) * 20)
         assert chart.anchor.ext.cx / 914400 == pytest.approx(637 / 96)
         assert chart.anchor.ext.cy / 914400 == pytest.approx(3.75)
         assert chart.layout.manualLayout.x == pytest.approx(0.13)

@@ -24,7 +24,9 @@ Excel report
 Optional PowerPoint report
 ```
 
-The production client workflow uses Electric and Hybrid reporting profiles in `config/report_profiles/`. Machine identity is resolved from source metadata/filenames and remains editable in the UI before report generation. The profiles are synced to Sergio's latest Electric_05 and Hybrid_06 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
+The production client workflow uses Diesel, Hybrid and Electric reporting profiles in `config/report_profiles/`. Machine identity is resolved from source metadata/filenames and remains editable in the UI before report generation. The Electric and Hybrid profiles are synced to Sergio's latest Electric_05 and Hybrid_06 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
+
+The October 2026 refinements expose every mathematical equation on its main-sheet heading, use live Excel arithmetic and RMS formulas where validated, and retain Python values for integration/cumulative channels. Regenerate the report after changing source inputs to refresh all channels consistently. Diesel keeps 18 native Excel charts starting at row 8 and aligns its KPI headings/values at `BQ3:CC4`.
 
 A local Streamlit UI exposes the workflow without requiring Python or YAML editing.
 

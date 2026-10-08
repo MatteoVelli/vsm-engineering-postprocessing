@@ -2,9 +2,18 @@
 
 ## Purpose
 
-Version 1.3.0 focuses the production workflow on dynamic vehicle reporting. Electric and Hybrid profiles remain the analysis definitions, while machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
+Version 1.3.0 provides dynamic vehicle reporting for Diesel, Hybrid and Electric. Machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
 
 No AI functionality is included in engineering calculations.
+
+## October 2026 Reporting Refinements
+
+- Every exported mathematical channel has an authoritative equation note on its main Excel heading; the mapping worksheet remains available.
+- Validated pointwise arithmetic uses native Excel formulas. Integration and cumulative channels retain Python values; regenerate reports after source-data changes.
+- Hybrid and Electric upper RMS cells use native formulas matching sample RMS and the configured missing-data rules. Diesel RMS is unchanged.
+- Diesel Auxiliary Torque headings and Auxiliary Power chart labels reflect the existing source channels.
+- All 18 Diesel charts remain native and editable, starting at row 8 below the frozen rows. The KPI summary occupies `BQ3:CC4`.
+- Application version and Python 3.11 runtime requirements are unchanged.
 
 ## Validated Source Workflow
 
@@ -42,4 +51,4 @@ VSM CSV/XLSX
 
 ## Client Data Policy
 
-Reference Excel/PowerPoint files are validation inputs and are not bundled in client release ZIPs unless explicit authorization is provided.
+Only the required branding and report-layout templates are bundled as runtime resources. Private simulation datasets and generated validation reports are excluded from client release ZIPs.

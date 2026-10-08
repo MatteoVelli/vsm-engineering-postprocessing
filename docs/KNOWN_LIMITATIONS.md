@@ -23,8 +23,9 @@ Full Size Sprayer Diesel, subject to the following boundaries.
     the continuous simulation and is not its internal integrator.
 13. Diesel fuel mass and integrated volume are independent source measurements.
     No density, efficiency, cycle BSFC, fuel-per-distance or fuel-per-area metric
-    is assumed. Auxiliary consumption, tyre losses, wheel power and composed
-    duty cycles are outside the current Diesel profile. Signed torque/power and
+    is assumed. Composed duty cycles are outside the current Diesel profile.
+    Auxiliary consumption, tyre losses and wheel power follow the configured
+    Diesel template definitions. Signed torque/power and
     net energy retain overrun. Ordinary drive-cycle duration is last minus first time.
 14. Road height is absent in the Diesel reference. Oil/coolant source traces are
     identical; only oil is plotted, with both available as exported raw data.
@@ -33,3 +34,7 @@ Full Size Sprayer Diesel, subject to the following boundaries.
 15. Diesel Office rendering is validated on the installed Windows Excel and
     PowerPoint versions, not every viewer. Final delivery ZIP creation remains
     separate from validation-only packaging tests.
+16. Live Excel arithmetic and upper RMS formulas recalculate in Excel. Integration
+    and cumulative channels retain deterministic Python values with main-header
+    equation notes. Regenerate reports after source-data edits to refresh the
+    complete report, including retained values and PowerPoint outputs.

@@ -88,13 +88,14 @@ def test_main_has_no_banners_or_bottom_rms_and_summary_closes_gap(report):
         assert all(sheet.cell(end + 5, col).value is None for col in range(1, report.report_channel_count + 2))
         assert_universal_bottom_statistics(report.report_path, report.sample_count)
         start = report.report_channel_count + 2
-        assert sheet.cell(1, start).value == "Maximum Vehicle Speed [kph]"
-        assert sheet.cell(2, start).value.startswith("=")
-        assert sheet.cell(3, start).value is None
+        assert sheet.cell(3, start).value == "Maximum Vehicle Speed [kph]"
+        assert sheet.cell(4, start).value.startswith("=")
+        assert sheet.cell(1, start).value is None
+        assert sheet.cell(2, start).value is None
         assert not any(r.min_col >= start for r in sheet.merged_cells.ranges)
         assert sheet.row_dimensions[1].height == 60
         assert sheet.cell(2, 1).alignment.wrap_text
-        assert sheet._charts[0].anchor._from.row == 2
+        assert sheet._charts[0].anchor._from.row == 7
         for chart in sheet._charts:
             assert chart.x_axis.majorGridlines is not None
             assert chart.x_axis.majorGridlines.spPr.ln.w == 6350

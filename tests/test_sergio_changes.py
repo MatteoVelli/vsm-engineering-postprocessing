@@ -294,7 +294,19 @@ def test_october_statistics_formulas_and_summary_dependencies(tmp_path, sample_c
                         'first': f'={letter}5', 'last': f'={letter}{sample_count + 4}'}[operation]
             assert cell.data_type == 'f' and cell.value == expected
             # Evaluate the definition against the actual exported range, independently of its cache.
-            exported = [sheet.cell(row, column).value for row in range(5, sample_count + 5)]
+            exported = []
+            for row in range(5, sample_count + 5):
+                data_cell = sheet.cell(row, column)
+                if data_cell.data_type == 'f':
+                    # These fixture channels are defined as signal * 2. Check
+                    # the actual executable formula, then evaluate its source
+                    # cells independently of both data and statistic caches.
+                    source_letter = get_column_letter(columns['signal'])
+                    source_ref = f'${source_letter}{row}'
+                    assert data_cell.value == f'=IF(COUNT({source_ref})=1,({source_ref}*2.0),NA())'
+                    exported.append(sheet.cell(row, columns['signal']).value * 2)
+                else:
+                    exported.append(data_cell.value)
             evaluated = {'max': max(exported), 'min': min(exported), 'first': exported[0], 'last': exported[-1]}[operation]
             python_value = compute_statistic(data, operation)[0]
             assert evaluated == pytest.approx(python_value)

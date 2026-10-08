@@ -326,7 +326,7 @@ channels:
     notes: Low-voltage auxiliaries are a Diesel template channel; this does not select battery or EDU channels.
   - semantic_name: engine_auxiliary_torque_1
     source_name: Engine_AuxiliaryTorque_1
-    report_name: Generator Torque_1
+    report_name: Auxiliary Torque_1
     channel_type: VSM
     unit: Nm
     required: false
@@ -334,7 +334,7 @@ channels:
       _1; use distinct _2.
   - semantic_name: engine_auxiliary_torque_2
     source_name: Engine_AuxiliaryTorque_2
-    report_name: Generator Torque_2
+    report_name: Auxiliary Torque_2
     channel_type: VSM
     unit: Nm
     required: false
@@ -1115,18 +1115,18 @@ plots:
   order: 15
   x: distance_km
   x_label: Distance [km]
-  primary_y_label: Auxiliary Power [kW]
+  primary_y_label: Power [kW]
   series:
   - semantic_name: total_auxiliary_power
     label: Total Auxiliary Power
     axis: primary
     required: true
   - semantic_name: auxiliary_power_1
-    label: Auxiliary Power 1
+    label: Auxiliary Power_1
     axis: primary
     required: true
   - semantic_name: auxiliary_power_2
-    label: Auxiliary Power 2
+    label: Auxiliary Power_2
     axis: primary
     required: true
   reference_chart_number: 5

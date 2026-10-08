@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import ast
 import json
 import math
 import shutil
+import textwrap
 from datetime import datetime, timezone
 from dataclasses import replace
 from dataclasses import dataclass
@@ -16,6 +18,7 @@ from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.chart.axis import ChartLines
 from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.chart.text import RichText
+from openpyxl.comments import Comment
 from openpyxl.drawing.line import LineProperties
 from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties
 from openpyxl.drawing.image import Image as XLImage
@@ -23,11 +26,11 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .errors import ConfigurationError, ExcelReportError
-from .excel_formulas import FORMULA_OPERATIONS, save_report_workbook, write_formula
+from .excel_formulas import FORMULA_OPERATIONS, profile_arithmetic_formula, save_report_workbook, write_formula
 from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots, _axis_label, _automatic_y_label
-from .profile_math import ProfileMathResult, calculate_profile_math_channels
+from .profile_math import DEFAULT_PROFILE_MATH_CONSTANTS, ProfileMathResult, calculate_profile_math_channels
 from .profile_plotting import ProfilePlottingResult, render_profile_plots, _prepare_plot_definition
 from .profile_statistics import ProfileStatisticsResult, build_canonical_report_metrics, calculate_profile_statistics
 from .report_metadata import ReportMetadata, resolve_report_metadata
@@ -943,6 +946,15 @@ def _write_profile_report_sheet(
     data_start_row = _PROFILE_DATA_START_ROW
     data_end_row = data_start_row + sample_count - 1
     channel_columns = {channel.channel_id: index for index, channel in enumerate(report_channels, start=1)}
+    math_definitions = profile.math_by_semantic_name()
+    math_formulas = {}
+    for channel in report_channels:
+        if channel.kind.lower() != "math":
+            continue
+        definition = math_definitions[channel.channel_id]
+        formula = profile_arithmetic_formula(definition.expression, channel_columns, DEFAULT_PROFILE_MATH_CONSTANTS)
+        if formula and all(np.isfinite(values_by_name[name]).all() for name in definition.dependencies):
+            math_formulas[channel.channel_id] = formula
 
     summary_start_col = channel_count + 2
 
@@ -966,6 +978,18 @@ def _write_profile_report_sheet(
         fill = math_fill if channel_type == "MATH" else avl_fill if channel_type == "AVL" else vsm_fill
         name_cell = sheet.cell(3, col_index, _main_report_header(channel.display_name, channel.unit))
         unit_cell = sheet.cell(4, col_index, channel.unit or "-")
+        if channel.kind.lower() == "math":
+            definition = math_definitions[channel.channel_id]
+            mode = ("Live Excel arithmetic; select a data cell to inspect its formula."
+                    if channel.channel_id in math_formulas else
+                    "Python-calculated values retained for integration/cumulative or unsupported expressions.")
+            unit_suffix = f" [{channel.unit or '-'}]"
+            note_title = channel.display_name if channel.display_name.endswith(unit_suffix) else channel.display_name + unit_suffix
+            text = (f"{note_title}\n"
+                    f"{_profile_equation_text(definition, channel.kind)}\n{mode}")
+            name_cell.comment = Comment(text, "Astauto")
+            name_cell.comment.width = 640
+            name_cell.comment.height = max(160, 18 * sum(max(1, len(textwrap.wrap(line, 80))) for line in text.splitlines()))
         for cell in (name_cell, unit_cell):
             cell.fill = fill
             cell.font = white_bold
@@ -981,6 +1005,8 @@ def _write_profile_report_sheet(
         number_format = _number_format(channel.unit)
         for row_offset, raw_value in enumerate(values):
             cell = sheet.cell(data_start_row + row_offset, col_index, float(raw_value))
+            if channel.channel_id in math_formulas:
+                write_formula(cell, math_formulas[channel.channel_id].format(row=cell.row), float(raw_value))
             cell.number_format = number_format
 
     operation_rows = _bottom_statistic_rows(statistics_result)
@@ -1013,7 +1039,7 @@ def _write_profile_report_sheet(
         sheet,
         statistics_result,
         start_col=summary_start_col,
-        start_row=1 if profile.metadata.powertrain == "diesel" else 3,
+        start_row=3,
         bottom_results=bottom_results,
         border=border,
         label_fill=plot_header_fill,
@@ -1023,7 +1049,7 @@ def _write_profile_report_sheet(
     _write_profile_plots_on_report_sheet(
         sheet,
         plotting_result,
-        start_row=3 if profile.metadata.powertrain == "diesel" else 6,
+        start_row=8 if profile.metadata.powertrain == "diesel" else 6,
         start_col=summary_start_col,
         channel_columns=channel_columns,
         border=border,
@@ -1042,8 +1068,8 @@ def _write_profile_report_sheet(
     sheet.row_dimensions[3].height = 42
     sheet.row_dimensions[4].height = 22
     if profile.metadata.powertrain == "diesel":
-        # The summary headings now occupy row 1; retain their readable height.
-        # Charts start directly beneath the values, without an empty header gap.
+        # Preserve the title height and align summary/channel headings on row 3.
+        # Charts start below the five frozen header rows.
         sheet.row_dimensions[1].height = 60
         sheet.row_dimensions[3].height = 60
         sheet.cell(2, 1).alignment = Alignment(wrap_text=True, vertical="top")
@@ -1103,6 +1129,14 @@ def _write_profile_rms_blocks(
             write_formula(value, f"=SQRT(SUMSQ({extent})/COUNT({extent}))", item.value)
             if item.channel_unit:
                 value.number_format = f'0.000" {item.channel_unit}"'
+        elif item.definition.operation == "rms":
+            letter = get_column_letter(channel_columns[item.target_channel])
+            end_row = _PROFILE_DATA_START_ROW + item.sample_count - 1
+            extent = f"{letter}{_PROFILE_DATA_START_ROW}:{letter}{end_row}"
+            formula = f"SQRT(SUMSQ({extent})/COUNT({extent}))"
+            if item.definition.nan_policy != "omit":
+                formula = f"IF(COUNT({extent})=ROWS({extent}),{formula},NA())"
+            write_formula(value, "=" + formula, item.value)
     return references
 
 
@@ -1370,6 +1404,36 @@ def _ordered_profile_plots(rendered_plots: list[Any]) -> list[Any]:
     return ordered
 
 
+def _profile_equation_text(definition: Any, kind: str) -> str:
+    """Describe the executed expression, never the historical template formula.
+
+    Semantic IDs are resolved by the adjacent mapping columns. Helper definitions
+    below follow math_engine's sample intervals and signed integration exactly.
+    """
+    expression = definition.expression
+    if kind.lower() in {"vsm", "avl"} and definition.fallback_when_raw_missing:
+        return (f"Raw {kind.upper()} channel used when available; fallback = "
+                f"{expression or 'unavailable'} when raw channel is unavailable.")
+    if not expression or not expression.strip():
+        raise ExcelReportError(f"Exported MATH channel has no defining expression: {definition.semantic_name}")
+    lines = [f"Formula: {definition.semantic_name} = {expression}"]
+    names = {node.id for node in ast.walk(ast.parse(expression, mode="eval")) if isinstance(node, ast.Name)}
+    constants = [f"{name} = {value}" for name, value in DEFAULT_PROFILE_MATH_CONSTANTS.items() if name in names]
+    if constants:
+        lines.append("Constants: " + "; ".join(constants))
+    helpers = {
+        "sample_energy_kwh": "sample_energy_kwh(P, t)[i] = P[i] * dt[i] / 3600; dt[0] = t[1] - t[0]; dt[i] = t[i] - t[i-1] for i >= 1 (t in seconds).",
+        "cumulative_sum": "cumulative_sum(x)[i] = sum(x[j], j = 0..i).",
+        "cumulative_trapezoid": "cumulative_trapezoid(x, t)[0] = 0; result[i] = sum((x[j-1]/2 + x[j]/2) * (t[j] - t[j-1]), j = 1..i), signed, with t in seconds.",
+    }
+    lines.extend(description for name, description in helpers.items() if name in names)
+    if definition.dependencies:
+        lines.append("Dependencies (Semantic ID): " + ", ".join(definition.dependencies))
+    if definition.fallback_when_raw_missing:
+        lines.append("raw channel unavailable; deterministic fallback used")
+    return "\n".join(lines)
+
+
 def _write_profile_channel_mapping_sheet(
     sheet: Any,
     *,
@@ -1408,16 +1472,7 @@ def _write_profile_channel_mapping_sheet(
         for_plot = "yes" if definition and definition.for_plot else ""
         formula = ""
         if math_definition is not None:
-            if math_definition.fallback_when_raw_missing and channel.kind.lower() in {"vsm", "avl"}:
-                formula = f"Raw {channel.kind.upper()} channel used when available; fallback = {math_definition.expression or math_definition.formula or 'unavailable'} when raw channel is unavailable."
-            else:
-                formula = math_definition.formula or math_definition.expression or ""
-                if formula:
-                    formula = f"Formula: {formula}"
-                if math_definition.fallback_when_raw_missing:
-                    formula = f"{formula} | raw channel unavailable; deterministic fallback used"
-            if math_definition.dependencies:
-                formula = f"{formula} | dependencies: {', '.join(math_definition.dependencies)}"
+            formula = _profile_equation_text(math_definition, channel.kind)
         values = [
             definition.source_name if definition else channel.source_name,
             definition.report_name if definition else channel.display_name,
@@ -1432,6 +1487,11 @@ def _write_profile_channel_mapping_sheet(
             cell = sheet.cell(row, col, value)
             cell.border = border
             cell.alignment = Alignment(wrap_text=True, vertical="top")
+        if formula:
+            # Excel does not reliably auto-fit wrapped rows written by openpyxl.
+            # Keep main-sheet data rows, column widths and chart anchors untouched.
+            line_count = sum(max(1, len(textwrap.wrap(line, width=64))) for line in formula.splitlines())
+            sheet.row_dimensions[row].height = min(409, max(30, line_count * 15 + 6))
     sheet.freeze_panes = "A3"
     for col, width in enumerate((42, 32, 14, 10, 12, 36, 8, 72), start=1):
         sheet.column_dimensions[get_column_letter(col)].width = width
@@ -2390,7 +2450,12 @@ def _build_native_scatter_chart(
         for channel_id in channel_ids:
             location = channel_column_by_id[channel_id]
             sheet, column = location if isinstance(location, tuple) else (report_sheet, location)
-            values.extend(sheet.cell(row, column).value for row in range(data_start_row, data_end_row + 1))
+            cached = getattr(sheet.parent, "_report_formula_values", {}).get(sheet.title, {})
+            for row in range(data_start_row, data_end_row + 1):
+                cell = sheet.cell(row, column)
+                # Formula data cells retain the validated Python value for chart
+                # scaling; their native chart references still target live cells.
+                values.append(cached[cell.coordinate] if cell.data_type == "f" else cell.value)
         return np.asarray(values, dtype=np.float64)
 
     x_data = axis_values([definition.x_channel_id])

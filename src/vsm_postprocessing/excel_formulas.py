@@ -1,5 +1,6 @@
 """Live report formulas with deterministic initial values for non-calculating readers."""
 
+import ast
 from io import BytesIO
 import math
 import re
@@ -10,6 +11,42 @@ from openpyxl.utils import get_column_letter
 
 
 FORMULA_OPERATIONS = {"max", "min", "last", "first"}
+
+
+def profile_arithmetic_formula(expression, channel_columns, constants):
+    """Translate only pointwise arithmetic, preserving the engine's AST grouping.
+
+    Return a row template; functions/integration or unexported dependencies retain
+    Python values. COUNT guards prevent Excel treating missing inputs as zero.
+    """
+    references = []
+    operators = {ast.Add: "+", ast.Sub: "-", ast.Mult: "*", ast.Div: "/", ast.Pow: "^"}
+
+    def translate(node):
+        if isinstance(node, ast.Constant) and type(node.value) in {int, float}:
+            return repr(float(node.value))
+        if isinstance(node, ast.Name):
+            if node.id in constants:
+                return repr(float(constants[node.id]))
+            if node.id not in channel_columns:
+                raise ValueError("dependency not exported")
+            reference = "$" + get_column_letter(channel_columns[node.id]) + "{row}"
+            if reference not in references:
+                references.append(reference)
+            return reference
+        if isinstance(node, ast.BinOp) and type(node.op) in operators:
+            return f"({translate(node.left)}{operators[type(node.op)]}{translate(node.right)})"
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            return f"({'+' if isinstance(node.op, ast.UAdd) else '-'}{translate(node.operand)})"
+        raise ValueError("not pointwise arithmetic")
+
+    try:
+        body = translate(ast.parse(expression, mode="eval").body)
+    except (ValueError, SyntaxError):
+        return None
+    if references:
+        return f"=IF(COUNT({','.join(references)})={len(references)},{body},NA())"
+    return "=" + body
 
 
 def write_statistic(cell, operation, start_row, end_row, values, value, nan_policy="error"):
