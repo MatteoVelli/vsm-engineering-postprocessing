@@ -6,17 +6,59 @@ The user interface is the recommended way to configure normal runs. YAML files r
 
 Production client reports are driven by:
 
-- `config/report_profiles/robosprayer_electric.yaml`
-- `config/report_profiles/robosprayer_hybrid.yaml`
-- `config/report_profiles/full_size_sprayer_diesel.yaml` (UI label: `Diesel`)
+- `config/report_profiles/sergio_2026_10/robosprayer_electric.yaml`
+- `config/report_profiles/sergio_2026_10/robosprayer_hybrid.yaml`
+- `config/report_profiles/sergio_2026_10/full_size_sprayer_diesel.yaml`
 
 The profiles define raw channel mappings, deterministic math channels, statistics, KPIs, plots, Excel layout, and PowerPoint template selection. Raw channels may be marked `required: false`; missing optional channels are omitted from generated reports without invalidating the source file.
 
-The current Electric and Hybrid profiles are synced to Sergio's Electric_05 and Hybrid_06 templates and include optional `Track_Height` mapped to visible report label `Road Height`.
+The UI defaults to Sergio's 15 October 2026 revision. The original profiles one
+directory above remain available through the explicit Legacy revision. Current
+profiles extend those definitions with validated `overrides` maps for `raw`,
+`math`, `statistics`, `kpis` and `plots`. Override keys identify existing semantic
+names/IDs; null removes a definition. Unknown IDs/fields are rejected. Raw/MATH
+names must remain distinct after overrides. `profile.excel_template` identifies
+the optional workbook used for column-order verification.
 
-Both profiles require all four raw `DriveShaft_Torque_*` channels. Wheel torque
-is never synthesized. Tyre Total Energy Consumption includes rolling,
-compaction, and bulldozing resistance, integrated using actual sample timing.
+Current Electric/Hybrid profiles use the four exact raw
+`KERS_MotGenUnit_GearboxOutputTorque_1..4` channels. Missing new sources disable
+dependent wheel calculations, without a driveshaft fallback. Legacy profiles
+retain their four `DriveShaft_Torque_*` sources. Current auxiliary calculations
+require the measured high-voltage source. All source names, units and optional
+dependencies are specified in YAML. See
+[the current implementation report](SERGIO_2026_10_15_IMPLEMENTATION.md) for
+integration, formula, source-availability and selection conventions.
+
+### Confirmed source-unit interpretations
+
+An optional `unit_interpretation` on a raw profile channel declares an explicitly
+confirmed engineering unit without converting its numeric values. The current
+Electric and Hybrid profiles contain this declaration only for
+`User_defined_Data_High_Voltage_Auxiliary_signal1_0`:
+
+```yaml
+unit: kW
+unit_interpretation:
+  source_unit: '-'
+  engineering_unit: kW
+  authority: 'Sergio, Astauto, 16 October 2026: confirmed power in kW; factor 1, offset 0.'
+```
+
+It applies only when both the actual source name and source-reported unit match
+the declaration exactly. Aliases, normalized name matches, unspecified units and
+other units do not activate it. An explicit source `kW` is accepted normally.
+The engineering unit must match the channel's expected `unit`; authority is
+mandatory and conversion/scaling fields are rejected. There is no global `-`
+unit rule. Missing or invalid sources remain unavailable as before.
+
+Imported `ChannelInfo.unit` and raw numeric values remain unchanged. Resolved
+channels expose `effective_unit` and a separate engineering metadata view for
+statistics and plots. Applied declarations appear in source diagnostics, the
+Excel mapping-sheet notes, workbook metadata, and the report manifest's
+`source_unit_interpretations` records. Each record preserves the reported unit,
+effective unit, exact source identity, authority and unchanged-value status.
+The existing signed, timestamp-based trapezoidal auxiliary-energy integration
+is unchanged. See [HV engineering validation](HV_AUXILIARY_CONFIRMATION_2026_10_16.md).
 
 An extending profile can set `channels.plot_overrides` to a mapping of existing
 semantic channel names to boolean selection flags. Hybrid uses this to retain
@@ -33,25 +75,23 @@ VSM inputs are `Track_Time [s]`, `Track_Distance [m]`, `Chassis_Speed [kph]`,
 `Track_Gradient [%]`, `Engine_Speed [rpm]`, `Engine_Torque [Nm]`, and
 `Engine_FuelConsumption_absolut [kg]`. Source load torque is Nm, not percent.
 
-The 18 optional channels cover height, volumetric fuel flow, source specific
-fuel consumption, load/throttle, oil/coolant temperature, three accelerations,
-four tyre vertical loads and four driveshaft torques. Absent optional channels
-omit dependent results; present invalid channels fail validation. Source data
-must be finite, time strictly increasing with at least two samples, and fuel
-mass/distance counters nonnegative and nondecreasing. Counter offsets are allowed.
+Optional channels cover height, fuel flow/specific consumption, controls,
+oil/coolant temperature, accelerations, tyre forces/powers, wheel speeds/torques
+and mechanical auxiliaries. In current profiles, invalid optional sources are
+reported as unavailable and dependent sections omitted. Required data must be
+finite, time strictly increasing with at least two samples, and fuel mass/distance
+counters nonnegative and nondecreasing. Counter offsets are allowed.
 
-Three MATH channels are calculated internally: signed engine power [kW], net
-engine mechanical energy [kWh], and optional integrated fuel volume [L]. Energy
-and volume use trapezoidal integration over elapsed seconds and start at zero.
-No fuel density is assumed. MATH channels are never source requirements.
+The current Diesel profile has 48 raw definitions, 20 MATH definitions, 55
+statistics, five KPIs and 20 plots. These include signed engine/wheel/auxiliary
+power, net mechanical energy, integrated fuel volume, agrochemical mass and tyre
+losses. Integration starts at zero and uses actual elapsed time. No fuel density
+is assumed. MATH channels are calculated, never requested as raw source inputs.
 
-The profile configures 52 statistics, five KPIs, ten plots and ten PowerPoint
-pages. Counts reduce when optional data is absent. The representative Test_03
-CSV yields 50 statistics (height is absent), five KPIs and all ten plots/pages.
-With only required channels, Excel has four native charts and PowerPoint seven
-pages. All-zero plot traces may be omitted from PowerPoint while remaining in
-Excel. No battery/generator, wheel-power, auxiliary-energy or tyre-loss KPI is
-inferred for Diesel.
+Counts reduce with unavailable inputs or user selections. The ten configured
+Diesel PowerPoint pages retain approved layouts; optional pages can be omitted
+when unavailable. The separate water-temperature plot and its source mapping
+are selectable. No battery/generator metric is inferred for Diesel.
 
 Use Engineering Report, upload CSV/XLSX, select Diesel, validate, set the machine
 name and generate both reports. Changed input/profile or a new validation attempt

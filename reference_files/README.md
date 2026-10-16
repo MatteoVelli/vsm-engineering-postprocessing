@@ -62,5 +62,11 @@ Final provenance, channel inventory and validation results are in
 The final template comparison and common presentation changes are documented in
 [`docs/DIESEL_TEMPLATE_EXTENSION.md`](../docs/DIESEL_TEMPLATE_EXTENSION.md).
 
-Electric_05 and Hybrid_06 now supply the active channel ordering. The previous
+Electric_05 and Hybrid_06 supply the legacy channel ordering. The previous
 Electric_03 and Hybrid_04 workbooks remain unchanged for reference comparison.
+Current October profiles use the optional private Diesel_03 and Electric/Hybrid_07
+ordering references when supplied, and otherwise use configuration ordering.
+Those private workbooks and all raw client exports remain excluded from Git.
+The approved tracked runtime assets listed above remain required and unchanged.
+See [the October milestone audit](../docs/OCTOBER_2026_MILESTONE_AUDIT.md) for the
+current validation scope and pending updated real-data Hybrid acceptance.

@@ -24,9 +24,26 @@ Excel report
 Optional PowerPoint report
 ```
 
-The production client workflow uses Diesel, Hybrid and Electric reporting profiles in `config/report_profiles/`. Machine identity is resolved from source metadata/filenames and remains editable in the UI before report generation. The Electric and Hybrid profiles are synced to Sergio's latest Electric_05 and Hybrid_06 Excel templates, including optional `Track_Height` / `Road Height` support when the source data includes it.
+The production client workflow supports Diesel, Hybrid and Electric. After upload,
+the UI defaults to Sergio's 15 October 2026 definitions in
+`config/report_profiles/sergio_2026_10/`, aligned with Diesel `_03` and
+Electric/Hybrid `_07`. The original profiles remain explicitly available as
+legacy reporting. Powertrain selection and source channels determine compatibility;
+machine names remain editable report metadata.
 
-The October 2026 refinements expose every mathematical equation on its main-sheet heading, use live Excel arithmetic and RMS formulas where validated, and retain Python values for integration/cumulative channels. Regenerate the report after changing source inputs to refresh all channels consistently. Diesel keeps 18 native Excel charts starting at row 8 and aligns its KPI headings/values at `BQ3:CC4`.
+Revised reports add measured gearbox torque and high-voltage auxiliaries,
+soil-resistance power/energy plots, configurable Diesel coolant temperature and
+live Excel integration/statistic formulas. Energy uses observed-time trapezoidal
+integration. Missing optional measurements disable their dependent sections;
+measured zeros remain zeros. Channels, statistics, charts, analysis intervals and
+existing PowerPoint plot slots are selectable. See the
+[implementation and validation report](docs/SERGIO_2026_10_15_IMPLEMENTATION.md)
+for exact conventions, tests and unresolved upstream measurements.
+
+The [October development milestone audit](docs/OCTOBER_2026_MILESTONE_AUDIT.md)
+records subsequent Electric/HV validation and the compact Diesel header. Updated
+real-data Hybrid acceptance and final client packaging remain separate milestones;
+this update is not the final client release.
 
 A local Streamlit UI exposes the workflow without requiring Python or YAML editing.
 
