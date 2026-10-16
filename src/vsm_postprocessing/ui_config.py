@@ -16,6 +16,7 @@ from .profile_math import calculate_profile_math_channels
 from .utils import source_report_filename
 from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ReportingProfile, load_reporting_profile, resolve_profile
+from .report_selection import ProfileReportSelection
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,7 @@ class ReportingProfileValidationSummary:
     ambiguous_names: tuple[str, ...]
     unit_mismatch_names: tuple[str, ...]
     all_zero_names: tuple[str, ...]
+    diagnostics: tuple[str, ...] = ()
 
     @property
     def is_valid(self) -> bool:
@@ -203,9 +205,11 @@ def validate_reporting_profile_source(
 ) -> ReportingProfileValidationSummary:
     source = Path(source_file).expanduser().resolve()
     validate_profile_upload_extension(source)
-    options = import_options or ImportOptions(strict=True)
-    dataset = load_data_file(source, options)
     profile = load_reporting_profile(profile_file)
+    options = import_options or ImportOptions(strict=not bool(profile.metadata.excel_template))
+    dataset = load_data_file(source, options)
+    if not dataset.quality.time_is_strictly_increasing or dataset.quality.time_channel_id is None:
+        raise ConfigurationError("Time must be finite and strictly increasing; duplicate or reversed timestamps are unsupported")
     resolution = resolve_profile(dataset, profile)
     if resolution.is_valid:
         # This validates semantic MATH dependencies without exposing formulas in UI.
@@ -243,6 +247,7 @@ def validate_reporting_profile_source(
         ambiguous_names=tuple(item.definition.report_name for item in resolution.ambiguous),
         unit_mismatch_names=tuple(item.definition.report_name for item in resolution.unit_mismatches),
         all_zero_names=tuple(item.definition.report_name for item in resolved if item.is_all_zero),
+        diagnostics=tuple(resolution.diagnostics),
     )
 
 
@@ -261,7 +266,7 @@ def generate_reporting_profile_excel_report(
         source_file,
         profile_file,
         output_dir,
-        import_options or ImportOptions(strict=True),
+        import_options or ImportOptions(strict=not bool(getattr(profile.metadata, "excel_template", None))),
         report_metadata=report_metadata,
     )
 
@@ -273,19 +278,22 @@ def generate_reporting_profile_engineering_report(
     import_options: ImportOptions | None = None,
     *,
     machine_name_override: str | None = None,
+    selection: ProfileReportSelection | None = None,
 ) -> ReportingProfileEngineeringReportResult:
     validate_profile_upload_extension(source_file)
     profile = load_reporting_profile(profile_file)
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
     report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override)
+    selection_options = {"selection": selection} if selection is not None else {}
     excel_result = generate_profile_excel_report(
         source_file,
         profile_file,
         destination / "profile_excel_report",
-        import_options or ImportOptions(strict=True),
+        import_options or ImportOptions(strict=not bool(getattr(profile.metadata, "excel_template", None))),
         output_filename=_profile_report_filename(report_metadata, ".xlsx"),
         report_metadata=report_metadata,
+        **selection_options,
     )
     powerpoint_result = build_profile_powerpoint_report(
         excel_result,

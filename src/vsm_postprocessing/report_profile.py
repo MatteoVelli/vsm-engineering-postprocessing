@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -23,6 +23,14 @@ class ProfileMetadata:
     description: str | None = None
     powertrain: str | None = None
     extends: str | None = None
+    excel_template: str | None = None
+
+
+@dataclass(frozen=True)
+class SourceUnitInterpretation:
+    source_unit: str
+    engineering_unit: str
+    authority: str
 
 
 @dataclass(frozen=True)
@@ -36,6 +44,7 @@ class RawChannelDefinition:
     required: bool = True
     for_plot: bool = False
     notes: str | None = None
+    unit_interpretation: SourceUnitInterpretation | None = None
 
 
 @dataclass(frozen=True)
@@ -167,6 +176,24 @@ class ResolvedChannel:
     is_active: bool
     is_constant: bool
     is_all_zero: bool
+    unit_interpretation: SourceUnitInterpretation | None = None
+
+    @property
+    def effective_unit(self) -> str | None:
+        return self.unit_interpretation.engineering_unit if self.unit_interpretation else self.channel.unit
+
+    @property
+    def engineering_channel(self) -> ChannelInfo:
+        # Keep the imported ChannelInfo and measurement array untouched.
+        return replace(self.channel, unit=self.effective_unit) if self.unit_interpretation else self.channel
+
+    @property
+    def unit_interpretation_note(self) -> str:
+        if self.unit_interpretation is None:
+            return ""
+        return (f"Engineering unit interpretation: {self.channel.source_name}; source unit {self.channel.unit!r}; "
+                f"effective unit {self.effective_unit!r}; values unchanged (factor 1, offset 0); "
+                f"authority: {self.unit_interpretation.authority}.")
 
 
 @dataclass(frozen=True)
@@ -212,6 +239,7 @@ class ProfileResolutionResult:
     ambiguous: list[AmbiguousChannel] = field(default_factory=list)
     unit_mismatches: list[UnitMismatch] = field(default_factory=list)
     math_dependencies: list[MathDependencyResolution] = field(default_factory=list)
+    diagnostics: list[str] = field(default_factory=list)
 
     @property
     def is_valid(self) -> bool:
@@ -265,8 +293,19 @@ def resolve_profile(dataset: ImportedDataset, profile: ReportingProfile) -> Prof
         match = _resolve_raw_definition(definition, exact_index, normalized_index)
         if isinstance(match, tuple):
             channel, match_type = match
-            mismatch = _unit_mismatch(definition.unit, channel.unit)
+            interpretation = definition.unit_interpretation
+            # A declaration is bound to the exact source name and exact declared
+            # unit. Aliases, normalized names, missing units and other units
+            # still pass through normal strict unit validation.
+            if not (interpretation and channel.source_name == definition.source_name
+                    and channel.unit == interpretation.source_unit):
+                interpretation = None
+            effective_unit = interpretation.engineering_unit if interpretation else channel.unit
+            mismatch = _unit_mismatch(definition.unit, effective_unit)
             if mismatch is not None:
+                if profile.metadata.excel_template and not definition.required:
+                    result.missing_optional.append(UnresolvedChannel(definition, f"unit mismatch: expected {definition.unit}, got {channel.unit}"))
+                    continue
                 result.unit_mismatches.append(
                     UnitMismatch(
                         definition=definition,
@@ -277,10 +316,17 @@ def resolve_profile(dataset: ImportedDataset, profile: ReportingProfile) -> Prof
                     )
                 )
                 continue
+            if profile.metadata.excel_template:
+                values = dataset.values[:, dataset.channel_index(channel.channel_id)]
+                if not np.isfinite(values).all():
+                    missing = result.missing_required if definition.required else result.missing_optional
+                    missing.append(UnresolvedChannel(definition, "source contains missing, nonnumeric or non-finite values; no values fabricated"))
+                    continue
             result.resolved[definition.semantic_name] = ResolvedChannel(
                 definition=definition,
                 channel=channel,
                 match_type=match_type,
+                unit_interpretation=interpretation,
                 **_channel_activity(dataset, channel),
             )
         elif isinstance(match, AmbiguousChannel):
@@ -293,7 +339,29 @@ def resolve_profile(dataset: ImportedDataset, profile: ReportingProfile) -> Prof
                 result.missing_optional.append(unresolved)
 
     result.math_dependencies.extend(resolve_math_dependencies(profile, result))
+    result.diagnostics.extend(_source_diagnostics(dataset, result))
     return result
+
+
+def _source_diagnostics(dataset: ImportedDataset, resolution: ProfileResolutionResult) -> list[str]:
+    messages = []
+    if resolution.profile.metadata.excel_template:
+        for missing in (*resolution.missing_required, *resolution.missing_optional):
+            state = "missing" if missing.reason == "not found" else "unavailable"
+            messages.append(f"Source channel {state}: {missing.definition.source_name} ({missing.definition.report_name}); {missing.reason}; dependent outputs unavailable.")
+        torque = [item for item in resolution.resolved.values()
+                  if item.definition.source_name.startswith("KERS_MotGenUnit_GearboxOutputTorque_")]
+        moving = any(np.any(np.abs(dataset.values[:, dataset.channel_index(item.channel.channel_id)]) > 1e-6)
+                     for name, item in resolution.resolved.items()
+                     if name == "chassis_speed" or name.startswith("wheel_rotationalspeed_"))
+        if len(torque) == 4 and all(item.is_all_zero for item in torque) and moving:
+            messages.append("All four measured gearbox-output torque channels are zero throughout a moving-vehicle simulation. Wheel torque/power remain measured zeros; meaningful source torque values are required for real-data validation.")
+    for item in resolution.resolved.values():
+        if item.unit_interpretation:
+            messages.append(item.unit_interpretation_note)
+        if item.channel.source_name != item.definition.source_name:
+            messages.append(f"Source mapping: {item.definition.report_name} uses {item.channel.source_name} (configured {item.definition.source_name}, {item.match_type}).")
+    return messages
 
 
 def resolve_math_dependencies(
@@ -351,7 +419,7 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
 
     if not isinstance(raw, dict):
         raise ConfigurationError("Reporting profile root must be a YAML mapping")
-    _reject_unknown_keys(raw, {"version", "profile", "channels", "statistics", "kpis", "plots", "presentation"}, "root")
+    _reject_unknown_keys(raw, {"version", "profile", "channels", "statistics", "kpis", "plots", "presentation", "overrides"}, "root")
     version = raw.get("version")
     if version != 1:
         raise ConfigurationError("Reporting profile 'version' must be 1")
@@ -390,6 +458,9 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
         parent = _load_reporting_profile(parent_path, seen=(*seen, path))
         profile = _merge_profiles(parent, profile)
 
+    profile = _apply_profile_overrides(profile, raw.get("overrides", {}))
+    _validate_unique_semantic_names(profile)
+
     if profile.presentation:
         unknown_plots = set(profile.presentation.plot_series_overrides) - set(profile.plots_by_id())
         if unknown_plots:
@@ -414,7 +485,7 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
 def _parse_metadata(raw: Any) -> ProfileMetadata:
     if not isinstance(raw, dict):
         raise ConfigurationError("profile must be a YAML mapping")
-    _reject_unknown_keys(raw, {"profile_id", "name", "description", "powertrain", "extends"}, "profile")
+    _reject_unknown_keys(raw, {"profile_id", "name", "description", "powertrain", "extends", "excel_template"}, "profile")
     profile_id = _required_string(raw, "profile.profile_id")
     _validate_identifier(profile_id, "profile.profile_id")
     name = _required_string(raw, "profile.name")
@@ -424,6 +495,7 @@ def _parse_metadata(raw: Any) -> ProfileMetadata:
         description=_optional_string(raw.get("description"), "profile.description"),
         powertrain=_optional_string(raw.get("powertrain"), "profile.powertrain"),
         extends=_optional_string(raw.get("extends"), "profile.extends"),
+        excel_template=_optional_string(raw.get("excel_template"), "profile.excel_template"),
     )
 
 
@@ -443,6 +515,7 @@ def _parse_raw_channel(raw: Any, index: int) -> RawChannelDefinition:
             "required",
             "for_plot",
             "notes",
+            "unit_interpretation",
         },
         context,
     )
@@ -461,7 +534,25 @@ def _parse_raw_channel(raw: Any, index: int) -> RawChannelDefinition:
         required=_optional_bool(raw.get("required", True), f"{context}.required"),
         for_plot=_optional_bool(raw.get("for_plot", False), f"{context}.for_plot"),
         notes=_optional_string(raw.get("notes"), f"{context}.notes"),
+        unit_interpretation=_parse_unit_interpretation(raw.get("unit_interpretation"), raw.get("unit"), context),
     )
+
+
+def _parse_unit_interpretation(raw: Any, expected_unit: str | None, context: str) -> SourceUnitInterpretation | None:
+    if raw is None:
+        return None
+    context += ".unit_interpretation"
+    if not isinstance(raw, dict):
+        raise ConfigurationError(f"{context} must be a YAML mapping")
+    _reject_unknown_keys(raw, {"source_unit", "engineering_unit", "authority"}, context)
+    interpretation = SourceUnitInterpretation(
+        source_unit=_required_string(raw, f"{context}.source_unit"),
+        engineering_unit=_required_string(raw, f"{context}.engineering_unit"),
+        authority=_required_string(raw, f"{context}.authority"),
+    )
+    if not expected_unit or _unit_mismatch(expected_unit, interpretation.engineering_unit):
+        raise ConfigurationError(f"{context}.engineering_unit must match the channel's expected unit")
+    return interpretation
 
 
 def _parse_math_channel(raw: Any, index: int) -> MathChannelDefinition:
@@ -708,6 +799,50 @@ def _parse_presentation_slide(raw: Any, index: int) -> ProfilePresentationSlideD
         mode=_optional_string(raw.get("mode"), f"{context}.mode"),
         fallback_mode=_optional_string(raw.get("fallback_mode"), f"{context}.fallback_mode"),
     )
+
+
+def _apply_profile_overrides(profile: ReportingProfile, overrides: Any) -> ReportingProfile:
+    """Apply explicit versioned definition patches, validating with the usual parsers.
+
+    A null patch removes a definition (e.g. a former MATH input now measured by
+    VSM). Unknown identifiers fail rather than leaving a stale mapping active.
+    """
+    sections = {
+        "raw": ("raw_channels", "semantic_name", _parse_raw_channel),
+        "math": ("math_channels", "semantic_name", _parse_math_channel),
+        "statistics": ("statistics", "statistic_id", _parse_statistic),
+        "kpis": ("kpis", "kpi_id", _parse_kpi),
+        "plots": ("plots", "plot_id", _parse_plot),
+    }
+    if not isinstance(overrides, dict):
+        raise ConfigurationError("overrides must be a YAML mapping")
+    _reject_unknown_keys(overrides, set(sections), "overrides")
+    updates = {}
+    for section, patches in overrides.items():
+        attr, key, parser = sections[section]
+        definitions = getattr(profile, attr)
+        if not isinstance(patches, dict):
+            raise ConfigurationError(f"overrides.{section} must be a YAML mapping")
+        unknown = set(patches) - {getattr(item, key) for item in definitions}
+        if unknown:
+            raise ConfigurationError(f"Unknown overrides.{section} identifiers: {sorted(unknown)}")
+        items = []
+        for index, item in enumerate(definitions, 1):
+            name = getattr(item, key)
+            if name not in patches:
+                items.append(item)
+                continue
+            patch = patches[name]
+            if patch is None:
+                continue
+            if not isinstance(patch, dict) or key in patch:
+                raise ConfigurationError(f"overrides.{section}.{name} must be a field mapping without {key}")
+            payload = {k: list(v) if isinstance(v, tuple) else v for k, v in asdict(item).items()}
+            # channel_type is a computed property on MATH definitions.
+            payload.update(patch)
+            items.append(parser(payload, index))
+        updates[attr] = tuple(items)
+    return replace(profile, **updates)
 
 
 def _merge_profiles(parent: ReportingProfile, child: ReportingProfile) -> ReportingProfile:

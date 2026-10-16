@@ -156,11 +156,12 @@ def _build_semantic_maps(
     for semantic_name, resolved in resolution.resolved.items():
         index = dataset.channel_index(resolved.channel.channel_id)
         channels[semantic_name] = replace(
-            resolved.channel,
+            resolved.engineering_channel,
             channel_id=semantic_name,
             display_name=resolved.definition.report_name,
             kind=resolved.definition.channel_type.lower(),
-            provenance=f"profile:{resolution.profile.profile_id}:{semantic_name}:{resolved.channel.channel_id}",
+            provenance=f"profile:{resolution.profile.profile_id}:{semantic_name}:{resolved.channel.channel_id}"
+                       + (f"; {resolved.unit_interpretation_note}" if resolved.unit_interpretation else ""),
         )
         values[semantic_name] = np.asarray(dataset.values[:, index], dtype=np.float64)
 

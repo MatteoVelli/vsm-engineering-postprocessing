@@ -1,0 +1,266 @@
+version: 1
+profile:
+  profile_id: robosprayer_hybrid
+  name: Hybrid
+  powertrain: hybrid
+  extends: ../robosprayer_hybrid.yaml
+  description: 'Sergio 15 October 2026: measured sources, signed power and observed-interval
+    energy.'
+  excel_template: reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_07.xlsx
+overrides:
+  plots:
+    road_profile:
+      order: 22
+    wheel_steering_angles:
+      order: 23
+  raw:
+    driveshaft_torque_fl:
+      source_name: KERS_MotGenUnit_GearboxOutputTorque_1
+      aliases: []
+      required: false
+      notes: Measured gearbox-output torque at this wheel; no driveshaft fallback.
+        Missing source disables dependent wheel analyses.
+    driveshaft_torque_fr:
+      source_name: KERS_MotGenUnit_GearboxOutputTorque_2
+      aliases: []
+      required: false
+      notes: Measured gearbox-output torque at this wheel; no driveshaft fallback.
+        Missing source disables dependent wheel analyses.
+    driveshaft_torque_rl:
+      source_name: KERS_MotGenUnit_GearboxOutputTorque_3
+      aliases: []
+      required: false
+      notes: Measured gearbox-output torque at this wheel; no driveshaft fallback.
+        Missing source disables dependent wheel analyses.
+    driveshaft_torque_rr:
+      source_name: KERS_MotGenUnit_GearboxOutputTorque_4
+      aliases: []
+      required: false
+      notes: Measured gearbox-output torque at this wheel; no driveshaft fallback.
+        Missing source disables dependent wheel analyses.
+    tyre_bulldozingresistancepower_fl:
+      required: false
+    tyre_bulldozingresistancepower_fr:
+      required: false
+    tyre_bulldozingresistancepower_rl:
+      required: false
+    tyre_bulldozingresistancepower_rr:
+      required: false
+    tyre_compactionresistancepower_fl:
+      required: false
+    tyre_compactionresistancepower_fr:
+      required: false
+    tyre_compactionresistancepower_rl:
+      required: false
+    tyre_compactionresistancepower_rr:
+      required: false
+  math:
+    auxiliary_high_voltage_power_consumption: null
+    tyre_rolling_resistance_energy_kwh:
+      expression: interval_energy_kwh(total_rolling_resistance_power, track_time)
+      notes: Signed trapezoidal energy over observed time intervals; initial interval
+        energy is zero.
+    wheel_total_torque:
+      required: false
+    wheel_power_fl:
+      required: false
+      expression: wheel_rotationalspeed_fl * driveshaft_torque_fl * 2.0 * 3.141592653589793
+        / 60000.0
+    wheel_power_fr:
+      required: false
+      expression: wheel_rotationalspeed_fr * driveshaft_torque_fr * 2.0 * 3.141592653589793
+        / 60000.0
+    wheel_power_rl:
+      required: false
+      expression: wheel_rotationalspeed_rl * driveshaft_torque_rl * 2.0 * 3.141592653589793
+        / 60000.0
+    wheel_power_rr:
+      required: false
+      expression: wheel_rotationalspeed_rr * driveshaft_torque_rr * 2.0 * 3.141592653589793
+        / 60000.0
+    wheel_power_total:
+      required: false
+    total_auxiliary_power:
+      required: false
+    auxiliary_energy_consumption:
+      expression: interval_energy_kwh(total_auxiliary_power, track_time)
+      notes: Signed trapezoidal energy over observed time intervals; initial interval
+        energy is zero.
+      required: false
+    auxiliary_energy_consumption_accumulated:
+      required: false
+    tyre_bulldozing_resistance_energy_kwh:
+      expression: interval_energy_kwh(total_bulldozing_resistance_power, track_time)
+      notes: Signed trapezoidal energy over observed time intervals; initial interval
+        energy is zero.
+      required: false
+    tyre_compaction_resistance_energy_kwh:
+      expression: interval_energy_kwh(total_compaction_resistance_power, track_time)
+      notes: Signed trapezoidal energy over observed time intervals; initial interval
+        energy is zero.
+      required: false
+    engine_energy_delivered_kwh:
+      expression: interval_energy_kwh(engine_power_required, track_time)
+      notes: Signed trapezoidal energy over observed time intervals; initial interval
+        energy is zero.
+    edu_mech_power_fl:
+      expression: electricsystem_em1_speed * electricsystem_em1_torque * 2.0 * 3.141592653589793
+        / 60000.0
+    edu_mech_power_fr:
+      expression: electricsystem_em2_speed * electricsystem_em2_torque * 2.0 * 3.141592653589793
+        / 60000.0
+    edu_mech_power_rl:
+      expression: electricsystem_em3_speed * electricsystem_em3_torque * 2.0 * 3.141592653589793
+        / 60000.0
+    edu_mech_power_rr:
+      expression: electricsystem_em4_speed * electricsystem_em4_torque * 2.0 * 3.141592653589793
+        / 60000.0
+    engine_power_required:
+      expression: engine_speed * engine_torque * 2.0 * 3.141592653589793 / 60000.0
+    generator_power_1:
+      expression: engine_speed * generator_torque_1 * 2.0 * 3.141592653589793 / 60000.0
+    agrochemical_discharge:
+      required: false
+    total_bulldozing_resistance_power:
+      required: false
+      for_plot: true
+    tyre_bulldozing_resistance_energy_wh:
+      required: false
+    tyre_bulldozing_resistance_energy_accumulated:
+      required: false
+    total_compaction_resistance_power:
+      required: false
+      for_plot: true
+    tyre_compaction_resistance_energy_wh:
+      required: false
+    tyre_compaction_resistance_energy_accumulated:
+      required: false
+    tyre_total_resistance_power:
+      required: false
+    tyre_total_resistance_energy_kwh:
+      required: false
+    tyre_total_resistance_energy_wh:
+      required: false
+    tyre_total_resistance_energy_accumulated:
+      required: false
+  statistics:
+    total_auxiliary_power_max:
+      required: false
+    auxiliary_energy_accumulated_max:
+      required: false
+      operation: last
+      notes: Final signed accumulated energy; metric ID retained for presentation
+        compatibility.
+    wheel_power_total_max:
+      required: false
+    tyre_total_energy_accumulated_last:
+      required: false
+    agrochemical_discharge_max:
+      required: false
+    road_height_max:
+      required: false
+    road_height_min:
+      required: false
+    steer_fl_max:
+      required: false
+    steer_fr_max:
+      required: false
+    steer_rl_max:
+      required: false
+    steer_rr_max:
+      required: false
+  kpis:
+    total_energy_consumption_tyres_aux:
+      required: false
+    road_height_range:
+      required: false
+    steer_abs_max:
+      required: false
+channels:
+  raw:
+  - semantic_name: auxiliary_high_voltage_power_consumption
+    source_name: User_defined_Data_High_Voltage_Auxiliary_signal1_0
+    report_name: Auxiliary High Voltage Power Consumption
+    channel_type: AVL
+    unit: kW
+    unit_interpretation:
+      source_unit: '-'
+      engineering_unit: kW
+      authority: 'Sergio, Astauto, 16 October 2026: confirmed power in kW; VSM User Defined Channel cannot export its unit. Factor 1, offset 0.'
+    required: false
+    for_plot: true
+    notes: Measured high-voltage auxiliary power; never replaced with a constant or
+      unrelated source.
+plots:
+- plot_id: tyre_soil_bulldozing
+  title: Tyre-Soil Bulldozing
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Power [kW]
+  secondary_y_label: Energy [kWh]
+  order: 19
+  reference_chart_number: 19
+  series:
+  - semantic_name: total_bulldozing_resistance_power
+    label: Total Bulldozing Resistance Power
+  - semantic_name: tyre_bulldozing_resistance_energy_accumulated
+    axis: secondary
+    label: Bulldozing Energy Accumulated
+- plot_id: tyre_soil_compaction
+  title: Tyre-Soil Compaction
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Power [kW]
+  secondary_y_label: Energy [kWh]
+  order: 20
+  reference_chart_number: 20
+  series:
+  - semantic_name: total_compaction_resistance_power
+    label: Total Compaction Resistance Power
+  - semantic_name: tyre_compaction_resistance_energy_accumulated
+    axis: secondary
+    label: Compaction Energy Accumulated
+- plot_id: wheel_torque
+  title: Wheel Torque
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Torque [Nm]
+  order: 24
+  series:
+  - semantic_name: driveshaft_torque_fl
+    label: Wheel Torque FL
+    required: false
+  - semantic_name: driveshaft_torque_fr
+    label: Wheel Torque FR
+    required: false
+  - semantic_name: driveshaft_torque_rl
+    label: Wheel Torque RL
+    required: false
+  - semantic_name: driveshaft_torque_rr
+    label: Wheel Torque RR
+    required: false
+  - semantic_name: wheel_total_torque
+    label: Wheel Total Torque
+    required: false
+- plot_id: wheel_power
+  title: Wheel Power
+  x: distance_km
+  x_label: Distance [km]
+  primary_y_label: Power [kW]
+  order: 25
+  series:
+  - semantic_name: wheel_power_fl
+    label: Wheel Power FL
+    required: false
+  - semantic_name: wheel_power_fr
+    label: Wheel Power FR
+    required: false
+  - semantic_name: wheel_power_rl
+    label: Wheel Power RL
+    required: false
+  - semantic_name: wheel_power_rr
+    label: Wheel Power RR
+    required: false
+  - semantic_name: wheel_power_total
+    label: Wheel Power Total
+    required: false

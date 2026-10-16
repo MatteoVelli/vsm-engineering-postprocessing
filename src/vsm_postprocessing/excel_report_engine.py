@@ -6,7 +6,7 @@ import math
 import shutil
 import textwrap
 from datetime import datetime, timezone
-from dataclasses import replace
+from dataclasses import asdict, replace
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -24,9 +24,11 @@ from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterPrope
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.cell import quote_sheetname
 
 from .errors import ConfigurationError, ExcelReportError
-from .excel_formulas import FORMULA_OPERATIONS, profile_arithmetic_formula, save_report_workbook, write_formula
+from .excel_formulas import (FORMULA_OPERATIONS, profile_arithmetic_formula, profile_temporal_formula,
+                             save_report_workbook, statistic_formula, write_formula)
 from .importer import ImportOptions, load_data_file
 from .models import ChannelInfo
 from .plotting_engine import PlottingResult, load_plotting_config, render_plots, _axis_label, _automatic_y_label
@@ -35,7 +37,8 @@ from .profile_plotting import ProfilePlottingResult, render_profile_plots, _prep
 from .profile_statistics import ProfileStatisticsResult, build_canonical_report_metrics, calculate_profile_statistics
 from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ProfileResolutionResult, ReportingProfile, load_reporting_profile, resolve_profile
-from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics
+from .report_selection import ProfileReportSelection, select_profile
+from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics, compute_statistic
 from .utils import source_report_filename, protect_source_path, client_display_filename, normalize_display_unit, normalized_name, sha256_file
 from .version import __version__
 
@@ -128,6 +131,7 @@ class ProfileExcelReportResult:
     report_channels: list[ChannelInfo]
     template_comparison: list[dict[str, str]]
     report_metadata: ReportMetadata
+    selection: ProfileReportSelection | None = None
 
     @property
     def sample_count(self) -> int:
@@ -487,6 +491,7 @@ def generate_profile_excel_report(
     template_file: str | Path | None = None,
     report_metadata: ReportMetadata | None = None,
     machine_name_override: str | None = None,
+    selection: ProfileReportSelection | None = None,
 ) -> ProfileExcelReportResult:
     """Generate a profile-driven engineering workbook.
 
@@ -497,13 +502,16 @@ def generate_profile_excel_report(
 
     source_path = Path(input_file).expanduser().resolve()
     profile_path = Path(profile_file).expanduser().resolve()
-    profile = load_reporting_profile(profile_path)
+    profile = select_profile(load_reporting_profile(profile_path), selection)
     report_metadata = report_metadata or resolve_report_metadata(
         source_path,
         profile,
         machine_name_override=machine_name_override,
     )
-    dataset = load_data_file(source_path, import_options)
+    options = import_options or ImportOptions(strict=not bool(profile.metadata.excel_template))
+    dataset = load_data_file(source_path, options)
+    if not dataset.quality.time_is_strictly_increasing or dataset.quality.time_channel_id is None:
+        raise ExcelReportError("Time must be finite and strictly increasing; duplicate or reversed timestamps are unsupported")
     resolution = resolve_profile(dataset, profile)
     if not resolution.is_valid:
         missing = [f"{item.definition.source_name} ({item.definition.report_name}) [{item.definition.channel_type}]"
@@ -542,7 +550,7 @@ def generate_profile_excel_report(
     }
     required_unavailable_plots = [
         item for item in plotting_result.unavailable_plots if item.missing_semantic_names
-        and (profile.metadata.powertrain != "diesel" or required_channels.intersection(item.missing_semantic_names))
+        and required_channels.intersection(item.missing_semantic_names)
     ]
     if required_unavailable_plots:
         raise ExcelReportError(
@@ -555,7 +563,11 @@ def generate_profile_excel_report(
         profile,
         channels_by_name,
         template_file=_profile_template_file(profile, template_file),
+        strict_template=selection is None,
     )
+    if selection is not None and selection.export_channels is not None:
+        selected = set(selection.export_channels) | {"track_time"}
+        report_channels = [channel for channel in report_channels if channel.channel_id in selected]
     comparison = _profile_template_comparison_rows(profile, dataset, report_channels, statistics_result, plotting_result)
     report_path = protect_source_path(destination / _profile_output_filename(profile, output_filename, report_metadata), source_path)
     manifest_path = destination / "profile_excel_report_manifest.json"
@@ -577,6 +589,8 @@ def generate_profile_excel_report(
         report_channels=report_channels,
         values_by_name=plotting_result.values_by_semantic_name,
         template_comparison=comparison,
+        excel_plot_ids=selection.plots if selection is not None else None,
+        bottom_operations=selection.bottom_operations if selection is not None else None,
     )
 
     result = ProfileExcelReportResult(
@@ -593,6 +607,7 @@ def generate_profile_excel_report(
         report_channels=report_channels,
         template_comparison=comparison,
         report_metadata=report_metadata,
+        selection=selection,
     )
     manifest_path.write_text(
         json.dumps(_profile_manifest(result, source_path, profile_path, report_type), indent=2),
@@ -614,6 +629,9 @@ def _profile_output_filename(
 
 
 def _profile_template_file(profile: ReportingProfile, template_file: str | Path | None) -> Path | None:
+    if template_file is None and profile.metadata.excel_template:
+        candidate = Path(profile.metadata.excel_template).resolve()
+        return candidate if candidate.is_file() else None
     if template_file is not None:
         path = Path(template_file).expanduser().resolve()
         if not path.exists():
@@ -636,9 +654,10 @@ def _profile_report_channels(
     channels_by_name: Mapping[str, ChannelInfo],
     *,
     template_file: Path | None = None,
+    strict_template: bool = True,
 ) -> list[ChannelInfo]:
     if template_file is not None and profile.metadata.powertrain != "diesel":
-        return _profile_report_channels_from_template(profile, channels_by_name, template_file)
+        return _profile_report_channels_from_template(profile, channels_by_name, template_file, strict=strict_template)
 
     channels: list[ChannelInfo] = []
     for definition in profile.raw_channels:
@@ -681,6 +700,8 @@ def _profile_report_channels_from_template(
     profile: ReportingProfile,
     channels_by_name: Mapping[str, ChannelInfo],
     template_file: Path,
+    *,
+    strict: bool = True,
 ) -> list[ChannelInfo]:
     raw_by_name = profile.raw_by_semantic_name()
     math_by_name = profile.math_by_semantic_name()
@@ -756,7 +777,7 @@ def _profile_report_channels_from_template(
         if getattr(definition, "required", True) or semantic_name in channels_by_name
     }
     omitted = sorted(expected - seen)
-    if missing or omitted:
+    if strict and (missing or omitted):
         raise ExcelReportError(
             "Sergio template channel order does not match the active profile: "
             f"missing_template_matches={missing[:10]}; omitted_profile_channels={omitted[:10]}"
@@ -838,6 +859,8 @@ def _write_profile_workbook(
     report_channels: list[ChannelInfo],
     values_by_name: Mapping[str, Any],
     template_comparison: list[dict[str, str]],
+    excel_plot_ids: tuple[str, ...] | None = None,
+    bottom_operations: tuple[str, ...] | None = None,
 ) -> None:
     workbook = Workbook()
     report = workbook.active
@@ -876,10 +899,13 @@ def _write_profile_workbook(
         plot_header_fill=plot_header_fill,
         kpi_fill=kpi_fill,
         white_bold=white_bold,
+        excel_plot_ids=excel_plot_ids,
+        bottom_operations=bottom_operations,
     )
     _write_profile_channel_mapping_sheet(
         mapping_sheet,
         profile=profile,
+        resolution=resolution,
         report_metadata=report_metadata,
         report_channels=report_channels,
         border=border,
@@ -909,6 +935,16 @@ def _write_profile_workbook(
         statistics_sheet, statistics_result,
         border=border, label_fill=label_fill, kpi_fill=kpi_fill, white_bold=white_bold,
     )
+    if profile.metadata.excel_template:
+        columns = {channel.channel_id: i for i, channel in enumerate(report_channels, 1)}
+        for row, item in enumerate(statistics_result.statistics, 2):
+            if item.target_channel not in columns:
+                continue
+            letter = get_column_letter(columns[item.target_channel])
+            extent = f"{quote_sheetname(report.title)}!{letter}5:{letter}{dataset.quality.sample_count+4}"
+            formula = statistic_formula(item.definition.operation, extent, item.definition.nan_policy)
+            if formula:
+                write_formula(statistics_sheet.cell(row, 5), formula, item.value)
     if profile.metadata.powertrain == "diesel":
         for column, width in (("A", 42), ("B", 42), ("D", 42)):
             statistics_sheet.column_dimensions[column].width = width
@@ -940,6 +976,8 @@ def _write_profile_report_sheet(
     plot_header_fill: PatternFill,
     kpi_fill: PatternFill,
     white_bold: Font,
+    excel_plot_ids: tuple[str, ...] | None = None,
+    bottom_operations: tuple[str, ...] | None = None,
 ) -> None:
     channel_count = len(report_channels)
     sample_count = statistics_result.dataset.quality.sample_count
@@ -980,8 +1018,10 @@ def _write_profile_report_sheet(
         unit_cell = sheet.cell(4, col_index, channel.unit or "-")
         if channel.kind.lower() == "math":
             definition = math_definitions[channel.channel_id]
-            mode = ("Live Excel arithmetic; select a data cell to inspect its formula."
-                    if channel.channel_id in math_formulas else
+            temporal = profile.metadata.excel_template and profile_temporal_formula(
+                definition.expression, channel_columns, data_start_row, data_start_row, col_index)
+            mode = ("Live Excel calculation; select a data cell to inspect its formula."
+                    if channel.channel_id in math_formulas or temporal else
                     "Python-calculated values retained for integration/cumulative or unsupported expressions.")
             unit_suffix = f" [{channel.unit or '-'}]"
             note_title = channel.display_name if channel.display_name.endswith(unit_suffix) else channel.display_name + unit_suffix
@@ -1007,6 +1047,11 @@ def _write_profile_report_sheet(
             cell = sheet.cell(data_start_row + row_offset, col_index, float(raw_value))
             if channel.channel_id in math_formulas:
                 write_formula(cell, math_formulas[channel.channel_id].format(row=cell.row), float(raw_value))
+            elif profile.metadata.excel_template and channel.kind.lower() == "math":
+                formula = profile_temporal_formula(math_definitions[channel.channel_id].expression,
+                                                   channel_columns, cell.row, data_start_row, col_index)
+                if formula:
+                    write_formula(cell, formula, float(raw_value))
             cell.number_format = number_format
 
     operation_rows = _bottom_statistic_rows(statistics_result)
@@ -1014,7 +1059,21 @@ def _write_profile_report_sheet(
     channel_results = _write_universal_bottom_statistics(
         sheet, report_channels, values_by_name, data_start_row, data_end_row,
         operation_rows, style=bottom_style, number_format="0.000",
+        selected_operations=bottom_operations,
     )
+    if profile.metadata.excel_template:
+        for col_index, channel in enumerate(report_channels, 1):
+            if col_index == 1:
+                continue
+            letter = get_column_letter(col_index)
+            extent = f"{letter}{data_start_row}:{letter}{data_end_row}"
+            values = np.asarray(values_by_name[channel.channel_id])
+            for operation in ("max", "min", "last", "first"):
+                if (operation, channel.channel_id) not in channel_results:
+                    continue
+                value, _, _ = compute_statistic(values, operation, "omit")
+                write_formula(sheet.cell(operation_rows[operation], col_index),
+                              statistic_formula(operation, extent), value)
     bottom_results = dict(rms_results)
     # Configuration still selects summary metrics and additional statistics.
     # It no longer selects which channels receive the four basic Excel results.
@@ -1027,9 +1086,15 @@ def _write_profile_report_sheet(
             if col == 1:
                 # The four Time-column cells contain labels, not statistics.
                 continue
-            bottom_results[item.definition.statistic_id] = channel_results[(operation, item.target_channel)]
+            if (operation, item.target_channel) in channel_results:
+                bottom_results[item.definition.statistic_id] = channel_results[(operation, item.target_channel)]
         elif item.definition.placement_group != "top_rms" and operation in operation_rows:
             cell = sheet.cell(operation_rows[operation], col, item.value)
+            if profile.metadata.excel_template:
+                letter = get_column_letter(col)
+                formula = statistic_formula(operation, f"{letter}{data_start_row}:{letter}{data_end_row}", item.definition.nan_policy)
+                if formula:
+                    write_formula(cell, formula, item.value)
             bottom_results[item.definition.statistic_id] = cell.coordinate
             cell.number_format = "0.000"
             for attribute, value in bottom_style.items():
@@ -1055,6 +1120,7 @@ def _write_profile_report_sheet(
         border=border,
         label_fill=plot_header_fill,
         white_bold=white_bold,
+        selected_ids=excel_plot_ids,
     )
 
     sheet.freeze_panes = "B6"
@@ -1068,9 +1134,8 @@ def _write_profile_report_sheet(
     sheet.row_dimensions[3].height = 42
     sheet.row_dimensions[4].height = 22
     if profile.metadata.powertrain == "diesel":
-        # Preserve the title height and align summary/channel headings on row 3.
+        # Preserve the taller Diesel summary/channel headings on row 3.
         # Charts start below the five frozen header rows.
-        sheet.row_dimensions[1].height = 60
         sheet.row_dimensions[3].height = 60
         sheet.cell(2, 1).alignment = Alignment(wrap_text=True, vertical="top")
 
@@ -1103,6 +1168,8 @@ def _write_profile_rms_blocks(
     for item in statistics_result.statistics:
         if item.definition.placement_group != "top_rms":
             continue
+        if item.target_channel not in channel_columns:
+            continue
         start_col, end_col, value_col = _rms_block_columns(item.definition.statistic_id, item.target_channel, channel_columns)
         start_col, end_col, value_col = _non_overlapping_rms_range(start_col, end_col, value_col, occupied)
         occupied.append((start_col, end_col))
@@ -1119,7 +1186,11 @@ def _write_profile_rms_blocks(
                 cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         label.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         value.number_format = "0.000"
-        if statistics_result.profile.metadata.powertrain == "diesel":
+        if getattr(statistics_result.profile.metadata, "excel_template", None) and item.definition.operation == "rms":
+            letter = get_column_letter(channel_columns[item.target_channel])
+            extent = f"{letter}5:{letter}{item.sample_count+4}"
+            write_formula(value, statistic_formula("rms", extent, item.definition.nan_policy), item.value)
+        elif statistics_result.profile.metadata.powertrain == "diesel":
             # Reuse the Electric top block, with a live sample-RMS formula.
             # SUMSQ squares the existing source in place (Nm^2 / kW^2), so
             # SQRT restores Nm / kW without adding helper data columns.
@@ -1241,6 +1312,7 @@ def _write_universal_bottom_statistics(
     *,
     style: Mapping[str, Any],
     number_format: str | None = None,
+    selected_operations: tuple[str, ...] | None = None,
 ) -> dict[tuple[str, str], str]:
     """Give every channel after Time four formulas, independently of selection.
 
@@ -1250,6 +1322,8 @@ def _write_universal_bottom_statistics(
     """
     references = {}
     for operation, row in operation_rows.items():
+        if selected_operations is not None and operation not in selected_operations:
+            continue
         label_col = 1 if operation in FORMULA_OPERATIONS else len(report_channels) + 1
         label = sheet.cell(row, label_col, operation.replace("_", " ").upper())
         for attribute, value in style.items():
@@ -1268,6 +1342,8 @@ def _write_universal_bottom_statistics(
             "first": (f"={letter}{data_start_row}", float(values[0]) if np.isfinite(values[0]) else 0.0),
         }
         for operation, (formula, cached_value) in formulas.items():
+            if selected_operations is not None and operation not in selected_operations:
+                continue
             cell = sheet.cell(operation_rows[operation], col)
             write_formula(cell, formula, cached_value)
             cell.number_format = number_format or _number_format(channel.unit)
@@ -1336,8 +1412,11 @@ def _write_profile_plots_on_report_sheet(
     border: Border,
     label_fill: PatternFill,
     white_bold: Font,
+    selected_ids: tuple[str, ...] | None = None,
 ) -> None:
     rendered = _ordered_profile_plots(plotting_result.rendered_plots)
+    if selected_ids is not None:
+        rendered = [plot for plot in rendered if plot.plot_id in selected_ids]
     # Keep data-row heights and the KPI panel above intact. The panel columns
     # are already width 13 (91 px in the workbook's Calibri 11 normal font).
     row_height = sheet.sheet_format.defaultRowHeight or 15
@@ -1354,6 +1433,14 @@ def _write_profile_plots_on_report_sheet(
             profile_definition, plotting_result.channels_by_semantic_name,
             plotting_result.values_by_semantic_name, plotting_result.sample_count,
         )
+        needed = {definition.x_channel_id, *(series.channel_id for series in definition.series)}
+        if not needed.issubset(channel_columns):
+            # The user may plot channels without exporting them. Reuse the shared
+            # rendered chart rather than introducing broken native references.
+            image = XLImage(plot.png_file)
+            image.width, image.height = _PROFILE_PLOT_WIDTH_IN * 96, _PROFILE_PLOT_HEIGHT_IN * 96
+            sheet.add_image(image, f"{get_column_letter(col)}{row}")
+            continue
         definition = _native_plot_definition(definition, plotting_result.channels_by_semantic_name)
         chart = _build_native_scatter_chart(
             definition, report_sheet=sheet, channel_column_by_id=channel_columns,
@@ -1422,6 +1509,7 @@ def _profile_equation_text(definition: Any, kind: str) -> str:
     if constants:
         lines.append("Constants: " + "; ".join(constants))
     helpers = {
+        "interval_energy_kwh": "interval_energy_kwh(P, t)[0] = 0; result[i] = (P[i-1]/2 + P[i]/2) * (t[i] - t[i-1]) / 3600, signed, t in seconds. Missing power or non-increasing timestamps are rejected.",
         "sample_energy_kwh": "sample_energy_kwh(P, t)[i] = P[i] * dt[i] / 3600; dt[0] = t[1] - t[0]; dt[i] = t[i] - t[i-1] for i >= 1 (t in seconds).",
         "cumulative_sum": "cumulative_sum(x)[i] = sum(x[j], j = 0..i).",
         "cumulative_trapezoid": "cumulative_trapezoid(x, t)[0] = 0; result[i] = sum((x[j-1]/2 + x[j]/2) * (t[j] - t[j-1]), j = 1..i), signed, with t in seconds.",
@@ -1438,6 +1526,7 @@ def _write_profile_channel_mapping_sheet(
     sheet: Any,
     *,
     profile: ReportingProfile,
+    resolution: ProfileResolutionResult,
     report_metadata: ReportMetadata,
     report_channels: list[ChannelInfo],
     border: Border,
@@ -1473,6 +1562,8 @@ def _write_profile_channel_mapping_sheet(
         formula = ""
         if math_definition is not None:
             formula = _profile_equation_text(math_definition, channel.kind)
+        elif channel.channel_id in resolution.resolved:
+            formula = resolution.resolved[channel.channel_id].unit_interpretation_note
         values = [
             definition.source_name if definition else channel.source_name,
             definition.report_name if definition else channel.display_name,
@@ -1852,6 +1943,15 @@ def _profile_manifest(
         "source_sha256": result.dataset.quality.source_sha256,
         "profile_file": str(profile_path),
         "profile_sha256": sha256_file(profile_path),
+        "selection": asdict(result.selection) if result.selection is not None else None,
+        "source_diagnostics": result.resolution.diagnostics,
+        "source_unit_interpretations": [
+            {"semantic_name": name, "source_name": item.channel.source_name,
+             **asdict(item.unit_interpretation), "values_unchanged": True}
+            for name, item in result.resolution.resolved.items() if item.unit_interpretation
+        ],
+        "unavailable_math": [item.definition.semantic_name for item in result.math_result.unavailable],
+        "unavailable_plots": [item.definition.plot_id for item in result.plotting_result.unavailable_plots],
         "profile_id": result.profile.profile_id,
         "profile_name": result.profile.metadata.name,
         "report_type": report_type,

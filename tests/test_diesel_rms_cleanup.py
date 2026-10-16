@@ -93,7 +93,7 @@ def test_main_has_no_banners_or_bottom_rms_and_summary_closes_gap(report):
         assert sheet.cell(1, start).value is None
         assert sheet.cell(2, start).value is None
         assert not any(r.min_col >= start for r in sheet.merged_cells.ranges)
-        assert sheet.row_dimensions[1].height == 60
+        assert sheet.row_dimensions[1].height == 24
         assert sheet.cell(2, 1).alignment.wrap_text
         assert sheet._charts[0].anchor._from.row == 7
         for chart in sheet._charts:

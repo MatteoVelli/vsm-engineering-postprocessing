@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import hashlib
 import os
+from dataclasses import asdict, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from vsm_postprocessing.errors import VSMPostProcessingError
+import yaml
+
+from vsm_postprocessing.errors import VSMPostProcessingError, DataValidationError
 from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 from vsm_postprocessing.pipeline_engine import run_pipeline
 from vsm_postprocessing.report_metadata import resolve_report_metadata
 from vsm_postprocessing.version import __version__
-from vsm_postprocessing.utils import source_report_filename
+from vsm_postprocessing.utils import source_report_filename, normalize_display_unit
+from vsm_postprocessing.report_profile import load_reporting_profile
+from vsm_postprocessing.report_selection import ProfileReportSelection
 from vsm_postprocessing.ui_config import (
     available_math_channel_ids,
     build_runtime_bundle,
@@ -338,6 +343,8 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
     source_path: Path | None = None
     validation_key: str | None = None
     machine_name_override: str | None = None
+    selection = None
+    report_import_options = ImportOptions(strict=True)
     if uploaded is None:
         st.info("Upload a supported VSM CSV or XLSX file to validate it against the selected profile.")
     else:
@@ -352,7 +359,9 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         validation_key = f"{source_path}:{source_path.stat().st_size}:{profile_definition.profile_id}"
         try:
             validate_profile_upload_extension(source_path)
-            inspection = inspect_data_file(source_path, ImportOptions(strict=True))
+            inspection = inspect_data_file(source_path, ImportOptions(strict=False))
+            if not inspection.quality.time_is_strictly_increasing or inspection.quality.sample_count < 2:
+                raise DataValidationError("At least two finite, strictly increasing time samples are required")
         except VSMPostProcessingError as exc:
             st.error(_friendly_input_error(exc))
             with st.expander("Diagnostics"):
@@ -367,6 +376,16 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
             c3.metric("Raw channels", f"{quality.raw_channel_count:,}")
             c4.metric("Duration", _format_duration_minutes(quality.time_start, quality.time_end, quality.time_unit))
             st.caption(f"Time channel: {quality.time_channel_name or quality.time_channel_id or 'not detected'}")
+            revision = st.selectbox("Reporting definitions", ["Sergio - 15 October 2026", "Legacy - Electric_05 / Hybrid_06 / Diesel"],
+                                    help="Legacy mappings and energy conventions are explicit; sources are never silently substituted.")
+            if revision.startswith("Sergio"):
+                revised = profile_definition.profile_path.parent / "sergio_2026_10" / profile_definition.profile_path.name
+                profile_definition = replace(profile_definition, profile_path=revised)
+                profile_definition, selection, report_import_options = _render_profile_report_options(st, profile_definition, inspection)
+            else:
+                st.info("Legacy reporting uses the previous source mappings and sample-energy convention. The legacy high-voltage auxiliary definition is a constant zero, not a measured high-voltage source.")
+            settings = repr((profile_definition.profile_path, selection, report_import_options))
+            validation_key += ":" + hashlib.sha256(settings.encode()).hexdigest()
 
     if st.session_state.get("profile_input_key") != validation_key:
         _clear_profile_report_state(st)
@@ -381,7 +400,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         _clear_profile_report_state(st)
         try:
             with st.spinner("Validating source channels against reporting profile..."):
-                summary = validate_reporting_profile_source(source_path, profile_definition.profile_path, ImportOptions(strict=True))
+                summary = validate_reporting_profile_source(source_path, profile_definition.profile_path, report_import_options)
         except VSMPostProcessingError as exc:
             st.error(_friendly_profile_error(exc))
             with st.expander("Diagnostics"):
@@ -397,7 +416,8 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         st.info("Validate the uploaded file and selected profile before generating the report.")
 
     if profile_definition.powertrain == "diesel":
-        _render_diesel_report_workflow(st, profile_definition, source_path, validation_key, summary, machine_name_override)
+        _render_diesel_report_workflow(st, profile_definition, source_path, validation_key, summary, machine_name_override,
+                                      selection=selection, import_options=report_import_options)
         return
 
     can_generate = (
@@ -423,8 +443,9 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
                     source_path,
                     profile_definition.profile_path,
                     run_dir,
-                    ImportOptions(strict=True),
+                    report_import_options,
                     machine_name_override=machine_name_override,
+                    selection=selection,
                 )
         except VSMPostProcessingError as exc:
             st.error(_friendly_profile_error(exc))
@@ -443,6 +464,82 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         _render_profile_report_download(st, result)
 
 
+def _render_profile_report_options(st, definition, inspection):
+    """Configure the existing profile engine; persist only explicit input mappings."""
+    profile = load_reporting_profile(definition.profile_path)
+    options = ImportOptions(strict=False)
+    with st.expander("Channels, statistics, plots and optional inputs"):
+        if definition.powertrain == "diesel":
+            names = [channel.source_name for channel in inspection.channels
+                     if (normalize_display_unit(channel.unit) or "").lower() in {"°c", "°f", "k"}]
+            configured = profile.raw_by_semantic_name()["engine_water_temperature"].source_name
+            candidates = [None, *names]
+            selected = st.selectbox("Engine Water Temperature source", candidates,
+                                    index=candidates.index(configured) if configured in names else 0,
+                                    format_func=lambda name: name or "Unavailable - select a measured coolant channel",
+                                    help="Select the actual coolant measurement. Ambient temperature is never substituted.")
+            if selected is not None and selected != configured:
+                channel = next(c for c in inspection.channels if c.source_name == selected)
+                if not channel.unit:
+                    st.error("The selected temperature channel needs an explicit temperature unit in its source export.")
+                else:
+                    metadata = asdict(profile.metadata)
+                    metadata["extends"] = str(definition.profile_path.resolve())
+                    payload = {"version": 1, "profile": metadata, "overrides": {
+                        "raw": {"engine_water_temperature": {"source_name": selected, "aliases": [], "unit": channel.unit}},
+                        "plots": {"diesel_engine_water_temperature": {"primary_y_label": f"Water Temperature [{channel.unit}]"}},
+                        "statistics": {s.statistic_id: {"unit": channel.unit} for s in profile.statistics if s.target == "engine_water_temperature"}}}
+                    serialized = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+                    folder = UI_WORKSPACE / "profiles"
+                    folder.mkdir(parents=True, exist_ok=True)
+                    path = folder / (hashlib.sha256(serialized.encode()).hexdigest() + ".yaml")
+                    path.write_text(serialized, encoding="utf-8")
+                    definition = replace(definition, profile_path=path)
+                    profile = load_reporting_profile(path)
+        # Streamlit round-trips formatted strings, so presentation names alone
+        # cannot identify options: valid profiles may repeat names or titles.
+        channel_labels = {c.semantic_name: f"{c.report_name} [{c.channel_type}] ({c.semantic_name})"
+                          for c in (*profile.raw_channels, *profile.math_channels)}
+        label = channel_labels.__getitem__
+        math_names = [c.semantic_name for c in profile.math_channels]
+        math = st.multiselect("Calculated MATH channels", math_names, default=math_names, format_func=label)
+        channels = [c.semantic_name for c in profile.raw_channels] + math
+        exported = st.multiselect("Channels exported to Excel", channels, default=channels, format_func=label)
+        rms_names = [s.statistic_id for s in profile.statistics if s.operation in {"rms", "time_weighted_rms"}]
+        other_names = [s.statistic_id for s in profile.statistics if s.statistic_id not in rms_names]
+        rms = st.multiselect("RMS calculations", rms_names, default=rms_names)
+        statistics = st.multiselect("Summary statistics", other_names, default=other_names)
+        bottom = st.multiselect("Excel column statistics", ["max", "min", "first", "last"],
+                                default=["max", "min", "first", "last"], format_func=str.upper)
+        kpi_names = [k.kpi_id for k in profile.kpis]
+        kpis = st.multiselect("Engineering KPIs", kpi_names, default=kpi_names)
+        plot_names = [p.plot_id for p in profile.plots]
+        plot_labels = {p.plot_id: f"{p.title} ({p.plot_id})" for p in profile.plots}
+        plots = st.multiselect("Plots included in Excel", plot_names, default=plot_names,
+                               format_func=plot_labels.__getitem__)
+        st.caption("Dependencies needed by selected plots, statistics and KPIs are calculated automatically. Plots whose source columns are not exported use the shared chart image in Excel.")
+        ppt_plots = {}
+        ppt_statistics = None
+        if profile.presentation:
+            metric_names = list(dict.fromkeys(s for slide in profile.presentation.slides for s in slide.statistics))
+            ppt_statistics = st.multiselect("KPIs included in PowerPoint", metric_names, default=metric_names)
+            for slide in profile.presentation.slides:
+                if slide.plots:
+                    ppt_plots[slide.slide_id] = tuple(st.multiselect(
+                        f"PowerPoint plots - {slide.slide_id}", plot_names, default=list(slide.plots),
+                        max_selections=len(slide.plots), format_func=plot_labels.__getitem__))
+        if inspection.quality.sample_count > 1 and st.checkbox("Use a selected sample interval"):
+            last = inspection.quality.sample_count - 1
+            first_sample = int(st.number_input("First sample (zero based)", min_value=0, max_value=max(0, last - 1), value=0))
+            last_sample = int(st.number_input("Last sample (inclusive)", min_value=first_sample + 1, max_value=last, value=last))
+            start_row = inspection.quality.data_start_row
+            options = replace(options, data_start_row=start_row + first_sample, data_end_row=start_row + last_sample)
+    selection = ProfileReportSelection(tuple(exported), tuple(math), tuple(rms + statistics), tuple(kpis), tuple(plots),
+                                       ppt_plots or None, tuple(ppt_statistics) if ppt_statistics is not None else None,
+                                       tuple(bottom))
+    return definition, selection, options
+
+
 def _clear_profile_report_state(st: Any) -> None:
     """Invalidate validation and downloads when inputs change or validation restarts."""
     for key in ("profile_validation_key", "profile_validation_summary",
@@ -452,7 +549,8 @@ def _clear_profile_report_state(st: Any) -> None:
 
 
 def _render_diesel_report_workflow(st: Any, profile_definition: Any, source_path: Path | None,
-                                 validation_key: str | None, summary: Any, machine_name: str | None) -> None:
+                                 validation_key: str | None, summary: Any, machine_name: str | None,
+                                 *, selection=None, import_options=None) -> None:
     st.info("Diesel Excel and PowerPoint reporting are available.")
     can_generate = (source_path is not None and summary is not None and summary.is_valid
                     and st.session_state.get("profile_validation_key") == validation_key)
@@ -467,7 +565,8 @@ def _render_diesel_report_workflow(st: Any, profile_definition: Any, source_path
                 result = generate_reporting_profile_engineering_report(
                     source_path, profile_definition.profile_path,
                     UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f"),
-                    ImportOptions(strict=True), machine_name_override=machine_name,
+                    import_options or ImportOptions(strict=True), machine_name_override=machine_name,
+                    **({"selection": selection} if selection is not None else {}),
                 )
         except VSMPostProcessingError as exc:
             st.error(_friendly_profile_error(exc))
@@ -505,6 +604,11 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
             f"{summary.all_zero_resolved_count} resolved channel(s) are inactive/all-zero. "
             "This is informational and does not make the profile invalid."
         )
+    for message in getattr(summary, "diagnostics", ()):
+        if "Source channel missing" in message or "Source channel unavailable" in message or "All four measured" in message:
+            st.warning(message)
+        else:
+            st.info(message)
     if summary.missing_optional_names:
         st.info(
             "Optional source channels are not required for profile validation. "

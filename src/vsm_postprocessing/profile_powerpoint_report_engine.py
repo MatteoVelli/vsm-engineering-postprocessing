@@ -383,7 +383,7 @@ def generate_profile_powerpoint_report(
         input_file,
         profile_file,
         output_dir,
-        import_options or ImportOptions(strict=True),
+        import_options,
         machine_name_override=machine_name_override,
     )
     return build_profile_powerpoint_report(excel_result, output_dir, output_filename=output_filename)
@@ -402,12 +402,20 @@ def build_profile_powerpoint_report(
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
     config_path = destination / "profile_powerpoint_report_config.yaml"
+    payload = _profile_powerpoint_config(
+        excel_result,
+        output_filename=output_filename or _report_output_filename(excel_result.report_metadata, ".pptx"),
+    )
+    if profile.metadata.excel_template:
+        # An explicitly deselected card/chart has no content of that type. Keep
+        # the fixed template page, using the valid empty overview configuration.
+        for slide in payload["slides"]:
+            if ((slide["type"] == "kpi_grid" and not slide["statistics"])
+                    or (slide["type"] in {"plot_full", "plot_pair"} and not slide["plots"])):
+                slide["type"] = "overview"
     config_path.write_text(
         yaml.safe_dump(
-            _profile_powerpoint_config(
-                excel_result,
-                output_filename=output_filename or _report_output_filename(excel_result.report_metadata, ".pptx"),
-            ),
+            payload,
             sort_keys=False,
             allow_unicode=False,
         ),
@@ -629,7 +637,8 @@ def _render_template_slide(
 
     stats = [statistics_by_id[stat_id] for stat_id in slide_def.statistic_ids if stat_id in statistics_by_id]
     _replace_kpi_slots(shapes, template_slide_number, stats, layout)
-    _replace_plot_slots(slide, shapes, template_slide_number, list(slide_def.plot_ids), plots_by_id, assets, layout)
+    _replace_plot_slots(slide, shapes, template_slide_number, list(slide_def.plot_ids), plots_by_id, assets, layout,
+                        allow_unavailable=bool(excel_result.profile.metadata.excel_template))
     if template_slide_number == 7 and _is_inactive_hybrid_slide(excel_result) and not text_slots.body:
         _add_notice(
             slide,
@@ -1389,13 +1398,21 @@ def _replace_plot_slots(
     plots_by_id: Mapping[str, Any],
     assets: Path,
     layout: _TemplateLayoutSpec,
+    *,
+    allow_unavailable: bool = False,
 ) -> None:
     for index, slot in enumerate(layout.plot_slots.get(slide_number, ())):
-        if index >= len(plot_ids):
+        if index >= len(plot_ids) and not allow_unavailable:
             continue
-        plot_id = plot_ids[index]
+        plot_id = plot_ids[index] if index < len(plot_ids) else "unselected"
         rendered = plots_by_id.get(plot_id)
         if rendered is None:
+            if allow_unavailable:
+                picture = shapes[slot.picture]
+                left, top, width, height = picture.left, picture.top, picture.width, picture.height
+                picture._element.getparent().remove(picture._element)
+                _add_unavailable_plot_text(slide, left, top, width, height)
+                continue
             raise PowerPointReportError(f"Configured PowerPoint plot ID was not rendered: {plot_id}")
         image_path = _profile_plot_path(rendered, assets)
         if not image_path.exists():
@@ -1920,6 +1937,8 @@ def _profile_statistics_as_powerpoint_statistics(excel_result: ProfileExcelRepor
             channels = excel_result.plotting_result.channels_by_semantic_name
             values = excel_result.plotting_result.values_by_semantic_name
             if channel_id not in channels or channel_id not in values:
+                if excel_result.profile.metadata.excel_template:
+                    continue
                 raise PowerPointReportError(f"Slide 9 requires RR channel '{channel_id}'")
             channel = channels[channel_id]
             value, used, omitted = compute_statistic(values[channel_id], "max")

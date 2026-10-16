@@ -64,6 +64,15 @@ _CLIENT_REFERENCE_FILES = (
     "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx",
 )
 
+# Revised templates aid column-order fidelity when supplied. The deterministic
+# profiles also work without these private workbooks, using configuration order.
+_CLIENT_OPTIONAL_FILES = (
+    "docs/SERGIO_2026_10_15_IMPLEMENTATION.md",
+    "reference_files/Diesel Template_03.xlsx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_07.xlsx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_07.xlsx",
+)
+
 _EXCLUDED_NAMES = {
     "__pycache__",
     ".pytest_cache",
@@ -111,6 +120,8 @@ def _collect_client_files(project_root: Path) -> list[Path]:
         if not root.exists():
             raise FileNotFoundError(f"Required release directory is missing: {directory}")
         candidates.extend(path for path in root.rglob("*") if _is_allowed(path, project_root))
+    candidates.extend(project_root / relative for relative in _CLIENT_OPTIONAL_FILES
+                      if (project_root / relative).is_file())
 
     unique = {path.resolve(): path for path in candidates if _is_allowed(path, project_root)}
     return sorted(unique.values(), key=lambda path: path.relative_to(project_root).as_posix().lower())

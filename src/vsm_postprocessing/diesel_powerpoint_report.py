@@ -72,7 +72,7 @@ def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_fil
     missing = set(_SLIDES) - definitions.keys()
     if missing:
         raise ppt.PowerPointReportError("Diesel presentation is missing slides: " + ", ".join(sorted(missing)))
-    value = lambda name: _display(statistics[name])
+    value = lambda name: _display(statistics[name]) if name in statistics else "Unavailable"
     bodies = {
         "executive_results": ("Canonical simulation results; no acceptance criteria have been applied.",),
         "diesel_driveline": ("Available corners are shown individually; missing optional channels are omitted.",),
@@ -87,6 +87,8 @@ def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_fil
     for slide_id, (_, kind, title, subtitle) in _SLIDES.items():
         definition = definitions[slide_id]
         plot_ids = [p for p in definition.plots if p in plots]
+        if slide_id == "diesel_thermal" and "diesel_engine_water_temperature" in plot_ids:
+            subtitle = "Measured engine water temperature from the configured VSM source"
         if slide_id in _OPTIONAL_SLIDES and not plot_ids:
             continue
         slides.append({
@@ -202,7 +204,8 @@ def build_diesel_powerpoint(
         elif page == 7:
             ppt._set_shape_text(shapes[32], definition.body[0])
         elif page == 10:
-            banner = f"{_display(statistics['distance_km'])} covered   |   Fuel {_display(statistics['fuel_consumed_kg'])}   |   Net energy {_display(statistics['engine_mechanical_energy_last'])}"
+            value = lambda key: _display(statistics[key]) if key in statistics else "Unavailable"
+            banner = f"{value('distance_km')} covered   |   Fuel {value('fuel_consumed_kg')}   |   Net energy {value('engine_mechanical_energy_last')}"
             ppt._set_summary_banner_preserve_runs(shapes[4], banner)
             ppt._set_overview_card_body(shapes[6], "\n".join(definition.body))
         selected = [statistics[s] for s in definition.statistic_ids]
@@ -221,6 +224,8 @@ def build_diesel_powerpoint(
             note = "Oil temperature shown; coolant remains available in Excel." if coolant is not None else "Oil temperature shown; coolant source unavailable."
             if coolant is not None and np.array_equal(oil, coolant):
                 note = "Oil and coolant source traces are identical in this run; one trace is shown."
+            if "diesel_engine_water_temperature" in definition.plot_ids:
+                note = "Engine water temperature from the configured measured VSM source."
             ppt._add_text_box(slide, note, Inches(.6), Inches(6.65), Inches(12.13), Inches(.24),
                               font_size=10.5, color=ppt._ASTAUTO_MUTED, italic=True)
         ppt._add_astauto_logo(slide, prs)

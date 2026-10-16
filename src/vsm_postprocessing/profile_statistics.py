@@ -284,6 +284,8 @@ def calculate_profile_statistics(
         )
 
     diagnostics = _profile_diagnostics(values_by_name)
+    if profile.metadata.excel_template:
+        diagnostics = [*resolution.diagnostics, *diagnostics]
     kpis, unavailable_kpis, kpi_order = _calculate_kpis(profile, statistics, constants or {}, values_by_name)
 
     return ProfileStatisticsResult(
@@ -310,7 +312,7 @@ def _build_semantic_channel_maps(
     for semantic_name, resolved in resolution.resolved.items():
         index = dataset.channel_index(resolved.channel.channel_id)
         values[semantic_name] = np.asarray(dataset.values[:, index], dtype=np.float64)
-        channels[semantic_name] = resolved.channel
+        channels[semantic_name] = resolved.engineering_channel
     calculated_by_name = {channel.channel_id.rsplit("__math__", 1)[-1]: channel for channel in math_result.calculated_channels}
     for semantic_name, series in math_result.values_by_semantic_name.items():
         values[semantic_name] = series

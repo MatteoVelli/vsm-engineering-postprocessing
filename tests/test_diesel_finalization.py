@@ -99,7 +99,9 @@ def test_actual_app_generates_both_reports_and_respects_machine_name(app):
     cover = Presentation(result.presentation_path).slides[0]
     assert any(s.has_text_frame and s.text == "Acceptance Sprayer Diesel" for s in cover.shapes)
     assert len(at.get("download_button")) == 2
-    assert len(at.get("image") or at.get("imgs")) == 18
+    assert len(at.get("image") or at.get("imgs")) == 20
+    assert {"diesel_engine_water_temperature", "wheel_power"} <= {
+        p.plot_id for p in result.excel_result.plotting_result.rendered_plots}
     at.text_input[0].set_value("Another Sprayer").run()
     assert not at.get("download_button")
     assert not at.exception

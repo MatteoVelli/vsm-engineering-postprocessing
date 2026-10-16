@@ -180,6 +180,18 @@ def _time_average(values: np.ndarray, time_s: np.ndarray) -> float:
     return float(integral[-1] / (time_s[-1] - time_s[0]))
 
 
+def _interval_energy_kwh(power_kw: np.ndarray, time_s: np.ndarray) -> np.ndarray:
+    """Trapezoidal kWh per observed interval; the initial sample has zero energy.
+
+    Validate before integrating: gaps, duplicates and reversals are never silently
+    replaced by a constant sampling period. Signed power remains signed.
+    """
+    # Reuse the shared validation and integration convention used by Diesel.
+    _cumulative_trapezoid(power_kw, time_s)
+    power = np.asarray(power_kw, dtype=np.float64)
+    return np.r_[0.0, (power[:-1] / 2 + power[1:] / 2) * np.diff(time_s) / 3600]
+
+
 _ALLOWED_FUNCTIONS: dict[str, _FunctionSpec] = {
     "abs": _FunctionSpec(np.abs, 1, 1),
     "sqrt": _FunctionSpec(np.sqrt, 1, 1),
@@ -189,6 +201,7 @@ _ALLOWED_FUNCTIONS: dict[str, _FunctionSpec] = {
     "clip": _FunctionSpec(np.clip, 3, 3),
     "cumulative_sum": _FunctionSpec(np.cumsum, 1, 1),
     "sample_energy_kwh": _FunctionSpec(_sample_energy_kwh, 2, 2),
+    "interval_energy_kwh": _FunctionSpec(_interval_energy_kwh, 2, 2),
     "cumulative_trapezoid": _FunctionSpec(_cumulative_trapezoid, 2, 2),
     "time_average": _FunctionSpec(_time_average, 2, 2),
     "nominal_battery_capacity_kwh": _FunctionSpec(infer_nominal_battery_capacity_kwh, 2, 2),

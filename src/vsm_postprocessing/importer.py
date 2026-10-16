@@ -76,9 +76,9 @@ def load_data_file(path: str | Path, options: ImportOptions | None = None) -> Im
     quality = inspection.quality
 
     if source_path.suffix.lower() == ".xlsx":
-        values = _load_xlsx_numeric_matrix(source_path, quality)
+        values = _load_xlsx_numeric_matrix(source_path, quality, allow_invalid=not options.strict)
     elif source_path.suffix.lower() == ".csv":
-        values = _load_csv_numeric_matrix(source_path, quality)
+        values = _load_csv_numeric_matrix(source_path, quality, allow_invalid=not options.strict)
     else:  # inspect_data_file has already validated the suffix
         raise FileImportError(f"Unsupported input type '{source_path.suffix.lower()}'")
 
@@ -90,7 +90,7 @@ def load_data_file(path: str | Path, options: ImportOptions | None = None) -> Im
     )
 
 
-def _load_xlsx_numeric_matrix(path: Path, quality: DataQualityReport) -> np.ndarray:
+def _load_xlsx_numeric_matrix(path: Path, quality: DataQualityReport, *, allow_invalid: bool = False) -> np.ndarray:
     try:
         workbook = load_workbook(path, data_only=True, read_only=True)
     except Exception as exc:  # pragma: no cover
@@ -113,6 +113,9 @@ def _load_xlsx_numeric_matrix(path: Path, quality: DataQualityReport) -> np.ndar
             for column_index, raw_value in enumerate(row):
                 parsed, status = _coerce_numeric(raw_value)
                 if status != "ok":
+                    if allow_invalid:
+                        values[row_index, column_index] = np.nan
+                        continue
                     coordinate = f"{get_column_letter(column_index + 1)}{quality.data_start_row + row_index}"
                     raise DataValidationError(
                         f"Validated data changed or could not be loaded at {coordinate}: {raw_value!r} ({status})"
@@ -128,7 +131,7 @@ def _load_xlsx_numeric_matrix(path: Path, quality: DataQualityReport) -> np.ndar
         workbook.close()
 
 
-def _load_csv_numeric_matrix(path: Path, quality: DataQualityReport) -> np.ndarray:
+def _load_csv_numeric_matrix(path: Path, quality: DataQualityReport, *, allow_invalid: bool = False) -> np.ndarray:
     rows = _read_csv_rows(path)
     data_rows = rows[quality.data_start_row - 1 : quality.data_end_row]
     if len(data_rows) != quality.sample_count:
@@ -144,6 +147,9 @@ def _load_csv_numeric_matrix(path: Path, quality: DataQualityReport) -> np.ndarr
         for column_index, raw_value in enumerate(padded):
             parsed, status = _coerce_numeric(raw_value)
             if status != "ok":
+                if allow_invalid:
+                    values[row_index, column_index] = np.nan
+                    continue
                 raise DataValidationError(
                     "Validated CSV data changed or could not be loaded at "
                     f"row {quality.data_start_row + row_index}, column {column_index + 1}: "
