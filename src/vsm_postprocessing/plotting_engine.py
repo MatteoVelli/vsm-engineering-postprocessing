@@ -65,6 +65,7 @@ class PlotSeriesDefinition:
     channel_id: str
     axis: str = "primary"
     label: str | None = None
+    colour: str | None = None
 
 
 @dataclass(frozen=True)
@@ -78,6 +79,7 @@ class PlotDefinition:
     primary_y_label: str | None = None
     secondary_y_label: str | None = None
     reference_chart_number: int | None = None
+    primary_y_limits: tuple[float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -478,7 +480,7 @@ def _render_one_plot(
                 label=label,
                 linewidth=defaults.line_width,
                 linestyle="-",
-                color="#" + series_colour(series_index),
+                color=item.colour or "#" + series_colour(series_index),
                 marker=None,
                 antialiased=True,
             )
@@ -552,6 +554,8 @@ def _render_one_plot(
                 for spine in axis.spines.values():
                     spine.set_color("#7A8691")
                     spine.set_linewidth(0.8)
+        if definition.primary_y_limits is not None:
+            primary_axis.set_ylim(*definition.primary_y_limits)
         if style.tight_layout and not style.constrained_layout:
             figure.tight_layout()
         png_dir = output_dir / "png"

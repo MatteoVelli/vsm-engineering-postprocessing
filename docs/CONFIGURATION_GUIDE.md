@@ -141,8 +141,56 @@ NaN handling is explicit in configuration. No AI is used to calculate engineerin
 
 Plot definitions specify the X channel and one or more Y series. Raw and calculated channels can be mixed. Plot generation performs no hidden smoothing, interpolation or resampling.
 
+Current October Electric/Hybrid profiles append four single-series soil plots
+using `x: track_time`, `x_label: Time [s]`, power in kW and cumulative energy in
+kWh. They reference the existing MATH channels directly; accumulated energy is
+not integrated again. Their orders 100-103 append them after the existing charts.
+
+An extending profile can append styled PowerPoint plot-pair pages while keeping
+its inherited presentation:
+
+```yaml
+overrides:
+  additional_presentation_slides:
+  - slide_id: soil_bulldozing
+    mode: additional_plot_pair
+    title: Tyre-Soil Bulldozing
+    subtitle: Resistance power and accumulated energy versus time
+    plots:
+    - total_bulldozing_resistance_power
+    - tyre_bulldozing_resistance_energy_accumulated
+```
+
+These additions require an inherited presentation, unique slide IDs, a title,
+one or two existing plot IDs and either zero or six statistics. The current
+soil pages configure six presentation-only `soil_bulldozing_*` or
+`soil_compaction_*` metric IDs; their definitions reuse validated report channels,
+the shared signed maximum/sample RMS/time-average functions and `distance_km_last`.
+No new Excel statistic or formula is introduced. They use the approved Astauto
+background, header, logo, footer and plot-pair dimensions and appear before the
+final summary. Unavailable dependencies produce labelled notices. Existing
+PowerPoint plot selection applies to the new slots, including deselection.
+
 ## Reports
 
 Excel and PowerPoint are presentation layers. They consume outputs from the deterministic calculation layers and do not independently recompute engineering values.
+
+Raw definitions accept `for_report: false` (default: true) to suppress an Excel
+report column while preserving ingestion, semantic mapping and calculation
+availability. Diesel uses this for `engine_load`; its dedicated statistic and
+plot are also removed from the profile. `engine_torque` is unchanged. The UI
+omits suppressed channels from its Excel export chooser.
+
+Every profile cover displays `ReportMetadata.source_filename` exactly, including
+its extension, in a 13 pt text area with native word splitting. Filename values
+are descriptive metadata and are not used as measured KPI values.
+
+The current Electric profile places `tyre_total` before its two soil pages in
+`additional_presentation_slides`. Its six `tyre_total_*` cards reuse the same
+presentation metric provider as the soil pages. Two time plots (orders 104-105)
+reference the existing total resistance power and accumulated energy channels;
+they also appear as native Excel charts. Total means rolling resistance plus
+bulldozing plus compaction across four corners, with the existing signed
+observed-time integration. Missing constituents disable the total explicitly.
 
 The previous composed mission scenario/provider workflow has been removed. Source files are processed directly through the selected profile or generic pipeline configuration.

@@ -661,6 +661,8 @@ def _profile_report_channels(
 
     channels: list[ChannelInfo] = []
     for definition in profile.raw_channels:
+        if not definition.for_report:
+            continue
         if definition.semantic_name not in channels_by_name:
             if not definition.required:
                 continue
@@ -745,6 +747,8 @@ def _profile_report_channels_from_template(
             continue
         seen.add(semantic_name)
         definition = definitions[semantic_name]
+        if not getattr(definition, "for_report", True):
+            continue
         if semantic_name not in channels_by_name:
             if getattr(definition, "required", True):
                 raise ExcelReportError(f"Required profile channel from template is unavailable: {semantic_name}")
@@ -951,6 +955,9 @@ def _write_profile_workbook(
         for row in statistics_sheet:
             for cell in row:
                 cell.alignment = Alignment(wrap_text=True, vertical="top")
+
+    from .profile_kpi_formulas import write_profile_kpi_formulas
+    write_profile_kpi_formulas(workbook, report, statistics_result, report_channels)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     save_report_workbook(workbook, output_path)

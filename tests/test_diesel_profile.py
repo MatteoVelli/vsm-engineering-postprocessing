@@ -69,7 +69,7 @@ def test_diesel_profile_is_independent_and_discovered_last(profile):
     assert profile.profile_id == "full_size_sprayer_diesel"
     assert profile.metadata.powertrain == "diesel"
     assert profile.metadata.extends is None
-    assert len(profile.plots) == 18 and len(profile.presentation.slides) == 10
+    assert len(profile.plots) == 17 and len(profile.presentation.slides) == 10
     assert sum(c.required for c in profile.raw_channels) == 7
     assert not any("battery" in c.source_name.lower() or "electricsystem_em" in c.source_name.lower() for c in profile.raw_channels)
     assert not profile.raw_by_semantic_name()["track_height"].required
@@ -266,7 +266,7 @@ def test_reference_engine_power_independent_csv_calculation(reference, profile):
 def test_reference_fuel_semantics_statistics_and_kpis(reference, profile):
     result = calculate_profile_statistics(reference, profile)
     assert result.is_complete and result.math_result.is_complete
-    assert len(result.statistics) == 51 and len(result.kpis) == 5
+    assert len(result.statistics) == 50 and len(result.kpis) == 5
     stats = {s.definition.statistic_id: s.value for s in result.statistics}
     for key, value in dict(chassis_speed_max=22.4686, road_gradient_min=-15, road_gradient_max=15, engine_speed_max=1996.81, engine_torque_max=826.219, engine_power_max=165.93862633964403, engine_mechanical_energy_last=3.7647817811605133, fuel_volume_last=0.9421207194583333, fuel_flow_max=41.4741).items():
         assert stats[key] == pytest.approx(value, rel=1e-11)

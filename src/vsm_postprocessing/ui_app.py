@@ -503,7 +503,7 @@ def _render_profile_report_options(st, definition, inspection):
         label = channel_labels.__getitem__
         math_names = [c.semantic_name for c in profile.math_channels]
         math = st.multiselect("Calculated MATH channels", math_names, default=math_names, format_func=label)
-        channels = [c.semantic_name for c in profile.raw_channels] + math
+        channels = [c.semantic_name for c in profile.raw_channels if c.for_report] + math
         exported = st.multiselect("Channels exported to Excel", channels, default=channels, format_func=label)
         rms_names = [s.statistic_id for s in profile.statistics if s.operation in {"rms", "time_weighted_rms"}]
         other_names = [s.statistic_id for s in profile.statistics if s.statistic_id not in rms_names]

@@ -299,7 +299,7 @@ def test_legacy_export_generates_partial_modern_excel_and_powerpoint(kind, tmp_p
     ppt = build_profile_powerpoint_report(report, tmp_path / "ppt")
     from pptx import Presentation
     presentation = Presentation(ppt.presentation_path)
-    assert len(presentation.slides) == 12
+    assert len(presentation.slides) == (15 if kind == "electric" else 14)
     text = " ".join(s.text for slide in presentation.slides for s in slide.shapes if s.has_text_frame)
     assert "PLOT DATA NOT AVAILABLE" in text
 
@@ -341,7 +341,7 @@ def test_new_soil_plots_replace_existing_powerpoint_slots(revised_report, tmp_pa
     slide = next(s for s in payload["slides"] if s["slide_id"] == "traction_auxiliaries")
     assert slide["plots"] == ["tyre_soil_bulldozing", "tyre_soil_compaction"]
     from pptx import Presentation
-    assert len(Presentation(result.presentation_path).slides) == 12
+    assert len(Presentation(result.presentation_path).slides) == (15 if kind == "electric" else 14)
 
 
 def test_ui_modern_profile_mapping_and_selections(tmp_path, monkeypatch):

@@ -69,13 +69,14 @@ def test_profile_excel_report_generates_reopenable_electric_workbook(electric_re
         "Rename From VSM to Astauto",
         "Metadata",
         "Statistics",
+        "Formula Support",
     ]
     assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "visible"] == [
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
         "Statistics",
     ]
-    assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "hidden"] == ["Metadata"]
+    assert [sheet.title for sheet in electric_workbook.worksheets if sheet.sheet_state == "hidden"] == ["Metadata", "Formula Support"]
 
 
 def test_profile_excel_report_exports_semantic_raw_and_math_channels_with_dynamic_rows(

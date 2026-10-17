@@ -86,6 +86,8 @@ def statistic_formula(operation, extent, nan_policy="omit"):
         "last": f"LOOKUP(2,1/ISNUMBER({extent}),{extent})",
         "first": f"INDEX({extent},MATCH(TRUE,INDEX(ISNUMBER({extent}),0),0))",
         "sum": f"SUM({extent})",
+        "positive_max": f"MAX(0,MAX({extent}))",
+        "absolute_max": f"MAX(ABS(MAX({extent})),ABS(MIN({extent})))",
     }
     if operation not in bodies:
         return None

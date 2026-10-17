@@ -27,7 +27,7 @@ _SLIDES = {
     "diesel_engine": (5, "plot_pair", "Diesel Engine Performance", "Engine speed, torque and mechanical power; negative overrun retained"),
     "diesel_fuel_energy": (6, "plot_pair", "Fuel Consumption & Mechanical Energy", "Cumulative fuel mass, volumetric flow and net engine energy"),
     "diesel_driveline": (7, "plot_pair", "Driveline & Wheel Loads", "Corner driveshaft torques and total tyre vertical loads"),
-    "diesel_controls": (8, "plot_pair", "Engine Load & Throttle", "Source engine load torque [Nm] and throttle command [%]"),
+    "diesel_controls": (8, "plot_full", "Engine Throttle", "Measured engine throttle command [%]"),
     "diesel_thermal": (9, "plot_full", "Engine Thermal Behaviour", "Source oil temperature; no derived thermal assessment"),
     "simulation_summary": (10, "conclusion", "Simulation Summary", "Deterministic Diesel result snapshot"),
 }
@@ -40,7 +40,7 @@ _LABELS = {
     "engine_power_min": "MIN ENGINE POWER", "engine_power_rms": "ENGINE POWER RMS",
     "engine_mechanical_energy_last": "NET MECHANICAL ENERGY",
     "fuel_volume_last": "INTEGRATED FUEL VOLUME", "fuel_flow_average": "AVG FUEL FLOW",
-    "fuel_flow_max": "MAX FUEL FLOW", "engine_load_max": "MAX ENGINE LOAD TORQUE",
+    "fuel_flow_max": "MAX FUEL FLOW",
     "engine_throttle_max": "MAX THROTTLE",
 }
 
@@ -61,7 +61,9 @@ def _display(stat):
 def _available_plots(result):
     # A present, nonzero constant trace is still useful (e.g. a held temperature).
     return {p.plot_id for p in result.plotting_result.rendered_plots
-            if any(not s.is_all_zero for s in result.plotting_result.series_summaries[p.plot_id])}
+            if (result.profile.metadata.excel_template and p.plot_id in {
+                    "diesel_engine_oil_temperature", "diesel_engine_water_temperature"})
+            or any(not s.is_all_zero for s in result.plotting_result.series_summaries[p.plot_id])}
 
 
 def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_filename: str) -> dict[str, Any]:
@@ -87,9 +89,13 @@ def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_fil
     for slide_id, (_, kind, title, subtitle) in _SLIDES.items():
         definition = definitions[slide_id]
         plot_ids = [p for p in definition.plots if p in plots]
-        if slide_id == "diesel_thermal" and "diesel_engine_water_temperature" in plot_ids:
-            subtitle = "Measured engine water temperature from the configured VSM source"
-        if slide_id in _OPTIONAL_SLIDES and not plot_ids:
+        if slide_id == "diesel_thermal" and profile.metadata.excel_template:
+            kind = "plot_pair" if len(plot_ids) == 2 else "plot_full" if plot_ids else "summary"
+            subtitle = ("Measured engine oil and water temperatures from independent VSM sources" if len(plot_ids) == 2
+                        else "Available measured engine temperature; missing sources are identified below" if plot_ids
+                        else "Engine temperature measurements unavailable for this dataset")
+        if (slide_id in _OPTIONAL_SLIDES and not plot_ids
+                and not (slide_id == "diesel_thermal" and profile.metadata.excel_template)):
             continue
         slides.append({
             "slide_id": slide_id, "type": kind, "title": title or result.report_metadata.report_title,
@@ -192,6 +198,8 @@ def build_diesel_powerpoint(
         ppt._update_page_number_preserve_template(shapes[slots.page_number], number, len(config.slides))
         if page in (1, 2):
             _metadata_pills(shapes, page, excel_result)
+        if page == 1:
+            ppt._add_cover_source_filename(slide, excel_result)
         if page == 2:
             _overview(shapes, excel_result)
             picture = shapes[21]
@@ -225,7 +233,14 @@ def build_diesel_powerpoint(
             if coolant is not None and np.array_equal(oil, coolant):
                 note = "Oil and coolant source traces are identical in this run; one trace is shown."
             if "diesel_engine_water_temperature" in definition.plot_ids:
-                note = "Engine water temperature from the configured measured VSM source."
+                note = "Oil and water temperatures are shown independently on a common temperature scale."
+                if oil is not None and coolant is not None and np.array_equal(oil, coolant):
+                    note = "Oil and water source traces are identical in this run; both measurements are shown independently."
+            if excel_result.profile.metadata.excel_template:
+                missing = [label for key, label in (("engine_oil_temperature", "Engine Oil Temperature"),
+                           ("engine_water_temperature", "Engine Water Temperature")) if key not in values]
+                if missing:
+                    note = "; ".join(missing) + " measurement unavailable; the available source is shown."
             ppt._add_text_box(slide, note, Inches(.6), Inches(6.65), Inches(12.13), Inches(.24),
                               font_size=10.5, color=ppt._ASTAUTO_MUTED, italic=True)
         ppt._add_astauto_logo(slide, prs)

@@ -63,6 +63,22 @@ Close the previously generated report if it is open in Excel or PowerPoint, then
 
 The UI filters options against the channels actually present in the uploaded source and the dependencies of configured math channels. This prevents invalid selections. Check the source channel catalogue if the expected signal is missing.
 
+The current Electric/Hybrid profiles expect measured gearbox-output torque and
+the configured HV auxiliary source. Older exports may omit these optional inputs;
+their dependent plots/KPIs are then unavailable, rather than zero. An explicitly
+selected legacy profile keeps its own source mappings and integration convention.
+Do not relabel an unrelated channel or weaken unit checks to make validation pass.
+
+## Excel KPI formulas and PowerPoint results
+
+Applicable configured KPI Values on Statistics contain live formulas. Initial
+numeric caches permit reading without Excel recalculation. Unhide Formula Support
+to inspect documented parameters and omitted-from-view source dependencies.
+Regenerate from updated source data to keep all Python-retained values, chart
+caches and the separate PowerPoint consistent. A battery-capacity consistency
+warning describes variation in measured Battery Energy/SOC estimates; it does not
+justify replacing the source data or silently changing the inferred capacity.
+
 ## Output cleaning
 
 `clean_before_run: true` removes only known VSM-generated stage folders and pipeline metadata. Unknown/user-created files in the output root are deliberately preserved.

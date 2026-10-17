@@ -1,5 +1,12 @@
 # Git / GitHub Release Procedure - v1.2.5
 
+Historical publication procedure below. The October 2026 client package retains
+application version 1.3.0 and can be built locally with the canonical release
+builder without creating a tag, commit, push or GitHub release. Packaging a
+reviewed working tree must record its HEAD and included uncommitted file hashes;
+it must not claim to be a clean committed snapshot. Publication requires a
+separate explicit instruction. See FINAL_RELEASE_NOTES.md for current features.
+
 Run these commands only after the local final acceptance checklist has passed.
 
 ```powershell

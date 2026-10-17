@@ -37,7 +37,7 @@ def test_every_template_selection_row_has_a_distinct_profile_channel():
         template_plots = [p for p in profile.plots if p.reference_chart_number is not None]
         assert {p.reference_chart_number for p in template_plots} == set(range(1, 9))
         assert len(template_plots) == 8
-        assert len(profile.plots) == 18
+        assert len(profile.plots) == 17
     finally:
         workbook.close()
 

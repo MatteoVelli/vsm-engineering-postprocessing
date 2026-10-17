@@ -84,8 +84,9 @@ channels:
     channel_type: VSM
     unit: Nm
     required: false
+    for_report: false
     notes: Source unit is Nm, not percent. Distinct from Engine_Torque.
-    for_plot: true
+    for_plot: false
   - semantic_name: engine_throttle
     source_name: Engine_Throttle
     report_name: Engine Throttle
@@ -673,12 +674,6 @@ statistics:
   display_name: Maximum Fuel Flow
   required: false
   placement_group: diesel_executive
-- statistic_id: engine_load_max
-  target: engine_load
-  operation: max
-  display_name: Maximum Engine Load Torque
-  required: false
-  placement_group: diesel_summary
 - statistic_id: engine_throttle_max
   target: engine_throttle
   operation: max
@@ -960,16 +955,6 @@ plots:
     axis: secondary
     required: true
   secondary_y_label: Engine Power [kW]
-- plot_id: diesel_engine_load
-  title: Engine Load Torque
-  order: 4
-  x: track_time
-  x_label: Time [s]
-  primary_y_label: Engine Load [Nm]
-  series:
-  - semantic_name: engine_load
-    label: Engine Load Torque
-    required: false
 - plot_id: diesel_engine_throttle
   title: Engine Throttle
   order: 5
@@ -1194,8 +1179,8 @@ presentation:
     statistics: [driveshaft_torque_fl_max, driveshaft_torque_rr_max, tyre_fz_fl_max, tyre_fz_rr_max]
     plots: [diesel_driveshaft_torque, diesel_wheel_loads]
   - slide_id: diesel_controls
-    statistics: [engine_load_max, engine_throttle_max]
-    plots: [diesel_engine_load, diesel_engine_throttle]
+    statistics: [engine_throttle_max]
+    plots: [diesel_engine_throttle]
   - slide_id: diesel_thermal
     statistics: [engine_oil_temperature_min, engine_oil_temperature_max]
     plots: [diesel_engine_oil_temperature]

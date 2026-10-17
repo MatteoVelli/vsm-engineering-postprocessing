@@ -3,7 +3,7 @@
 Version 1.3.0 provides deterministic profile reporting for Electric, Hybrid and
 Full Size Sprayer Diesel, subject to the following boundaries.
 
-1. Current profiles target Diesel `_03` and Electric/Hybrid `_07`; original `_05`/`_06` profiles remain explicit legacy options. Diesel and Electric have real-source validation, including nonzero Electric gearbox torque and Sergio-confirmed HV power. The updated Hybrid configuration is tested with controlled fixtures; complete acceptance still requires its updated raw CSV. See [current validation](HV_AUXILIARY_CONFIRMATION_2026_10_16.md).
+1. Current profiles follow the Diesel `_03` and Electric/Hybrid `_07` reporting layouts; original profiles remain explicit legacy options. Release checks use the updated Diesel `_07` CSV and Electric UoL `_04` CSV, including nonzero gearbox torque and Sergio-confirmed HV power. Hybrid passes available older-reference and controlled integration tests, including generator activity. The latest real Hybrid export has not been individually acceptance-tested; this is not a release gate or a known software defect.
 2. Optional source channels, including `Track_Height`, are exported only when present in the uploaded data.
 3. The current automatic header/unit detection is validated against normal CSV/XLSX layouts. Unusual multi-sheet or multi-level-header exports may require explicit import settings.
 4. Math channels are configured expressions, not a free-form graphical formula editor.
@@ -14,9 +14,9 @@ Full Size Sprayer Diesel, subject to the following boundaries.
 9. The release is not yet a fully standalone/offline Windows executable or MSI installer.
 10. AI-assisted KPI/plot recommendations are not included in the deterministic release. If introduced later, AI must remain advisory and must not replace numerical calculations.
 
-11. Diesel is validated against one supplied Test_03 CSV (223 samples, 586 source
-    channels) plus synthetic boundary cases. D1/D2/D3 are implementation stages,
-    not three independent field datasets. See [Diesel final validation](DIESEL_FINAL_VALIDATION.md).
+11. Diesel has the original Test_03 CSV validation and updated `_07` release
+    validation, plus controlled boundary tests. D1/D2/D3 are implementation stages,
+    not three independent field datasets.
 12. Diesel rejects invalid/non-finite source data, resetting mass/distance counters,
     negative RPM/flow, and non-increasing time. Optional absence is allowed;
     current profiles explicitly mark invalid optional sources unavailable. Sampled integration estimates
@@ -27,17 +27,18 @@ Full Size Sprayer Diesel, subject to the following boundaries.
     Auxiliary consumption, tyre losses and wheel power follow the configured
     Diesel template definitions. Signed torque/power and
     net energy retain overrun. Ordinary drive-cycle duration is last minus first time.
-14. Road height is absent in the Diesel reference. Oil/coolant source traces are
-    identical in the old CSV; separate oil and water plots are available without
-    assuming they are independent physical measurements. A new run's coolant
-    mapping still needs confirmation when its source is absent.
-    Optional-only PowerPoint slides disappear when their plots are unavailable
-    or all-zero. Display rounding does not alter underlying metrics.
-15. Diesel Office rendering is validated on the installed Windows Excel and
-    PowerPoint versions, not every viewer. Final delivery ZIP creation remains
-    separate from validation-only packaging tests.
-16. Revised profiles include live Excel integration/cumulative/statistic formulas
-    when their source columns are exported. Legacy/unsupported expressions or
-    explicitly unexported dependencies retain Python results with equation notes.
-    Regenerate reports after source edits to refresh retained results and
-    PowerPoint. Excel and PowerPoint remain separate output files.
+14. Optional road height and temperature availability depend on the uploaded
+    source. Oil/water traces happen to be identical in the old Diesel CSV, but
+    both are independently plotted. Missing temperature measurements are named
+    on the current thermal slide; available temperature traces, including zeros,
+    are retained. Other optional-only Diesel slides may be omitted when their
+    plots are absent/all-zero. Display rounding does not alter underlying metrics.
+15. Office rendering is checked with installed Windows Excel and PowerPoint,
+    not every third-party viewer. Office is not required for normal generation.
+16. Current profiles include live Excel integration/cumulative/statistic formulas.
+    All applicable configured KPI Values have live dependency chains, with
+    formula helpers and documented parameters on hidden Formula Support.
+    Legacy visible MATH columns may retain Python values; KPI helpers preserve
+    their original conventions. Regenerate after source changes to refresh all
+    retained values, chart caches and PowerPoint. Excel and PowerPoint remain
+    separate files; editing Excel does not update a prior PowerPoint.

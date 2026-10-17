@@ -119,6 +119,17 @@ def render_profile_plots(
             unavailable.append(prepared)
             continue
         plotting_definition, series_summaries = prepared
+        if (profile.metadata.powertrain == "diesel" and profile.metadata.excel_template
+                and definition.plot_id in {"diesel_engine_oil_temperature", "diesel_engine_water_temperature"}):
+            temperatures = [values_by_name[n] for n in ("engine_oil_temperature", "engine_water_temperature")
+                            if n in values_by_name]
+            low = min(float(np.nanmin(v)) for v in temperatures)
+            high = max(float(np.nanmax(v)) for v in temperatures)
+            padding = max(1.0, (high-low) * .05)
+            colour = "#C65911" if definition.plot_id.endswith("oil_temperature") else "#0070C0"
+            plotting_definition = replace(plotting_definition,
+                primary_y_label="Temperature [°C]", primary_y_limits=(low-padding, high+padding),
+                series=tuple(replace(s, colour=colour) for s in plotting_definition.series))
         rendered.append(
             _render_one_plot(
                 plotting_definition,

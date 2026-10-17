@@ -20,7 +20,7 @@ from vsm_postprocessing.ui_config import generate_reporting_profile_engineering_
 TITLES = [
     "Full Size Sprayer Diesel", "System & Simulation Overview", "Executive Results",
     "Vehicle Operation", "Diesel Engine Performance", "Fuel Consumption & Mechanical Energy",
-    "Driveline & Wheel Loads", "Engine Load & Throttle", "Engine Thermal Behaviour", "Simulation Summary",
+    "Driveline & Wheel Loads", "Engine Throttle", "Engine Thermal Behaviour", "Simulation Summary",
 ]
 MAJOR = {
     "drive_cycle_minutes": (3.7, "3.70 min"), "distance_km": (0.999242, "1.00 km"),
@@ -53,10 +53,10 @@ def test_combined_report_reopens_with_correct_inventory(report):
     assert report.report_path.exists() and report.presentation_path.exists()
     prs = Presentation(report.presentation_path)
     assert len(prs.slides) == report.slide_count == 10
-    assert report.powerpoint_result.plot_count == 10
+    assert report.powerpoint_result.plot_count == 9
     for slide, title in zip(prs.slides, TITLES):
         assert title in _text(slide)
-    assert [len(_plots(s)) for s in prs.slides] == [0, 0, 0, 1, 2, 2, 2, 2, 1, 0]
+    assert [len(_plots(s)) for s in prs.slides] == [0, 0, 0, 1, 2, 2, 2, 1, 1, 0]
     assert report.powerpoint_result.excel_result is report.excel_result
     assert report.report_path.stem == report.presentation_path.stem == DIESEL_REFERENCE_CSV.stem
 
@@ -89,8 +89,8 @@ def test_diesel_terms_and_existing_plot_bytes_with_no_crop(report):
     text = "\n".join(_text(s) for s in prs.slides)
     for forbidden in ("battery", "soc", "edu", "range extender", "fuel economy", "hybrid", "electric"):
         assert forbidden not in text.lower()
-    assert "Powertrain Diesel" in text and "Engine Load" in text
-    assert "825.46 Nm" in text and "15.28 L/h" in text
+    assert "Powertrain Diesel" in text and "Engine Load" not in text
+    assert "826.22 Nm" in text and "15.28 L/h" in text
     assert "Road height unavailable" in text and "identical in this run" in text
     plots = {p.plot_id: p for p in report.excel_result.plotting_result.rendered_plots}
     for slide, definition in zip(prs.slides, report.powerpoint_result.powerpoint_result.config.slides):
@@ -140,9 +140,9 @@ def test_template_style_geometry_branding_and_relationships(report):
 
 
 @pytest.mark.parametrize("missing,count,plots", [
-    ("all", 7, 4), ("fuel_flow", 10, 9), ("engine_oil_temperature", 9, 9),
-    ("engine_load", 10, 9), ("shafts", 10, 9), ("wheels", 10, 9),
-    ("driveshaft_torque_fl", 10, 10),
+    ("all", 7, 4), ("fuel_flow", 10, 8), ("engine_oil_temperature", 9, 8),
+    ("engine_load", 10, 9), ("shafts", 10, 8), ("wheels", 10, 8),
+    ("driveshaft_torque_fl", 10, 9),
 ])
 def test_missing_optional_data_removes_only_dependent_content(tmp_path, missing, count, plots):
     profile = load_reporting_profile(PROFILE_PATH)
@@ -180,9 +180,9 @@ def test_all_zero_optional_plots_are_omitted_without_changing_excel(tmp_path):
     with source.open("w", encoding="utf-8", newline="") as handle:
         csv.writer(handle).writerows(rows)
     result = generate_reporting_profile_engineering_report(source, PROFILE_PATH, tmp_path / "report")
-    assert result.excel_result.plot_count == 18
+    assert result.excel_result.plot_count == 17
     assert result.slide_count == 7 and result.powerpoint_result.plot_count == 4
-    assert result.excel_result.report_channel_count == 68
+    assert result.excel_result.report_channel_count == 67
 
 
 def test_synthetic_shifted_counters_and_time_use_d1_cycle_deltas(tmp_path):

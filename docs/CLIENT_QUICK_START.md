@@ -44,7 +44,63 @@ Profile reports are saved inside the run's `profile_excel_report/` and `profile_
 
 Select a mathematical data cell to inspect its live Excel formula when one is available. Every mathematical column also has an equation note on its main-sheet heading; hover over the heading or show its note in Excel. The mapping worksheet retains the full equation inventory.
 
-Pointwise arithmetic formulas and the upper RMS formulas recalculate in Excel. Integration and cumulative channels retain validated Python values. After changing simulation input data, regenerate the report from the updated source file to refresh those channels and the complete report consistently.
+The current October profiles use live formulas for supported arithmetic,
+observed-interval signed trapezoidal energy, cumulative channels and statistics.
+Every applicable configured KPI Value cell contains a genuine formula with
+Python-validated cached results. Select a Value cell on the Statistics sheet to
+inspect its equation. The hidden Formula Support sheet documents engineering
+parameters and any additional formula/raw dependencies; unhide it to audit them.
+Missing optional measurements disable dependent KPIs rather than appearing as zero.
+
+Legacy profiles keep their original engineering conventions. Some visible legacy
+MATH columns retain Python values; KPI dependencies use live helper calculations
+where necessary. Regenerate the report after source changes to refresh all retained
+values, charts and PowerPoint consistently. PowerPoint uses deterministic Python
+results; editing Excel does not update an already generated presentation.
+
+## October Reporting Update
+
+Diesel reports include agrochemical mass, auxiliary power, wheel torque/power,
+20 native Excel charts when their sources are available, a 24 pt first row and
+five configured KPI formulas. The existing thermal slide shows separate oil and
+water plots with four MIN/MAX cards, preserving ten slides for complete data.
+
+Electric/Hybrid profiles use measured gearbox-output torque, signed wheel power,
+bulldozing/compaction power and energy, and optional road height. The exact HV
+auxiliary source `User_defined_Data_High_Voltage_Auxiliary_signal1_0` is interpreted
+as kW only under its documented channel-specific unit declaration. Other unit
+validation remains strict. Complete Electric inputs produce 25 Excel charts,
+12 KPI formulas and 15 PowerPoint slides, including auxiliary energy on slide 7.
+
+Current Electric and Hybrid reports automatically add four separate time-based
+plots: Total Bulldozing Resistance Power, Tyre Bulldozing Resistance Energy
+Accumulated, Total Compaction Resistance Power and Tyre Compaction Resistance
+Energy Accumulated. Power is in kW, accumulated energy in kWh and time in seconds.
+PowerPoint pages 12 and 13 show the two mechanisms before the final summary.
+Each page now includes six Wheel Steering-style KPI cards: MAX POWER, MEAN
+POWER, RMS POWER, TOTAL ENERGY, ENERGY PER KM and DISTANCE. Mean is time-weighted;
+RMS uses the existing sample RMS. Energy is the accumulated channel's final minus
+initial value, divided by the existing distance KPI for energy per kilometre.
+Unavailable measurements show N/A; zero distance never produces a ratio.
+The existing combined soil charts and all other plots remain available. Missing
+or invalid wheel resistance measurements disable only their dependent plots;
+PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
+
+The 16 October delivery folder and ZIP are named
+`Astauto_VSM_October_16102026`. Keep the two root launchers beside `Tool`.
+
+Diesel `_07` and Electric UoL `_04` real CSVs are the current release-validation
+inputs. Hybrid passed available automated and reference/controlled integration
+tests; its latest real export has not been individually acceptance-tested. This
+pending real-data confirmation does not prevent using the tested Hybrid profile.
+
+## Supported Runtime
+
+Application version remains 1.3.0. Use Python >=3.11,<3.12; automatic bootstrap
+targets official CPython 3.11.9. The tested Streamlit version is 1.49.1 (declared
+range >=1.49.1,<1.50). Setup installs NumPy >=1.26,<3, openpyxl >=3.1,<4,
+PyYAML >=6,<7, matplotlib >=3.9,<4 and python-pptx >=1,<2.
+MATLAB and Microsoft Office are not required for report generation.
 
 ## Setup Problems
 

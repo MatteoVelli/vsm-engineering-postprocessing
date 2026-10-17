@@ -45,6 +45,7 @@ class RawChannelDefinition:
     for_plot: bool = False
     notes: str | None = None
     unit_interpretation: SourceUnitInterpretation | None = None
+    for_report: bool = True
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,8 @@ class ProfilePresentationSlideDefinition:
     plots: tuple[str, ...] = ()
     mode: str | None = None
     fallback_mode: str | None = None
+    title: str | None = None
+    subtitle: str | None = None
 
 
 @dataclass(frozen=True)
@@ -514,6 +517,7 @@ def _parse_raw_channel(raw: Any, index: int) -> RawChannelDefinition:
             "aliases",
             "required",
             "for_plot",
+            "for_report",
             "notes",
             "unit_interpretation",
         },
@@ -533,6 +537,7 @@ def _parse_raw_channel(raw: Any, index: int) -> RawChannelDefinition:
         aliases=_parse_string_tuple(raw.get("aliases", []), f"{context}.aliases"),
         required=_optional_bool(raw.get("required", True), f"{context}.required"),
         for_plot=_optional_bool(raw.get("for_plot", False), f"{context}.for_plot"),
+        for_report=_optional_bool(raw.get("for_report", True), f"{context}.for_report"),
         notes=_optional_string(raw.get("notes"), f"{context}.notes"),
         unit_interpretation=_parse_unit_interpretation(raw.get("unit_interpretation"), raw.get("unit"), context),
     )
@@ -789,7 +794,7 @@ def _parse_presentation_slide(raw: Any, index: int) -> ProfilePresentationSlideD
     context = f"presentation.slides[{index}]"
     if not isinstance(raw, dict):
         raise ConfigurationError(f"{context} must be a YAML mapping")
-    _reject_unknown_keys(raw, {"slide_id", "statistics", "plots", "mode", "fallback_mode"}, context)
+    _reject_unknown_keys(raw, {"slide_id", "statistics", "plots", "mode", "fallback_mode", "title", "subtitle"}, context)
     slide_id = _required_string(raw, f"{context}.slide_id")
     _validate_identifier(slide_id, f"{context}.slide_id")
     return ProfilePresentationSlideDefinition(
@@ -798,6 +803,8 @@ def _parse_presentation_slide(raw: Any, index: int) -> ProfilePresentationSlideD
         plots=_parse_string_tuple(raw.get("plots", []), f"{context}.plots"),
         mode=_optional_string(raw.get("mode"), f"{context}.mode"),
         fallback_mode=_optional_string(raw.get("fallback_mode"), f"{context}.fallback_mode"),
+        title=_optional_string(raw.get("title"), f"{context}.title"),
+        subtitle=_optional_string(raw.get("subtitle"), f"{context}.subtitle"),
     )
 
 
@@ -816,9 +823,24 @@ def _apply_profile_overrides(profile: ReportingProfile, overrides: Any) -> Repor
     }
     if not isinstance(overrides, dict):
         raise ConfigurationError("overrides must be a YAML mapping")
-    _reject_unknown_keys(overrides, set(sections), "overrides")
+    _reject_unknown_keys(overrides, set(sections) | {"additional_presentation_slides"}, "overrides")
     updates = {}
     for section, patches in overrides.items():
+        if section == "additional_presentation_slides":
+            if not profile.presentation or not isinstance(patches, list):
+                raise ConfigurationError("overrides.additional_presentation_slides requires an inherited presentation and a YAML list")
+            extra = tuple(_parse_presentation_slide(item, index) for index, item in enumerate(patches, 1))
+            for slide in extra:
+                if (slide.mode != "additional_plot_pair" or not slide.title
+                        or not 1 <= len(slide.plots) <= 2 or len(slide.statistics) not in {0, 6}):
+                    raise ConfigurationError("Additional presentation slides require mode additional_plot_pair, a title, one or two plots and either zero or six statistics")
+                unknown = set(slide.plots) - set(profile.plots_by_id())
+                if unknown:
+                    raise ConfigurationError(f"Unknown additional presentation plots: {sorted(unknown)}")
+            slides = (*profile.presentation.slides, *extra)
+            _reject_duplicates((slide.slide_id for slide in slides), "presentation slide IDs")
+            updates["presentation"] = replace(profile.presentation, slides=slides)
+            continue
         attr, key, parser = sections[section]
         definitions = getattr(profile, attr)
         if not isinstance(patches, dict):

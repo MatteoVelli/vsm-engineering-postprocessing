@@ -1,6 +1,32 @@
 # Changelog
 
+## 16 October 2026 - Soil PowerPoint KPI cards
+
+- Added six engineering KPI cards to each soil-resistance slide using the Wheel Steering Angles renderer, retaining all plots and other slides.
+- Reused signed maximum, time-weighted mean, sample RMS, net accumulated energy and the canonical distance KPI; missing inputs and zero-distance ratios remain explicitly unavailable.
+- Preserved Excel layouts/calculations, existing runtime requirements and the prior validated client package alongside the rebuilt dated delivery.
+
+## 16 October 2026 - Separate soil-resistance plots
+
+- Added four configured time-based bulldozing/compaction power and cumulative-energy plots to current Electric/Hybrid Excel reports, retaining every existing plot and calculation.
+- Added two configured Astauto plot-pair PowerPoint pages before the summary, with explicit notices for unavailable dependencies. Legacy and Diesel layouts are unchanged.
+- Prepared the date-named portable delivery `Astauto_VSM_October_16102026` using the existing Windows setup/start structure.
+
 ## 1.3.0 - Dynamic Vehicle Reporting
+
+### October 2026 client update (application version unchanged)
+
+- Current Diesel/Electric/Hybrid profiles include measured torque and auxiliary
+  sources, signed interval energy, soil resistance and optional road height.
+- All applicable configured Excel KPI values use auditable formulas with cached
+  Python results and documented helper/parameter cells.
+- Diesel has a compact 24 pt first row and separate oil/water temperature plots
+  with four thermal KPI cards on its existing ten-slide PowerPoint.
+- Unique Streamlit channel IDs and strict duplicate validation preserve selection
+  reliability; unavailable optional sources remain explicitly unavailable.
+- Diesel/Electric updated real-data release checks and Hybrid reference/controlled
+  checks accompany the client package. Updated real Hybrid acceptance remains
+  pending and is not a release gate.
 
 - Separated Electric/Hybrid analysis profiles from resolved machine identity.
 - Added deterministic machine-name detection with UI override and dynamic Excel/PPT filenames.

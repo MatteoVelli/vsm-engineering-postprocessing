@@ -1,5 +1,16 @@
 # Deterministic Release Notes - v1.3.0
 
+Final Sergio delivery, 17 October 2026: the Electric total-tyre page now says
+"absorbed power and accumulated energy versus time" and its energy legend says
+"Accumulated Tyre Resistance Energy". Existing VSM source mappings, ASTAUTO
+display labels and workbook-template conventions are preserved. Display-label
+differences remain a separate review topic. Values, integration and statistics
+are unchanged.
+The approved covers, 15-slide Electric order and Diesel torque/throttle
+correction are preserved. Setup remains Python >=3.11,<3.12 with CPython 3.11.9
+bootstrap support. Latest-client Hybrid acceptance still requires its source;
+available reference and controlled cases establish compatibility.
+
 ## Purpose
 
 Version 1.3.0 provides dynamic vehicle reporting for Diesel, Hybrid and Electric. Machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
@@ -8,12 +19,21 @@ No AI functionality is included in engineering calculations.
 
 ## October 2026 Reporting Refinements
 
+- Tyre-Soil Bulldozing and Tyre-Soil Compaction each have six KPI cards matching Wheel Steering Angles: signed maximum power, time-weighted mean power, sample RMS power, net accumulated energy, energy per kilometre and the existing distance KPI. The original plots retain their data, axes and dimensions below the cards. Excel calculations/layouts and all other slides are unchanged. Missing inputs show N/A with reasons in the presentation manifest.
+
 - Every exported mathematical channel has an authoritative equation note on its main Excel heading; the mapping worksheet remains available.
-- Validated pointwise arithmetic uses native Excel formulas. Integration and cumulative channels retain Python values; regenerate reports after source-data changes.
+- Current profiles use live arithmetic, signed observed-interval trapezoidal energy, cumulative and statistic formulas. Every applicable configured KPI Value cell is a real formula, with documented parameters and formula helpers on the hidden Formula Support sheet. Python supplies validated initial caches and PowerPoint values.
 - Hybrid and Electric upper RMS cells use native formulas matching sample RMS and the configured missing-data rules. Diesel RMS is unchanged.
 - Diesel Auxiliary Torque headings and Auxiliary Power chart labels reflect the existing source channels.
-- All 18 Diesel charts remain native and editable, starting at row 8 below the frozen rows. The KPI summary occupies `BQ3:CC4`.
+- Current Diesel reports provide 20 native charts when their inputs are available. The first row is 24 pt; charts start below frozen headers. The existing thermal slide contains separate oil/water plots and four MIN/MAX cards, preserving the ten-slide complete-data presentation.
+- Electric and Hybrid use measured gearbox-output torque and exact SI wheel-power conversion, channel-specific confirmed HV kW interpretation, signed auxiliary energy, soil-resistance power/energy and optional road height. Complete Electric reports now provide 25 charts, 12 KPI formulas and 15 slides, including the existing auxiliary-energy chart and total tyre resistance power/energy before the soil contribution pages.
+- Current Electric and Hybrid profiles add four separate plots versus Track Time [s]: Total Bulldozing Resistance Power [kW], Tyre Bulldozing Resistance Energy Accumulated [kWh], Total Compaction Resistance Power [kW] and Tyre Compaction Resistance Energy Accumulated [kWh]. Existing four-wheel sums and signed cumulative trapezoidal energy are reused without any calculation changes. Existing combined soil charts remain; two Astauto plot-pair slides are added before the summary. Missing/invalid inputs disable the affected plots explicitly; measured zeros are retained.
+- The dated portable delivery is `Astauto_VSM_October_16102026` (folder and ZIP root), with the existing setup/start launchers beside `Tool`. Legacy and Diesel plot/slide inventories are unchanged.
+- Streamlit channel labels carry stable unique IDs. Duplicate selections remain errors; optional missing measurements disable dependent content without becoming fabricated zeros.
+- Diesel `_07` and Electric UoL `_04` real VSM inputs are used for release validation. Available Hybrid reference/controlled integrations pass; the latest updated real Hybrid CSV has not been individually acceptance-tested and is not a release gate. This is a validation boundary, not a known software defect.
+- Legacy profiles retain their original conventions. Visible legacy MATH values may remain Python-calculated; KPI formula helpers keep the dependency chain live. Regenerate after source changes to refresh retained values, charts and PowerPoint.
 - Application version and Python 3.11 runtime requirements are unchanged.
+- Tested Streamlit is 1.49.1; supported dependency constraints are recorded in `pyproject.toml`. Automatic Windows bootstrap targets CPython 3.11.9 and creates a package-local environment. No MATLAB or Office runtime is required to generate reports.
 
 ## Validated Source Workflow
 

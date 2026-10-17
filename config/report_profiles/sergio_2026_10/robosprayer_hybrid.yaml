@@ -8,6 +8,35 @@ profile:
     energy.'
   excel_template: reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_07.xlsx
 overrides:
+  additional_presentation_slides:
+  - slide_id: soil_bulldozing
+    statistics:
+    - soil_bulldozing_max_power
+    - soil_bulldozing_mean_power
+    - soil_bulldozing_rms_power
+    - soil_bulldozing_total_energy
+    - soil_bulldozing_energy_per_km
+    - soil_bulldozing_distance
+    mode: additional_plot_pair
+    title: Tyre-Soil Bulldozing
+    subtitle: Total resistance power [kW] and signed accumulated energy [kWh] versus time [s]
+    plots:
+    - total_bulldozing_resistance_power
+    - tyre_bulldozing_resistance_energy_accumulated
+  - slide_id: soil_compaction
+    statistics:
+    - soil_compaction_max_power
+    - soil_compaction_mean_power
+    - soil_compaction_rms_power
+    - soil_compaction_total_energy
+    - soil_compaction_energy_per_km
+    - soil_compaction_distance
+    mode: additional_plot_pair
+    title: Tyre-Soil Compaction
+    subtitle: Total resistance power [kW] and signed accumulated energy [kWh] versus time [s]
+    plots:
+    - total_compaction_resistance_power
+    - tyre_compaction_resistance_energy_accumulated
   plots:
     road_profile:
       order: 22
@@ -192,6 +221,43 @@ channels:
     notes: Measured high-voltage auxiliary power; never replaced with a constant or
       unrelated source.
 plots:
+# Append separate time-based quantities; retain the existing combined charts.
+- plot_id: total_bulldozing_resistance_power
+  title: Total Bulldozing Resistance Power
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Power [kW]
+  order: 100
+  series:
+  - semantic_name: total_bulldozing_resistance_power
+    label: Total Bulldozing Resistance Power
+- plot_id: tyre_bulldozing_resistance_energy_accumulated
+  title: Tyre Bulldozing Resistance Energy Accumulated
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Energy [kWh]
+  order: 101
+  series:
+  - semantic_name: tyre_bulldozing_resistance_energy_accumulated
+    label: Tyre Bulldozing Resistance Energy Accumulated
+- plot_id: total_compaction_resistance_power
+  title: Total Compaction Resistance Power
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Power [kW]
+  order: 102
+  series:
+  - semantic_name: total_compaction_resistance_power
+    label: Total Compaction Resistance Power
+- plot_id: tyre_compaction_resistance_energy_accumulated
+  title: Tyre Compaction Resistance Energy Accumulated
+  x: track_time
+  x_label: Time [s]
+  primary_y_label: Energy [kWh]
+  order: 103
+  series:
+  - semantic_name: tyre_compaction_resistance_energy_accumulated
+    label: Tyre Compaction Resistance Energy Accumulated
 - plot_id: tyre_soil_bulldozing
   title: Tyre-Soil Bulldozing
   x: distance_km

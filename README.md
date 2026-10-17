@@ -40,10 +40,30 @@ existing PowerPoint plot slots are selectable. See the
 [implementation and validation report](docs/SERGIO_2026_10_15_IMPLEMENTATION.md)
 for exact conventions, tests and unresolved upstream measurements.
 
-The [October development milestone audit](docs/OCTOBER_2026_MILESTONE_AUDIT.md)
-records subsequent Electric/HV validation and the compact Diesel header. Updated
-real-data Hybrid acceptance and final client packaging remain separate milestones;
-this update is not the final client release.
+The October client update retains application version 1.3.0 and adds live formulas
+for all applicable configured Excel KPIs. The existing Diesel thermal slide shows
+independent oil/water plots and four MIN/MAX cards; its compact Excel header is
+24 pt. Diesel and Electric use updated real VSM CSVs for release validation.
+Hybrid passes available reference/controlled integration tests; its latest real
+CSV has not been individually acceptance-tested and is not a release gate.
+See [client release notes](docs/FINAL_RELEASE_NOTES.md) for the validation scope
+and operating instructions.
+
+The 16 October plot update adds four separate soil-resistance plots versus time
+to current Electric and Hybrid Excel and PowerPoint reports, reusing existing
+power and cumulative-energy calculations. Existing combined charts remain.
+Two Astauto pages precede the final summary; complete Electric reports now have
+25 Excel charts and 15 PowerPoint slides after the final Sergio refinements. The portable folder and archive are
+named `Astauto_VSM_October_16102026`.
+The two soil pages also include six engineering KPI cards each, using the Wheel
+Steering Angles card style and existing signed power/energy/distance conventions.
+Excel layouts and calculations are unchanged.
+
+The final 17 October refinements display the exact input basename on every
+profile cover, add total tyre resistance power/energy before Electric's soil
+pages, and exclude Engine Load Torque from Diesel reports while retaining
+measured Engine Torque and throttle. The total reuses rolling resistance plus
+bulldozing plus compaction; no new engineering calculation is introduced.
 
 A local Streamlit UI exposes the workflow without requiring Python or YAML editing.
 
