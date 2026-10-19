@@ -2428,49 +2428,6 @@ channels:
     - tyre_compaction_resistance_energy_kwh
     expression: cumulative_sum(tyre_compaction_resistance_energy_kwh)
     formula: =SUM(DY5:DY$6)
-  - semantic_name: tyre_total_resistance_power
-    source_name: Tyre Total Resistance Power
-    report_name: Tyre Total Resistance Power
-    unit: kW
-    required: true
-    for_plot: true
-    dependencies:
-    - total_rolling_resistance_power
-    - total_compaction_resistance_power
-    - total_bulldozing_resistance_power
-    expression: total_rolling_resistance_power + total_compaction_resistance_power + total_bulldozing_resistance_power
-  - semantic_name: tyre_total_resistance_energy_kwh
-    source_name: Tyre Total Resistance Energy [kWh]
-    report_name: Tyre Total Resistance Energy [kWh]
-    unit: kWh
-    required: true
-    for_plot: false
-    dependencies:
-    - tyre_rolling_resistance_energy_kwh
-    - tyre_compaction_resistance_energy_kwh
-    - tyre_bulldozing_resistance_energy_kwh
-    expression: tyre_rolling_resistance_energy_kwh + tyre_compaction_resistance_energy_kwh + tyre_bulldozing_resistance_energy_kwh
-    formula: =FM5+DY5+DM5
-  - semantic_name: tyre_total_resistance_energy_wh
-    source_name: Tyre Total Resistance Energy [Wh]
-    report_name: Tyre Total Resistance Energy [Wh]
-    unit: Wh
-    required: true
-    for_plot: true
-    dependencies:
-    - tyre_total_resistance_energy_kwh
-    expression: tyre_total_resistance_energy_kwh * 1000
-    formula: =FQ5*1000
-  - semantic_name: tyre_total_resistance_energy_accumulated
-    source_name: Tyre Total Resistance Energy Accumulated
-    report_name: Tyre Total Resistance Energy Accumulated
-    unit: kWh
-    required: true
-    for_plot: true
-    dependencies:
-    - tyre_total_resistance_energy_kwh
-    expression: cumulative_sum(tyre_total_resistance_energy_kwh)
-    formula: =SUM(FQ5:FQ$6)
 statistics:
   - statistic_id: battery_power_rms
     target: electricsystem_battery_power
@@ -2538,11 +2495,12 @@ statistics:
     placement_group: summary
     notes: Uses the accumulated auxiliary energy series rather than Sergio's ambiguous HG3858 summary reference.
   - statistic_id: tyre_total_energy_accumulated_last
-    target: tyre_total_resistance_energy_accumulated
+    target: tyre_rolling_resistance_energy_accumulated
     operation: last
     display_name: Tyre Total Energy Consumption
     unit: kWh
     placement_group: summary
+    notes: Rolling resistance includes bulldozing and compaction; statistic ID retained for report compatibility.
   - statistic_id: battery_energy_first
     target: electricsystem_battery_energy
     operation: first
@@ -2972,14 +2930,14 @@ plots:
     secondary_y_label: Accumulated Energy [kWh]
     output_filename: 11_tyres_energy_consumption.png
     status: RECONSTRUCTED
-    evidence: Electric_05 and Hybrid_06 total tyre resistance power and accumulated energy; existing chart layout retained.
+    evidence: Sergio clarification - rolling resistance already includes bulldozing and compaction; reuse rolling power and accumulated energy with the existing chart layout.
     series:
-      - semantic_name: tyre_total_resistance_power
+      - semantic_name: total_rolling_resistance_power
         axis: primary
-        label: Tyre Total Resistance Power
-      - semantic_name: tyre_total_resistance_energy_accumulated
+        label: Total Rolling Resistance Power
+      - semantic_name: tyre_rolling_resistance_energy_accumulated
         axis: secondary
-        label: Tyre Total Resistance Energy Accumulated
+        label: Tyre Rolling Resistance Energy Accumulated
   - plot_id: agrochemical_discharge_and_charge_vs_time
     order: 12
     reference_chart_number: 12

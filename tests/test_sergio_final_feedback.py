@@ -34,7 +34,7 @@ def test_cover_preserves_exact_filename_and_has_wrapping(kind, filename):
     assert prs.slides[0].shapes[5].top + prs.slides[0].shapes[5].height < prs.slides[0].shapes[15].top
 
 
-def test_total_is_existing_signed_component_sum_with_observed_time_integration():
+def test_tyre_consumption_uses_rolling_only_with_observed_time_integration():
     data, profile = dataset_for("electric", (17, 18, 123, 1817, 3617)), profile_for("electric")
     expected = np.zeros(5)
     components = []
@@ -45,15 +45,17 @@ def test_total_is_existing_signed_component_sum_with_observed_time_integration()
             data.values[:, data.channel_index(f"tyre_{mechanism}resistancepower_{wheel}")] = p
             component += p
         components.append(component)
-        expected += component
+        if mechanism == "rolling":
+            expected += component
     math = calculate_profile_math_channels(data, profile)
     values = math.values_by_semantic_name
     t = data.values[:, data.channel_index("track_time")]
     energy = np.r_[0, np.cumsum((expected[:-1]+expected[1:])*np.diff(t)/7200)]
-    np.testing.assert_array_equal(values["tyre_total_resistance_power"], expected)
-    np.testing.assert_allclose(values["tyre_total_resistance_energy_accumulated"], energy)
-    # Soft-soil contributions are already included; do not add them to this total again.
-    np.testing.assert_allclose(expected-components[0], components[1]+components[2])
+    np.testing.assert_array_equal(values["total_rolling_resistance_power"], expected)
+    np.testing.assert_allclose(values["tyre_rolling_resistance_energy_accumulated"], energy)
+    assert not any(name.startswith("tyre_total_resistance_") for name in values)
+    np.testing.assert_array_equal(values["total_bulldozing_resistance_power"], components[1])
+    np.testing.assert_array_equal(values["total_compaction_resistance_power"], components[2])
     assert np.any(np.diff(energy) < 0)
 
 
@@ -77,12 +79,13 @@ def test_xlsx_ingestion_passes_original_basename_to_generated_cover(kind, tmp_pa
 
 
 @pytest.mark.parametrize("missing", ("tyre_rollingresistancepower_rr", "tyre_bulldozingresistancepower_fl", "tyre_compactionresistancepower_fr"))
-def test_missing_component_never_yields_a_partial_total(missing):
+def test_missing_diagnostic_does_not_disable_rolling_consumption(missing):
     data = dataset_for("electric")
     remove_channel(data, missing)
     result = calculate_profile_math_channels(data, profile_for("electric"))
-    assert "tyre_total_resistance_power" not in result.values_by_semantic_name
-    assert "tyre_total_resistance_energy_accumulated" not in result.values_by_semantic_name
+    available = missing != "tyre_rollingresistancepower_rr"
+    assert ("total_rolling_resistance_power" in result.values_by_semantic_name) == available
+    assert ("tyre_rolling_resistance_energy_accumulated" in result.values_by_semantic_name) == available
 
 
 @pytest.mark.parametrize("legacy", (False, True))

@@ -39,7 +39,7 @@ def dataset_for(profile, times=(0, 1, 2, 3)):
     return data
 
 
-@pytest.mark.parametrize("kind,count", [("electric", 37), ("hybrid", 40)])
+@pytest.mark.parametrize("kind,count", [("electric", 33), ("hybrid", 36)])
 @pytest.mark.parametrize("times", [(0, 1, 2, 3), (0, .5, 2, 5)])
 def test_four_wheel_and_tyre_math_and_final_kpis(kind, count, times):
     profile = profile_for(kind)
@@ -63,7 +63,6 @@ def test_four_wheel_and_tyre_math_and_final_kpis(kind, count, times):
     np.testing.assert_allclose(values["wheel_total_torque"], torque)
     np.testing.assert_allclose(values["wheel_power_total"], power)
     dt = np.r_[times[1] - times[0], np.diff(times)]
-    total = np.zeros(4)
     for j, component in enumerate(COMPONENTS, 1):
         expected = 10 * j * np.array([1, 2, 4, -8])
         energy = expected * dt / 3600
@@ -71,12 +70,8 @@ def test_four_wheel_and_tyre_math_and_final_kpis(kind, count, times):
         np.testing.assert_allclose(values[f"tyre_{component}_resistance_energy_kwh"], energy)
         np.testing.assert_allclose(values[f"tyre_{component}_resistance_energy_wh"], energy * 1000)
         np.testing.assert_allclose(values[f"tyre_{component}_resistance_energy_accumulated"], np.cumsum(energy))
-        total += expected
-    energy = total * dt / 3600
-    np.testing.assert_allclose(values["tyre_total_resistance_power"], total)
-    np.testing.assert_allclose(values["tyre_total_resistance_energy_kwh"], energy)
-    np.testing.assert_allclose(values["tyre_total_resistance_energy_wh"], energy * 1000)
-    np.testing.assert_allclose(values["tyre_total_resistance_energy_accumulated"], np.cumsum(energy))
+    energy = 10 * np.array([1, 2, 4, -8]) * dt / 3600
+    assert not any(name.startswith("tyre_total_resistance_") for name in values)
     stats = calculate_profile_statistics(data, profile, math_result=result)
     by_id = {s.definition.statistic_id: s.value for s in stats.statistics}
     kpis = {k.definition.kpi_id: k.value for k in stats.kpis}
@@ -101,7 +96,8 @@ def test_every_wheel_contributes_independently(kind, wheel):
     np.testing.assert_allclose(values["wheel_power_total"], values[f"wheel_power_{wheel}"])
     for component in COMPONENTS:
         np.testing.assert_allclose(values[f"total_{component}_resistance_power"], 3)
-    np.testing.assert_allclose(values["tyre_total_resistance_power"], 9)
+    np.testing.assert_allclose(values["total_rolling_resistance_power"], 3)
+    assert not any(name.startswith("tyre_total_resistance_") for name in values)
 
 
 def test_electric_and_hybrid_share_identical_wheel_and_tyre_logic():
@@ -175,6 +171,9 @@ def test_latest_workbook_channel_classifications_and_selection(kind, version):
     for row in entries:
         if not row[1]:
             continue
+        # Historical templates still list the four superseded additive channels.
+        if str(row[1]).strip().startswith("Tyre Total Resistance"):
+            continue
         candidates = [c for c in remaining if c.channel_type == row[3] and
                       _template_channel_name(c.source_name) == _template_channel_name(row[1])]
         if not candidates:
@@ -244,9 +243,7 @@ def test_workbook_formulas_at_individual_samples_and_final_energy(kind, version,
             assert re.fullmatch(r"=SUM\([A-Z]+5:[A-Z]+\$6\)", samples[0][index])
             assert actual[-1] - energy[1:].sum() == pytest.approx(energy[0], abs=1e-10)
         else:
-            # Templates incorrectly label total tyre power kWh; the application uses kW.
-            unit = "kWh" if c.semantic_name == "tyre_total_resistance_power" else c.unit
-            expected = formula_by_label[(_template_channel_name(c.report_name), unit)]
+            expected = formula_by_label[(_template_channel_name(c.report_name), c.unit)]
             np.testing.assert_allclose(actual[[0, 1, 17, 100, -1]], expected[[0, 1, 17, 100, -1]])
     np.testing.assert_allclose(result.values_by_semantic_name["wheel_total_torque"], context[torque_col])
     np.testing.assert_allclose(result.values_by_semantic_name["wheel_power_total"], context[total_col])

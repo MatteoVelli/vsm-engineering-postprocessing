@@ -263,10 +263,10 @@ def test_hybrid_profile_extends_electric_profile() -> None:
     hybrid = load_reporting_profile(HYBRID_PROFILE)
 
     assert len(electric.raw_channels) == 293
-    assert len(electric.math_channels) == 37
+    assert len(electric.math_channels) == 33
     assert len(electric.plots) == 15
     assert len(hybrid.raw_channels) == 299
-    assert len(hybrid.math_channels) == 40
+    assert len(hybrid.math_channels) == 36
     assert len(hybrid.plots) == 21
     assert "wheel_steering_angles" in electric.plots_by_id()
     assert "wheel_steering_angles" in hybrid.plots_by_id()

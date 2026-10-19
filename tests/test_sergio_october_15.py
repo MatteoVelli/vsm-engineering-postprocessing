@@ -114,7 +114,7 @@ def test_absent_channels_never_fall_back_to_old_driveshaft(kind):
     result = calculate_profile_math_channels(data, profile_for(kind))
     assert result.resolution.is_valid
     assert "wheel_power_total" not in result.values_by_semantic_name
-    assert "tyre_total_resistance_energy_accumulated" in result.values_by_semantic_name
+    assert "tyre_rolling_resistance_energy_accumulated" in result.values_by_semantic_name
     assert all(any(f"GearboxOutputTorque_{i}" in msg for msg in result.resolution.diagnostics) for i in range(1, 5))
 
 

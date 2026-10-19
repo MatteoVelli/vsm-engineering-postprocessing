@@ -120,7 +120,7 @@ def test_all_six_cards_preserved_and_rr_sources_correct(reports):
     assert all(after[sid] == before[sid] for sid in ids)
     for mid, source in [("edu_mech_power_rr_max", "edu_mech_power_rr"), ("wheel_power_rr_max", "wheel_power_rr"),
                         ("edu_speed_rl_max", "electricsystem_em3_speed"), ("edu_torque_rl_max", "electricsystem_em3_torque"),
-                        ("tyre_total_energy_accumulated_last", "tyre_total_resistance_energy_accumulated"),
+                        ("tyre_total_energy_accumulated_last", "tyre_rolling_resistance_energy_accumulated"),
                         ("auxiliary_energy_accumulated_max", "auxiliary_energy_consumption_accumulated")]:
         assert after[mid].channel_id == source
     values = final.excel_result.plotting_result.values_by_semantic_name

@@ -723,8 +723,21 @@ def _profile_report_channels_from_template(
     channels: list[ChannelInfo] = []
     seen: set[str] = set()
     missing: list[str] = []
+    # Historical selection tables contain additive tyre-total channels. Sergio
+    # confirms rolling resistance already includes the soil components. Match
+    # retired identities independently of template order and column positions.
+    retired_tyre_channels = {
+        _template_channel_name(name) for name in (
+            "Tyre Total Resistance Power", "Tyre Total Resistance Energy [kWh]",
+            "Tyre Total Resistance Energy [Wh]", "Tyre Total Resistance Energy Accumulated",
+        )
+    }
     for entry in _template_channel_order_entries(template_file):
         channel_type = entry["channel_type"].upper()
+        if (channel_type == "MATH"
+                and _template_channel_name(entry["source_name"]) in retired_tyre_channels
+                and _template_channel_name(entry["report_name"]) in retired_tyre_channels):
+            continue
         semantic_name = _consume_template_match(
             definitions_by_exact_key.get(
                 (_template_channel_name(entry["source_name"]), _template_channel_name(entry["report_name"]), channel_type),

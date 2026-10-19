@@ -19,7 +19,7 @@ overrides:
     - soil_bulldozing_distance
     mode: additional_plot_pair
     title: Tyre-Soil Bulldozing
-    subtitle: Total resistance power [kW] and signed accumulated energy [kWh] versus time [s]
+    subtitle: Total resistance power [kW] and accumulated energy [kWh] versus time [s]
     plots:
     - total_bulldozing_resistance_power
     - tyre_bulldozing_resistance_energy_accumulated
@@ -33,7 +33,7 @@ overrides:
     - soil_compaction_distance
     mode: additional_plot_pair
     title: Tyre-Soil Compaction
-    subtitle: Total resistance power [kW] and signed accumulated energy [kWh] versus time [s]
+    subtitle: Total resistance power [kW] and accumulated energy [kWh] versus time [s]
     plots:
     - total_compaction_resistance_power
     - tyre_compaction_resistance_energy_accumulated
@@ -163,14 +163,6 @@ overrides:
     tyre_compaction_resistance_energy_wh:
       required: false
     tyre_compaction_resistance_energy_accumulated:
-      required: false
-    tyre_total_resistance_power:
-      required: false
-    tyre_total_resistance_energy_kwh:
-      required: false
-    tyre_total_resistance_energy_wh:
-      required: false
-    tyre_total_resistance_energy_accumulated:
       required: false
   statistics:
     total_auxiliary_power_max:

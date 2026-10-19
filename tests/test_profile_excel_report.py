@@ -57,10 +57,10 @@ def test_profile_excel_report_generates_reopenable_electric_workbook(electric_re
     assert electric_report.report_path.name == _robosprayer_csv().with_suffix(".xlsx").name
     assert electric_report.sample_count == 3853
     assert electric_report.source_raw_channel_count == 607
-    assert electric_report.report_channel_count == 329
+    assert electric_report.report_channel_count == 325
     assert electric_report.vsm_count == 182
     assert electric_report.avl_count == 110
-    assert electric_report.math_count == 37
+    assert electric_report.math_count == 33
     assert electric_report.statistic_count == 33
     assert electric_report.kpi_count == 11
     assert electric_report.plot_count == 15
@@ -89,13 +89,13 @@ def test_profile_excel_report_exports_semantic_raw_and_math_channels_with_dynami
 
     assert channel_types.count("VSM") == 182
     assert channel_types.count("AVL") == 110
-    assert channel_types.count("MATH") == 37
+    assert channel_types.count("MATH") == 33
     assert sheet.cell(3, 1).value == "Time"
     assert sheet.cell(3, 2).value == "Time"
     assert sheet.cell(4, 2).value == "min"
     assert not any("__col_" in str(sheet.cell(3, col).value) for col in range(1, electric_report.report_channel_count + 1))
-    assert electric_report.report_channel_count == 329
-    assert get_column_letter(electric_report.report_channel_count) == "LQ"
+    assert electric_report.report_channel_count == 325
+    assert get_column_letter(electric_report.report_channel_count) == "LM"
     assert sheet.max_column > electric_report.report_channel_count
     assert sheet.cell(DATA_START_ROW + 3853 - 1, 1).value == pytest.approx(3852.0)
     assert sheet.cell(DATA_START_ROW + 3853, 1).value == "MAX"
@@ -132,8 +132,8 @@ def test_profile_excel_report_statistics_kpis_and_correct_rms_values(electric_re
     assert sheet.cell(3858, by_semantic["agrochemical_discharge"]).value == pytest.approx(0.0)
     assert right_summary["Battery Capacity Used [kWh]"] == pytest.approx(33.65367)
     assert right_summary["Battery Energy Consumption [Wh/Km]"] == pytest.approx(2804.565985532851)
-    assert right_summary["Tyre Total Energy Consumption [kWh]"] == pytest.approx(25.523473098986344)
-    assert right_summary["Total Energy Consumption (Tyres + Aux) [kWh]"] == pytest.approx(37.03184896009783)
+    assert right_summary["Tyre Total Energy Consumption [kWh]"] == pytest.approx(13.355223967066818)
+    assert right_summary["Total Energy Consumption (Tyres + Aux) [kWh]"] == pytest.approx(24.86359982817831)
     assert "Tyre RR Energy Consumption [kWh]" not in right_summary
     assert right_summary["100% Battery Capacity [kWh]"] == pytest.approx(50.0)
     assert right_summary["Range for 85% Battery [Km]"] == pytest.approx(15.153859891060916)
@@ -178,7 +178,7 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
     assert metadata["Source sample count"] == 3853
     assert metadata["Workbook data start row"] == DATA_START_ROW
     assert metadata["Workbook data end row"] == DATA_START_ROW + 3853 - 1
-    assert metadata["Exported report channels"] == 329
+    assert metadata["Exported report channels"] == 325
     assert metadata["Rendered plots"] == 15
     assert metadata["Resolved raw profile channels"] == (
         metadata["Exported VSM raw channels"] + metadata["Exported AVL raw channels"]
@@ -213,10 +213,10 @@ def test_profile_excel_report_hybrid_dry_run_remains_profile_generic(tmp_path: P
     assert workbook.sheetnames[0] == "RoboSprayer Hybrid"
     assert result.sample_count == 3853
     assert result.source_raw_channel_count == 607
-    assert result.report_channel_count == 338
+    assert result.report_channel_count == 334
     assert result.vsm_count == 187
     assert result.avl_count == 111
-    assert result.math_count == 40
+    assert result.math_count == 36
     assert result.statistic_count == 42
     assert result.kpi_count == 11
     assert result.plot_count == 21
@@ -237,9 +237,9 @@ def test_profile_excel_report_exports_latest_electric_road_height(tmp_path: Path
     sheet = workbook["RoboSprayer Electric"]
     by_semantic = {channel.channel_id: index + 1 for index, channel in enumerate(result.report_channels)}
 
-    assert result.report_channel_count == 330
+    assert result.report_channel_count == 326
     assert result.plot_count == 15
-    assert get_column_letter(result.report_channel_count) == "LR"
+    assert get_column_letter(result.report_channel_count) == "LN"
     assert by_semantic["track_height"] == by_semantic["track_gradient"] + 1
     assert sheet.cell(3, by_semantic["track_height"]).value == "Road Height"
     assert sheet.cell(4, by_semantic["track_height"]).value == "m"
@@ -285,7 +285,7 @@ def test_profile_excel_report_exports_latest_hybrid_road_height(tmp_path: Path) 
     sheet = workbook["Caiman SP Hybrid"]
     by_semantic = {channel.channel_id: index + 1 for index, channel in enumerate(result.report_channels)}
 
-    assert result.report_channel_count == 338
+    assert result.report_channel_count == 334
     assert_universal_bottom_statistics(result.report_path, result.sample_count)
     assert result.plot_count == 21
     assert result.report_path.name == _latest_hybrid_csv().with_suffix(".xlsx").name

@@ -68,6 +68,7 @@ _CLIENT_REFERENCE_FILES = (
 # profiles also work without these private workbooks, using configuration order.
 _CLIENT_OPTIONAL_FILES = (
     "docs/SERGIO_2026_10_15_IMPLEMENTATION.md",
+    "docs/TYRE_ROLLING_CORRECTION_2026_10_18.txt",
     "reference_files/Diesel Template_03.xlsx",
     "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_07.xlsx",
     "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_07.xlsx",

@@ -63,7 +63,7 @@ def test_actual_excel_headers_and_mapping_identify_original_source_with_unchange
         book.close()
 
 
-def test_total_tyre_wording_changes_only_the_requested_page_and_keeps_six_cards_and_two_plots(labelled_report):
+def test_rolling_tyre_detail_page_keeps_six_cards_and_two_plots(labelled_report):
     kind, report, _, folder = labelled_report
     if kind == "hybrid":
         assert "tyre_total" not in report.profile.presentation.slides_by_id()
@@ -75,11 +75,11 @@ def test_total_tyre_wording_changes_only_the_requested_page_and_keeps_six_cards_
     assert ppt.slide_count == 15
     slide = Presentation(ppt.presentation_path).slides[index]
     text = " ".join(s.text for s in slide.shapes if s.has_text_frame)
-    assert "signed" not in text.lower()
-    assert "absorbed power and accumulated energy versus time" in text
+    assert "Tyre Rolling Resistance Power & Energy" in text
+    assert "includes bulldozing and compaction" in text
     definition = report.profile.plots_by_id()["tyre_total_resistance_energy_accumulated"]
     assert definition.series[0].label == "Accumulated Tyre Resistance Energy"
     assert len(ppt.powerpoint_result.config.slides[index].statistic_ids) == 6
     assert len([s for s in slide.shapes if s.shape_type == 13 and s.top > 3*914400]) == 2
     for name in ("soil_bulldozing", "soil_compaction"):
-        assert "signed accumulated energy" in report.profile.presentation.slides_by_id()[name].subtitle
+        assert report.profile.presentation.slides_by_id()[name].subtitle == "Total resistance power [kW] and accumulated energy [kWh] versus time [s]"

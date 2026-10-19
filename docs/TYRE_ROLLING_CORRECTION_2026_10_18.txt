@@ -1,0 +1,255 @@
+VSM TYRE ROLLING RESISTANCE CORRECTION - 18 OCTOBER 2026
+
+ROOT CAUSE AND DEPENDENCIES
+
+The Electric base profile defined tyre_total_resistance_power as rolling +
+compaction + bulldozing, and likewise added all three interval energies.
+Hybrid inherited those definitions. Sergio's clarification establishes that
+the rolling channels already contain both soil components, so those additions
+counted the diagnostic components twice.
+
+calculate_profile_math_channels evaluates the profile expressions and their
+dependencies. calculate_profile_statistics consumed the additive accumulated
+energy through tyre_total_energy_accumulated_last; that statistic also feeds
+total_energy_consumption_tyres_aux. The tyres_energy_consumption plot used the
+additive power and energy in Excel and PowerPoint. The October Electric profile
+also added a tyre_total detail slide, two single-series plots and six cards,
+whose sources were selected in build_soil_powerpoint_metrics.
+
+Diesel has independent profiles and already uses rolling resistance directly.
+It has no additive tyre-total channels or measured bulldozing/compaction inputs.
+No Diesel calculations, inputs or profiles were changed.
+
+CORRECTION
+
+Removed these four MATH definitions from the common Electric/Hybrid base:
+  tyre_total_resistance_power
+  tyre_total_resistance_energy_kwh
+  tyre_total_resistance_energy_wh
+  tyre_total_resistance_energy_accumulated
+
+No duplicate aliases or replacement integration calculations were introduced.
+Authoritative sources are total_rolling_resistance_power [kW] and
+tyre_rolling_resistance_energy_accumulated [kWh]. Existing rolling interval kWh,
+Wh and accumulated kWh are preserved without numerical changes. Each profile's
+existing timebase, signed integration, initial-sample treatment and units remain
+unchanged. The October profiles retain observed-interval trapezoidal integration;
+the legacy profiles retain their existing validated sample_energy_kwh convention.
+
+Historical template rows for the four retired channels are skipped by normalized
+source/report identity and MATH type, never by Excel column letter. Other strict
+template mismatch checks remain active. Chart references and live KPI formulas
+continue to resolve the newly positioned columns through semantic identities.
+
+Both combined consumption series now use the rolling channels. The Electric
+detail page is adapted to "Tyre Rolling Resistance Power & Energy" and explicitly
+states that rolling resistance includes bulldozing and compaction. Its six card
+IDs, two plot IDs, geometry and formatting are retained for compatibility; it
+does not present an additional independent tyre loss. Soil force, power, energy,
+plots and component-specific KPIs are preserved.
+
+KPI AUDIT (IDENTIFIERS AND UNITS PRESERVED)
+
+tyre_total_energy_accumulated_last [kWh]: LAST of accumulated rolling energy.
+total_energy_consumption_tyres_aux [kWh]: that corrected statistic plus the
+  existing auxiliary_energy_accumulated_max statistic, with the existing
+  profile-specific auxiliary definition unchanged.
+Electric presentation-only cards:
+  tyre_total_max_power [kW]: MAX(total_rolling_resistance_power).
+  tyre_total_mean_power [kW]: existing time-weighted mean of rolling power.
+  tyre_total_rms_power [kW]: existing all-sample RMS of rolling power.
+  tyre_total_total_energy [kWh]: LAST(rolling accumulated) - FIRST(rolling accumulated).
+  tyre_total_energy_per_km [kWh/km]: corrected net energy / distance_km_last.
+  tyre_total_distance [km]: unchanged existing distance_km_last.
+The pre-existing total_rolling_resistance_power_max statistic was already correct
+and is unchanged. Battery-derived consumption/range, fuel, auxiliary and soil
+diagnostic metrics are unchanged. No new engineering KPI formulas were added.
+
+REAL-DATA NUMERICAL COMPARISON
+
+Values below use the same source files and October profiles before/after.
+Peak power is the maximum of the complete instantaneous total, not the sum of
+separate component maxima. Accumulated energy means the final signed value.
+
+Electric, 3,954 samples, UoL_DriveCycle_12kph_DriverPC_20pcGrad_04.csv:
+  Tyre energy [kWh]:       28.083530801061 -> 14.605418520278
+  Peak tyre power [kW]:    35.268893000000 -> 18.275790000000
+  Tyres + auxiliary [kWh]: 40.548990123284 -> 27.070877842500
+  Energy difference equals the retained soil diagnostic energies:
+    Bulldozing 5.402950407114 kWh + compaction 8.075161873669 kWh.
+
+Hybrid, 1,770 samples, Caiman_SP_9300Kg_Hybrid_12x1Km_4000Kg_Chem.csv:
+  Tyre energy [kWh]:       13.155052586859 -> 8.251955232403
+  Peak tyre power [kW]:    62.612078000000 -> 37.872720000000
+  The combined tyres-plus-auxiliary KPI is unavailable for this real dataset
+  because its required measured auxiliary source is absent. Availability is
+  unchanged; no raw channel, zero replacement or combined value was invented.
+
+Diesel, 232 samples, 1000m_20kph_4WS_DriverPC_up_to_25pcGrad_SL_LSD_07.csv:
+  Tyre energy [kWh]:       2.212024584722 -> 2.212024584722
+  Peak tyre power [kW]:    47.197700000000 -> 47.197700000000
+  No existing tyres-plus-auxiliary KPI in this profile.
+
+Legacy Electric reference regression (3,853 samples):
+  Tyre energy [kWh]:       25.523473098986 -> 13.355223967067
+  Tyres + auxiliary [kWh]: 37.031848960098 -> 24.863599828178
+  This profile retains its sample-energy integration convention.
+
+MODIFIED FILES
+
+config/report_profiles/robosprayer_electric.yaml
+  Remove four redundant definitions; redirect the existing energy statistic and
+  two consumption chart series; document the statistic's retained identity.
+config/report_profiles/sergio_2026_10/robosprayer_electric.yaml
+  Remove overrides of retired definitions; adapt detail-slide wording and
+  redirect its two plots to authoritative rolling channels.
+config/report_profiles/sergio_2026_10/robosprayer_hybrid.yaml
+  Remove overrides of retired definitions; inherit the corrected base.
+src/vsm_postprocessing/excel_report_engine.py
+  Skip obsolete template selection entries by channel identity.
+src/vsm_postprocessing/profile_soil_kpis.py
+  Resolve the existing tyre_total cards against rolling power/energy.
+docs/CONFIGURATION_GUIDE.md
+  Correct active engineering/configuration guidance.
+README.md
+  Replace the active additive interpretation with the clarified rolling-only
+  definition and link this audit; retain separate soil diagnostic guidance.
+docs/TYRE_ROLLING_CORRECTION_2026_10_18.txt
+  Record the dependency audit, correction, numerical evidence and validation.
+scripts/validate_tyre_rolling_correction.py
+  Reproducible real-data baseline/report audit and independent Excel
+  recalculation checks; accepts a local --sources manifest.
+tests/test_tyre_rolling_correction.py
+  Add deterministic tests across six profiles, soil diagnostic independence,
+  signed irregular-time integration, actual Excel chart/formula sources,
+  formula caches, PowerPoint metrics and retained soil outputs.
+tests/test_latest_template_math.py
+  Correct legacy numerical expectations and skip retired historical entries.
+tests/test_sergio_final_feedback.py
+  Replace additive expectations with rolling-only integration and diagnostic
+  availability tests, including missing-component cases.
+tests/test_final_sergio_delivery.py
+  Verify the adapted detail slide retains its cards, plots and geometry.
+tests/test_sergio_october_15.py
+  Verify rolling energy remains available when wheel-torque sources are absent.
+tests/test_electric_rr_power_plot.py
+  Preserve the six existing traction cards and verify corrected source traceability.
+tests/test_profile_excel_report.py
+  Update reduced column/math counts and corrected reference KPI values.
+tests/test_profile_math.py
+  Update mathematical channel counts after removing four definitions.
+tests/test_profile_statistics.py
+  Update the affected real-data tyre-energy regression expectation.
+tests/test_report_profile.py
+  Update inherited profile channel counts.
+tests/test_ui_config.py
+  Update existing profile summary counts; no UI functionality changed.
+
+VALIDATION AND ARTIFACTS
+
+Fresh before/after Excel and PowerPoint reports and machine-readable evidence:
+  outputs/tyre_rolling_correction_2026_10_18/
+Baseline includes source SHA-256, every resolved raw/calculated array hash,
+all statistics/KPIs, plot-image hashes, slide IDs and shape geometry.
+The audit permits only the intentional retirement and tyre-metric changes;
+all remaining raw/math arrays, unrelated statistics/KPIs and unrelated plot
+images must match exactly. It checks every exported sample, semantic chart
+sources and units, native chart size/styles, panel alignment after column
+removal, formula-based KPI cells/caches, and absence of Excel error cells/#REF!.
+
+Real-data report audit: PASS for all three profiles.
+  Diesel:   67 columns, 19 charts, 10 slides; 68 retained arrays unchanged;
+            19 unrelated plot images byte-identical; 76 valid chart references.
+  Electric: 326 columns, 25 charts, 15 slides; 326 retained arrays unchanged;
+            22 unrelated plot images byte-identical; 100 valid chart references.
+  Hybrid:   320 columns, 25 charts, 14 slides; 320 retained arrays unchanged;
+            24 unrelated plot images byte-identical; 90 valid chart references.
+There are 266 valid x/y chart references in total. Source data hashes, exported
+samples, units, all unrelated statistics/KPIs, chart dimensions/line styles and
+all slide shape geometry match the fresh baseline. Chart-panel anchors retain
+their positions relative to the end of exported data after the four-column shift.
+
+Observed corrected columns in these workbooks (reported as evidence only):
+  Electric rolling power FM; rolling accumulated energy FP.
+  Hybrid rolling power FS; rolling accumulated energy FV.
+  Diesel rolling power BC; rolling accumulated energy BF (existing outputs).
+Neither application code nor tests use those letters to select consumption
+series. Both consumption charts resolve their source columns from semantic IDs.
+
+Native PowerPoint: PASS for Diesel, Electric and Hybrid.
+  Full decks exported to PDF using desktop PowerPoint. Cover and tyre/soil slide
+  text bounds pass. Rendered Electric rolling detail and Hybrid compaction slides
+  were visually inspected. Branding, six-card layouts and two-chart geometry are
+  intact. PDFs/PNGs and native_text_bounds.json are under visual_checks/.
+
+Native Excel: all 186,487 formula caches were removed and independently rebuilt
+  using desktop Excel CalculateFullRebuild and per-sheet Calculate. Recalculated
+  copies are under recalculated/. All 1,874,443 numeric cells on the main and
+  Statistics sheets match the engine within rtol=3e-14 and atol=1e-12:
+    Diesel:   16,044 cells; maximum absolute difference 9.09494701773e-13.
+    Electric: 1,290,505 cells; maximum absolute difference 4.26325641456e-14.
+    Hybrid:   567,894 cells; maximum absolute difference 1.42108547152e-13.
+  Formula caches were verified empty before Office opened the files. Pending
+  chart-refresh flags were not used as numerical evidence: the newly calculated
+  values themselves were checked. All recalculated sheets, including hidden
+  Formula Support helpers, contain zero Excel error cells. Results are recorded
+  in audit.json.
+
+Tests executed:
+  .venv\Scripts\python.exe -m pytest tests/test_tyre_rolling_correction.py
+    tests/test_latest_template_math.py tests/test_sergio_final_feedback.py
+    tests/test_final_sergio_delivery.py tests/test_report_profile.py
+    -o cache_dir=outputs/tyre_pytest_cache --basetemp outputs/tyre_focus_final -r a
+    Result: 97 passed; one non-failing pytest-cache permission warning.
+  .venv\Scripts\python.exe -m pytest tests/test_tyre_rolling_correction.py
+    tests/test_latest_template_math.py::test_latest_workbook_channel_classifications_and_selection
+    -p no:cacheprovider --basetemp outputs/tyre_acceptance_verified -r a
+    Result: 18 passed in 44.83 seconds; no warnings. Includes an extra Hybrid
+    report without the measured auxiliary source and both historical templates.
+  .venv\Scripts\python.exe -m pytest
+    tests/test_latest_template_math.py::test_workbook_formulas_at_individual_samples_and_final_energy
+    -p no:cacheprovider --basetemp outputs/tyre_legacy_final -r a
+    Result: 2 passed in 16.83 seconds after removing the obsolete total-tyre
+    power unit special case from the historical-template test.
+  .venv\Scripts\python.exe -m pytest --basetemp outputs/tyre_full_suite
+    -o cache_dir=outputs/tyre_pytest_cache -r a
+    Result: 670 passed, 1 skipped, 1 warning in 1008.12 seconds (16:48).
+    The existing skip is the soil-plot test for Diesel, where that diagnostic
+    does not apply. The warning concerns pytest's optional cache directory;
+    it does not affect test execution. Final acceptance checks explicitly
+    disabled the cache plugin and passed without warnings.
+  git diff --check: PASS (no whitespace errors).
+  No unresolved engineering, formula, chart-source or regression failures.
+
+Execution logs:
+  outputs/tyre_targeted_tests_final.log
+  outputs/tyre_acceptance_verified.log
+  outputs/tyre_full_suite.log
+  outputs/tyre_native_powerpoint_desktop.log
+  outputs/tyre_native_excel.log
+  outputs/tyre_recalculation_audit.log
+
+Audit commands executed:
+  .venv\Scripts\python.exe scripts/validate_tyre_rolling_correction.py --baseline
+  .venv\Scripts\python.exe scripts/validate_tyre_rolling_correction.py
+  .venv\Scripts\python.exe scripts/validate_tyre_rolling_correction.py --kind hybrid
+  .venv\Scripts\python.exe scripts/validate_tyre_rolling_correction.py --prepare-recalculation
+  powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass
+    -File scripts/validate_excel_recalculation.ps1
+    -AuditPath outputs/tyre_rolling_correction_2026_10_18/audit.json
+  .venv\Scripts\python.exe scripts/validate_tyre_rolling_correction.py --audit-recalculation
+  powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass
+    -File scripts/render_sergio_final_feedback.ps1
+    -AuditPath outputs/tyre_rolling_correction_2026_10_18/visual_audit.json
+The PowerPoint rendering helper was already present and was reused unchanged.
+Its input manifest maps the generated slide IDs to the existing helper's format.
+Desktop Office checks required access outside the restricted execution session.
+The main report audit and tests run within the workspace.
+
+GIT
+
+No commit, push or staging operation was performed. Changes remain available for
+review. The six untracked delivery/validation files present at task start were
+preserved. Reference input files and templates were not edited. Historical
+17 October delivery notes describe the previous definition; this correction
+supersedes their additive tyre interpretation.

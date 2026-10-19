@@ -60,8 +60,8 @@ def build_soil_powerpoint_metrics(
         if not cards:
             continue
         mechanism = slide.slide_id.removeprefix("soil_")
-        power = "tyre_total_resistance_power" if slide.slide_id == "tyre_total" else f"total_{mechanism}_resistance_power"
-        energy = "tyre_total_resistance_energy_accumulated" if slide.slide_id == "tyre_total" else f"tyre_{mechanism}_resistance_energy_accumulated"
+        power = "total_rolling_resistance_power" if slide.slide_id == "tyre_total" else f"total_{mechanism}_resistance_power"
+        energy = "tyre_rolling_resistance_energy_accumulated" if slide.slide_id == "tyre_total" else f"tyre_{mechanism}_resistance_energy_accumulated"
         distance = canonical.get("distance_km_last")
 
         def distance_value() -> float:

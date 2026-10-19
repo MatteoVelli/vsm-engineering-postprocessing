@@ -54,16 +54,19 @@ to current Electric and Hybrid Excel and PowerPoint reports, reusing existing
 power and cumulative-energy calculations. Existing combined charts remain.
 Two Astauto pages precede the final summary; complete Electric reports now have
 25 Excel charts and 15 PowerPoint slides after the final Sergio refinements. The portable folder and archive are
-named `Astauto_VSM_October_16102026`.
+named `Astauto_VSM_October_19102026` for the final 19 October delivery.
 The two soil pages also include six engineering KPI cards each, using the Wheel
 Steering Angles card style and existing signed power/energy/distance conventions.
-Excel layouts and calculations are unchanged.
+The soil cards reuse existing Excel calculations and layouts.
 
 The final 17 October refinements display the exact input basename on every
-profile cover, add total tyre resistance power/energy before Electric's soil
+profile cover, add a tyre power/energy detail page before Electric's soil
 pages, and exclude Engine Load Torque from Diesel reports while retaining
-measured Engine Torque and throttle. The total reuses rolling resistance plus
-bulldozing plus compaction; no new engineering calculation is introduced.
+measured Engine Torque and throttle. Following Sergio's clarification, tyre
+consumption and the detail page now reuse rolling-resistance power and energy,
+which already include bulldozing and compaction. The four redundant additive
+channels are removed; separate soil diagnostics remain. See the
+[18 October correction audit](docs/TYRE_ROLLING_CORRECTION_2026_10_18.txt).
 
 A local Streamlit UI exposes the workflow without requiring Python or YAML editing.
 

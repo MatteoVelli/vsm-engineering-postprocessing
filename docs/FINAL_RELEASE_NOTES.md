@@ -1,15 +1,20 @@
 # Deterministic Release Notes - v1.3.0
 
-Final Sergio delivery, 17 October 2026: the Electric total-tyre page now says
-"absorbed power and accumulated energy versus time" and its energy legend says
-"Accumulated Tyre Resistance Energy". Existing VSM source mappings, ASTAUTO
-display labels and workbook-template conventions are preserved. Display-label
-differences remain a separate review topic. Values, integration and statistics
-are unchanged.
-The approved covers, 15-slide Electric order and Diesel torque/throttle
-correction are preserved. Setup remains Python >=3.11,<3.12 with CPython 3.11.9
-bootstrap support. Latest-client Hybrid acceptance still requires its source;
-available reference and controlled cases establish compatibility.
+Final Sergio delivery, 19 October 2026: the Electric and Hybrid soil-page
+subtitles say "Total resistance power [kW] and accumulated energy [kWh] versus
+time [s]". This wording change preserves every sign convention, mathematical
+channel, numerical value, KPI, plot, slide position and layout.
+
+The validated rolling-resistance correction remains authoritative: rolling
+resistance already includes bulldozing and compaction. Tyre consumption uses
+existing rolling power and accumulated energy; the four additive tyre-total
+channels are removed. Soil components remain separate diagnostics. Live Excel
+KPI formulas and the 15-slide Electric presentation are preserved.
+
+The active portable delivery is Astauto_VSM_October_19102026.zip. Application
+version remains 1.3.0, with Python >=3.11,<3.12 and CPython 3.11.9 bootstrap.
+Validation covers Diesel, Electric UoL and the available older Hybrid reference;
+acceptance of an unavailable latest-client Hybrid source is not claimed.
 
 ## Purpose
 
@@ -28,7 +33,7 @@ No AI functionality is included in engineering calculations.
 - Current Diesel reports provide 20 native charts when their inputs are available. The first row is 24 pt; charts start below frozen headers. The existing thermal slide contains separate oil/water plots and four MIN/MAX cards, preserving the ten-slide complete-data presentation.
 - Electric and Hybrid use measured gearbox-output torque and exact SI wheel-power conversion, channel-specific confirmed HV kW interpretation, signed auxiliary energy, soil-resistance power/energy and optional road height. Complete Electric reports now provide 25 charts, 12 KPI formulas and 15 slides, including the existing auxiliary-energy chart and total tyre resistance power/energy before the soil contribution pages.
 - Current Electric and Hybrid profiles add four separate plots versus Track Time [s]: Total Bulldozing Resistance Power [kW], Tyre Bulldozing Resistance Energy Accumulated [kWh], Total Compaction Resistance Power [kW] and Tyre Compaction Resistance Energy Accumulated [kWh]. Existing four-wheel sums and signed cumulative trapezoidal energy are reused without any calculation changes. Existing combined soil charts remain; two Astauto plot-pair slides are added before the summary. Missing/invalid inputs disable the affected plots explicitly; measured zeros are retained.
-- The dated portable delivery is `Astauto_VSM_October_16102026` (folder and ZIP root), with the existing setup/start launchers beside `Tool`. Legacy and Diesel plot/slide inventories are unchanged.
+- The dated portable delivery is `Astauto_VSM_October_19102026` (folder and ZIP root), with the existing setup/start launchers beside `Tool`. Legacy and Diesel plot/slide inventories are unchanged.
 - Streamlit channel labels carry stable unique IDs. Duplicate selections remain errors; optional missing measurements disable dependent content without becoming fabricated zeros.
 - Diesel `_07` and Electric UoL `_04` real VSM inputs are used for release validation. Available Hybrid reference/controlled integrations pass; the latest updated real Hybrid CSV has not been individually acceptance-tested and is not a release gate. This is a validation boundary, not a known software defect.
 - Legacy profiles retain their original conventions. Visible legacy MATH values may remain Python-calculated; KPI formula helpers keep the dependency chain live. Regenerate after source changes to refresh retained values, charts and PowerPoint.

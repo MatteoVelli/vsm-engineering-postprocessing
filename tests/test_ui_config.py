@@ -152,7 +152,7 @@ def test_electric_reporting_profile_validation_summary_matches_reference_csv() -
     assert summary.missing_required_count == 0
     assert summary.missing_optional_count == 1
     assert summary.missing_optional_names == ("Road Height",)
-    assert summary.math_count == 37
+    assert summary.math_count == 33
     assert summary.statistic_count == 35
     assert summary.kpi_count == 12
     assert summary.plot_count == 15
@@ -167,7 +167,7 @@ def test_hybrid_reporting_profile_validation_treats_inactive_channels_as_resolve
     assert summary.required_raw_count == 293
     assert summary.resolved_raw_count == 298
     assert summary.missing_required_count == 0
-    assert summary.math_count == 40
+    assert summary.math_count == 36
     assert summary.statistic_count == 44
     assert summary.kpi_count == 12
     assert summary.plot_count == 21

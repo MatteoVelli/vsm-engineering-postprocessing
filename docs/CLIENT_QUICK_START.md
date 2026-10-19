@@ -86,8 +86,8 @@ The existing combined soil charts and all other plots remain available. Missing
 or invalid wheel resistance measurements disable only their dependent plots;
 PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
 
-The 16 October delivery folder and ZIP are named
-`Astauto_VSM_October_16102026`. Keep the two root launchers beside `Tool`.
+The final 19 October delivery folder and ZIP are named
+`Astauto_VSM_October_19102026`. Keep the two root launchers beside `Tool`.
 
 Diesel `_07` and Electric UoL `_04` real CSVs are the current release-validation
 inputs. Hybrid passed available automated and reference/controlled integration

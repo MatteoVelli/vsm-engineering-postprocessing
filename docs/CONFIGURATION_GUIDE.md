@@ -188,9 +188,15 @@ are descriptive metadata and are not used as measured KPI values.
 The current Electric profile places `tyre_total` before its two soil pages in
 `additional_presentation_slides`. Its six `tyre_total_*` cards reuse the same
 presentation metric provider as the soil pages. Two time plots (orders 104-105)
-reference the existing total resistance power and accumulated energy channels;
-they also appear as native Excel charts. Total means rolling resistance plus
-bulldozing plus compaction across four corners, with the existing signed
-observed-time integration. Missing constituents disable the total explicitly.
+reference `total_rolling_resistance_power` and
+`tyre_rolling_resistance_energy_accumulated`; they also appear as native Excel
+charts. Rolling resistance already includes bulldozing and compaction (Sergio's
+clarification). The slide identifies these as rolling resistance
+results and preserves its six metric IDs and layout. The redundant four
+`tyre_total_resistance_*` MATH channels are removed, including when reading
+historical template selections. `tyre_total_energy_accumulated_last` retains its
+ID but now targets accumulated rolling energy; the existing tyres-plus-auxiliary
+KPI inherits that source. Soil diagnostics remain independent and missing soil
+inputs do not disable rolling consumption. Integration conventions are unchanged.
 
 The previous composed mission scenario/provider workflow has been removed. Source files are processed directly through the selected profile or generic pipeline configuration.

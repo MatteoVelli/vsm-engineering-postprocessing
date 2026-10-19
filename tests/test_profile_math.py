@@ -328,8 +328,8 @@ def test_electric_profile_full_math_execution_against_reference_csv() -> None:
     dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(ELECTRIC_PROFILE))
 
-    assert result.configured_math_count == 37
-    assert result.calculated_math_count == 37
+    assert result.configured_math_count == 33
+    assert result.calculated_math_count == 33
     assert not result.unavailable_optional
     assert not result.unavailable_required
     np.testing.assert_allclose(result.values_by_semantic_name["agrochemical_discharge"], 0.0)
@@ -393,8 +393,8 @@ def test_hybrid_generator_power_computes_zero_against_electric_reference_csv() -
     dataset = load_data_file(_robosprayer_csv(), ImportOptions())
     result = calculate_profile_math_channels(dataset, load_reporting_profile(HYBRID_PROFILE))
 
-    assert result.configured_math_count == 40
-    assert result.calculated_math_count == 40
+    assert result.configured_math_count == 36
+    assert result.calculated_math_count == 36
     assert not result.unavailable_optional
     assert not result.unavailable_required
     np.testing.assert_allclose(result.values_by_semantic_name["generator_power_1"], 0.0)
