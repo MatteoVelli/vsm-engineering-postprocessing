@@ -72,8 +72,8 @@ def test_pack_identity_and_provisional_status():
     from vsm_postprocessing.report_profile import load_reporting_profile
     profile = load_reporting_profile('config/report_profiles/robosprayer_electric.yaml')
     known = resolve_report_metadata('RoboSprayer_3500Kg_Electric.csv', profile)
-    assert known.reporting_inputs.battery_mass_kg == 470
-    assert known.reporting_inputs.battery_mass_status == 'confirmed'
+    assert known.reporting_inputs.battery_mass_kg is None
+    assert known.reporting_inputs.battery_mass_status == 'not_provided'
     assert resolve_report_metadata('Unrelated_3500Kg_Electric.csv', profile).reporting_inputs.battery_mass_kg is None
     assert resolve_report_metadata('RoboSprayer_3500Kg_Diesel.csv', profile).reporting_inputs.battery_mass_kg is None
     assert resolve_report_metadata('Sprayer_Caiman_SP_9300Kg_Hybrid.csv').reporting_inputs.battery_mass_kg is None
@@ -163,8 +163,8 @@ def test_new_metrics_reach_native_reports_and_manifests(tmp_path, kind, density)
     prs = Presentation(report.presentation_path)
     text = '\n'.join(s.text for s in prs.slides[7].shapes if s.has_text_frame)
     assert 'AGRO CAPACITY' in text and 'AGRO DISCHARGE RATE' in text
-    assert ('0.5 L/m' in text) if density else ('N/A' in text and 'L/m' not in text)
-    assert any(s.has_text_frame and '~1,700 kg (estimated)' in s.text for s in prs.slides[4].shapes)
+    assert '500.00 kg/km' in text and 'L/m' not in text
+    assert any(s.has_text_frame and '1,700 kg' in s.text for s in prs.slides[4].shapes)
     assert prs.core_properties.title == 'Full Size Sprayer ' + kind.title()
     payload = json.loads(report.manifest_path.read_text())
     assert payload['reporting_inputs']['battery_mass_status'] == 'estimated'
@@ -172,7 +172,7 @@ def test_new_metrics_reach_native_reports_and_manifests(tmp_path, kind, density)
     book = load_workbook(report.report_path, data_only=True)
     try:
         rows = {row[0]: row for row in book['Statistics'].iter_rows(values_only=True) if row[0]}
-        assert rows['battery_mass_kg'][2] == '~1,700 kg (estimated)'
+        assert rows['battery_mass_kg'][2] == '1,700 kg'
         assert rows['agro_discharge_rate_L_per_m'][2] == (.5 if density else 'N/A')
         assert rows['agro_discharge_rate_L_per_m'][3] == 'L/m'
         assert rows['agro_capacity_observed_kg'][2] == 500

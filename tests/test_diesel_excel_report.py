@@ -92,7 +92,7 @@ def test_reference_executive_values_match_d1(diesel_report, workbook):
         "Average Fuel Flow [l/h]": 15.277633288513513, "Maximum Fuel Flow [l/h]": 41.4741,
     }
     assert {key: values[key] for key in expected} == pytest.approx(expected, rel=1e-12)
-    assert values.keys() == expected.keys() | {'Agro Capacity [kg]', 'Agro Discharge Rate [L/m]', 'Agro Mass Discharge Diagnostic [kg/m]'}
+    assert values.keys() == expected.keys() | {'Agro Capacity [kg]', 'Agro Discharge Rate [L/m]', 'Agro Mass Discharge Diagnostic [kg/m]', 'Agro Discharge Rate [kg/km]'}
     assert values['Agro Capacity [kg]'] == values['Agro Discharge Rate [L/m]'] == 'N/A'
     assert not any(word in label.lower() for label in values for word in ["battery", "edu", "economy"])
 
@@ -156,7 +156,7 @@ def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     assert sheet.cell(3, diesel_report.report_channel_count + 2).font.color.rgb.endswith("FFFFFF")
     assert sheet.cell(4, diesel_report.report_channel_count + 2).number_format == "0.000"
     assert get_column_letter(diesel_report.report_channel_count + 2) == "BP"
-    assert len(_summary(sheet, diesel_report)) == 16
+    assert len(_summary(sheet, diesel_report)) == 17
     assert all(sheet.cell(row, col).value is None for row in (1, 2)
                for col in range(69, 82))
     assert sheet.column_dimensions[get_column_letter(diesel_report.report_channel_count + 2)].width == 13

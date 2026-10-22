@@ -4,20 +4,21 @@ Final Sergio distribution, 22 October 2026: `Astauto_VSM_October_22102026`.
 The existing setup/start launchers, Tool layout, application version, dependencies,
 Python 3.11 policy and deterministic engineering calculations are preserved.
 
-The package includes automatic model/configuration/powertrain matching, confirmed
-470 kg RoboSprayer V5 battery mass, provisional Full Size Electric/Hybrid pack
-mass, and the correct Diesel/Caiman distinctions. Agro Capacity is an observed
-inferred kg maximum; remaining-mass plot titles, a separate L/m discharge-rate
-card and the valid kg/m diagnostic are included. Density is never assumed.
-Full Size Diesel has no electric battery specification. Caiman's negative load
-trace remains visible and invalidates its full-cycle rate. Uncommon overrides
-remain optional advanced settings; supported profiles require no repeated
-technical confirmation. Source provenance and legitimate warnings are retained.
+The Electric and Hybrid report configuration includes optional manual Battery pack
+mass (kg), passed explicitly to a seventh PowerPoint card. Blank input displays N/A;
+no preset mass is inferred from machine identity. Diesel needs no battery input.
+Agro Discharge Rate now displays net initial-minus-final remaining mass divided by
+final cumulative distance, in kg/km, in both Excel and PowerPoint. Existing mass
+channels and profile gravity conversions are reused without double conversion.
+The current profiles use Electric 08, Hybrid 08 and Diesel 04 Excel templates.
 
-Release checks cover the available Electric UoL _04, Full Size Diesel _07 and
-Caiman SP Hybrid sources. Historical Diesel 9.80665 calculations remain unchanged;
-new reporting uses 9.81. Battery-capacity consistency warnings and the documented
-channel-specific auxiliary-power interpretation in kW remain unchanged.
+Release checks cover Electric UoL _04, Full Size Diesel _07 and the available
+Caiman SP Hybrid sources. Caiman's negative inferred load remains visible and
+invalidates its mass rate. Missing/invalid optional sources show N/A and warnings.
+Legacy Diesel diagnostic gravity conventions remain unchanged, as accepted.
+Battery-capacity consistency warnings and the documented channel-specific
+auxiliary-power interpretation in kW remain unchanged. Existing legacy profiles
+and their required reference templates are retained for backward compatibility.
 
 Previous delivery, 19 October 2026: the Electric and Hybrid soil-page
 subtitles say "Total resistance power [kW] and accumulated energy [kWh] versus

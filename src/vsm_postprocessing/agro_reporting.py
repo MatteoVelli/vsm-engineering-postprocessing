@@ -25,6 +25,7 @@ class AgroReport:
     capacity: ReportingMetric
     rate: ReportingMetric
     trace: dict[str, Any]
+    net_mass_rate: ReportingMetric | None = None
 
     @property
     def mass_rate(self):
@@ -37,6 +38,55 @@ class AgroReport:
 
     def to_dict(self):
         return {**asdict(self), 'mass_rate': asdict(self.mass_rate)}
+
+
+def calculate_net_mass_discharge_rate(mass_kg, mass_unit, distance, distance_unit):
+    """Sergio's net start-minus-end mass / final cumulative distance KPI.
+
+    Inputs contain simulation samples only (the importer excludes summary rows).
+    Mass is already in kg; profile math owns the force conversion and gravity.
+    """
+    definition = '(initial_agro_mass_kg - final_agro_mass_kg) / final_distance_km'
+    metric = ReportingMetric('agro_discharge_rate_kg_per_km', 'Agro Discharge Rate',
+                             None, 'kg/km', definition=definition)
+    trace = {'definition': definition, 'warnings': []}
+
+    def unavailable(reason):
+        trace['warnings'].append('Agro discharge rate unavailable: ' + reason)
+        return ReportingMetric(**{**asdict(metric), 'reason': reason}), trace
+
+    if mass_kg is None:
+        return unavailable('remaining agrochemical mass channel missing or invalid; check its force source and units')
+    if distance is None:
+        return unavailable('cumulative distance channel missing or invalid')
+    if str(mass_unit).casefold() != 'kg' or distance_unit not in {'m', 'km'}:
+        return unavailable('incompatible units: remaining mass must be kg and distance m or km')
+    mass, d = np.asarray(mass_kg, dtype=float), np.asarray(distance, dtype=float)
+    if mass.ndim != 1 or d.ndim != 1 or len(mass) != len(d) or len(d) < 2:
+        return unavailable('at least two aligned simulation samples required')
+    if not np.isfinite(mass).all() or not np.isfinite(d).all():
+        return unavailable('nonfinite mass or distance samples; check endpoints and source data')
+    if np.any(mass < 0):
+        return unavailable('negative remaining agrochemical mass; verify source sign and load interpretation')
+    if np.any(d < 0) or np.any(np.diff(d) < 0):
+        return unavailable('negative or nonmonotonic cumulative distance')
+    final_km = float(d[-1]) / (1000 if distance_unit == 'm' else 1)
+    if final_km <= 0 or not math.isfinite(final_km):
+        return unavailable('positive finite final cumulative distance required')
+    if not np.isclose(d[0], 0, rtol=0, atol=1e-9):
+        trace['warnings'].append('Cumulative distance does not start at zero; rate uses final cumulative distance as specified, not end-minus-start distance')
+    if np.any(np.diff(mass) > 0):
+        trace['warnings'].append('Remaining mass increases (possible refill); rate uses net start-minus-end mass, not cumulative discharge')
+    discharged = float(mass[0]) - float(mass[-1])
+    if discharged < 0:
+        return unavailable('final mass exceeds initial mass; net discharge is negative')
+    rate = discharged / final_km
+    if not math.isfinite(rate):
+        return unavailable('nonfinite net mass discharge rate')
+    trace.update(initial_mass_kg=float(mass[0]), final_mass_kg=float(mass[-1]),
+                 discharged_mass_kg=discharged, final_distance_km=final_km, sample_count=len(d))
+    return ReportingMetric(**{**asdict(metric), 'value': rate, 'status': 'calculated',
+                              'source': 'agrochemical_discharge [kg]; track_distance'}), trace
 
 
 def calculate_agro_kpis(distance, distance_unit, *, inputs: ReportingInputs,
@@ -198,6 +248,22 @@ def calculate_reporting_kpis(statistics_result, metadata):
     t, tu = semantic('track_time')
     report = calculate_agro_kpis(d, du, inputs=inputs, force_N=force, force_unit=fu,
                                  volume_L=v, volume_unit=vu, flow=f, flow_unit=f_unit, time_s=t, time_unit=tu)
+    mass = statistics_result.math_result.values_by_semantic_name.get('agrochemical_discharge')
+    mass_definition = statistics_result.profile.math_by_semantic_name().get('agrochemical_discharge')
+    mass_unit = mass_definition.unit if mass_definition else None
+    if mass_definition and mass is None:
+        identities = {mass_definition.source_name.casefold(), mass_definition.report_name.casefold()}
+        matches = [c for c in dataset.channels if c.source_name.casefold() in identities
+                   and str(c.unit).casefold() == 'kg']
+        if len(matches) == 1:
+            mass = dataset.values[:, dataset.channel_index(matches[0].channel_id)]
+            mass_unit = matches[0].unit
+    metric, net_trace = calculate_net_mass_discharge_rate(
+        mass, mass_unit, d, du)
+    net_trace['mass_expression'] = mass_definition.expression if mass_definition else None
+    report = AgroReport(report.capacity, report.rate, report.trace, metric)
+    report.trace['net_mass_discharge'] = net_trace
+    report.trace['warnings'].extend(net_trace['warnings'])
     report.trace['analysis_window'] = {'first_sample': 0, 'last_sample': dataset.quality.sample_count - 1,
                                       'time_start': dataset.quality.time_start, 'time_end': dataset.quality.time_end,
                                       'time_unit': dataset.quality.time_unit, 'selection': 'entire report source window'}
@@ -231,18 +297,23 @@ def reporting_metric_rows(result, metadata):
     inputs = metadata.reporting_inputs
     if result.profile.metadata.powertrain in {'electric', 'hybrid'} or inputs.battery_mass_kg is not None:
         rows.append({'metric_id': 'battery_mass_kg', 'label': 'Battery Pack Mass', 'ppt_label': 'BATTERY PACK MASS',
-                     'value': inputs.battery_mass_kg, 'unit': 'kg', 'display': inputs.battery_display,
+                     'value': inputs.battery_mass_kg, 'unit': 'kg', 'display': inputs.battery_card_display,
                      'status': inputs.battery_mass_status, 'reason': 'Battery pack mass not specified' if inputs.battery_mass_kg is None else '',
                      'source': inputs.battery_mass_provenance or 'Not specified', 'definition': 'Reporting metadata only; no vehicle/energy recalculation'})
     if result.reporting_agro is not None:
-        for metric in (result.reporting_agro.capacity, result.reporting_agro.rate, result.reporting_agro.mass_rate):
+        metrics = (result.reporting_agro.capacity, result.reporting_agro.rate, result.reporting_agro.mass_rate,
+                   result.reporting_agro.net_mass_rate)
+        for metric in metrics:
+            if metric is None:
+                continue
             display = 'N/A'
             if metric.value is not None:
                 display = (f'{metric.value:,.2f} {metric.unit}' if metric is result.reporting_agro.capacity
+                           else f'{metric.value:.2f} {metric.unit}' if metric is result.reporting_agro.net_mass_rate
                            else f'{metric.value:.6g} {metric.unit}')
             rows.append({**asdict(metric), 'ppt_label': metric.label.upper(),
                          'display': display,
-                         'number_format': ('#,##0.00' if metric is result.reporting_agro.capacity else _rate_number_format(metric.value)),
+                         'number_format': ('#,##0.00' if metric is result.reporting_agro.capacity or metric is result.reporting_agro.net_mass_rate else _rate_number_format(metric.value)),
                          'status': metric.status})
     return rows
 

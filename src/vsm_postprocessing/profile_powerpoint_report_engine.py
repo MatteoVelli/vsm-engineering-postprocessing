@@ -411,10 +411,14 @@ def build_profile_powerpoint_report(
     extra_ids = {row['metric_id'] for row in reporting_metric_rows(excel_result.statistics_result, excel_result.report_metadata)}
     for slide in payload['slides']:
         if slide['slide_id'] == 'agrochemical_battery':
-            slide['statistics'] = ['agro_capacity_observed_kg', 'agro_discharge_rate_L_per_m'] + [
+            slide['statistics'] = ['agro_capacity_observed_kg', 'agro_discharge_rate_kg_per_km'] + [
                 name for name in slide['statistics'] if name != 'agrochemical_discharge_max']
             if len(slide['statistics']) > 6:
                 slide['layout'] = 'profile_extended_kpis'
+    for slide in payload['slides']:
+        if slide['slide_id'] == 'battery_system' and 'battery_mass_kg' in extra_ids:
+            slide['statistics'].append('battery_mass_kg')
+            slide['layout'] = 'profile_extended_kpis'
     if profile.metadata.excel_template:
         # An explicitly deselected card/chart has no content of that type. Keep
         # the fixed template page, using the valid empty overview configuration.
@@ -659,14 +663,10 @@ def _render_template_slide(
 
     stats = [statistics_by_id[stat_id] for stat_id in slide_def.statistic_ids if stat_id in statistics_by_id]
     extra = {item['metric_id']: item for item in reporting_metric_rows(excel_result.statistics_result, excel_result.report_metadata)}
-    if template_slide_number == 5 and 'battery_mass_kg' in extra:
-        _add_text_box(slide, 'BATTERY PACK MASS: ' + extra['battery_mass_kg']['display'],
-                      Inches(.6), Inches(3.08), Inches(12.13), Inches(.25),
-                      font_size=13, color=_ASTAUTO_TEXT, bold=True)
     if template_slide_number == 8 and excel_result.profile.metadata.powertrain in {'electric', 'hybrid'}:
         # Keep capacity/rate visible even when Hybrid substitutes inactive-agro plots.
-        stats = [item for item in stats if item.statistic_id not in {'agrochemical_discharge_max', 'agro_capacity_observed_kg', 'agro_discharge_rate_L_per_m'}]
-        stats = [statistics_by_id['agro_capacity_observed_kg'], statistics_by_id['agro_discharge_rate_L_per_m'], *stats]
+        stats = [item for item in stats if item.statistic_id not in {'agrochemical_discharge_max', 'agro_capacity_observed_kg', 'agro_discharge_rate_kg_per_km'}]
+        stats = [statistics_by_id['agro_capacity_observed_kg'], statistics_by_id['agro_discharge_rate_kg_per_km'], *stats]
     _replace_kpi_slots(shapes, template_slide_number, stats, layout, display_overrides={key: item['display'] for key, item in extra.items()})
     if template_slide_number == 8 and excel_result.profile.metadata.powertrain in {'electric', 'hybrid'}:
         note = 'Capacity: observed maximum inferred load [kg]; not nominal tank capacity. See Statistics / manifest for source and quality warnings.'
@@ -686,10 +686,8 @@ def _render_template_slide(
         )
     if template_slide_number == 8 and not text_slots.body:
         agro = excel_result.statistics_result.reporting_agro
-        warning = 'Agro discharge rate unavailable: ' + agro.rate.reason if agro and agro.rate.value is None else None
-        if agro and agro.mass_rate.value is not None:
-            diagnostic = extra['agro_mass_discharge_rate_kg_per_m']['display']
-            warning = 'Mass discharge diagnostic: ' + diagnostic + (' | ' + agro.rate.reason if agro.rate.value is None else '')
+        net = agro.net_mass_rate if agro else None
+        warning = 'Agro discharge rate unavailable: ' + net.reason if net and net.value is None else None
         if warning:
             _add_text_box(slide, warning, Inches(.6), Inches(6.64), Inches(12.13), Inches(.30),
                           font_size=10, color=_ASTAUTO_MUTED, italic=True)

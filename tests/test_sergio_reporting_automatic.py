@@ -16,13 +16,13 @@ def profile(kind):
     return load_reporting_profile(BASE / ('full_size_sprayer_diesel.yaml' if kind == 'diesel' else 'robosprayer_' + kind + '.yaml'))
 
 @pytest.mark.parametrize('filename,kind,mass,status', [
-    ('RoboSprayer_3500Kg_Electric_UoL_04.csv','electric',470,'confirmed'),
-    ('RoboSprayer_V5_3500Kg_Electric_99.csv','electric',470,'confirmed'),
+    ('RoboSprayer_3500Kg_Electric_UoL_04.csv','electric',None,'not_provided'),
+    ('RoboSprayer_V5_3500Kg_Electric_99.csv','electric',None,'not_provided'),
     ('Unrelated_3500Kg_Electric.csv','electric',None,'not_provided'),
     ('RoboSprayer_V4_3500Kg_Electric.csv','electric',None,'not_provided'),
     ('RoboSprayer_8500Kg_Electric.csv','electric',None,'not_provided'),
-    ('Full_Size_Sprayer_8500Kg_Electric.csv','electric',1700,'estimated'),
-    ('Full_Size_Sprayer_8500Kg_Hybrid.csv','hybrid',1700,'estimated'),
+    ('Full_Size_Sprayer_8500Kg_Electric.csv','electric',None,'not_provided'),
+    ('Full_Size_Sprayer_8500Kg_Hybrid.csv','hybrid',None,'not_provided'),
     ('Full_Size_Sprayer_8500Kg_Diesel.csv','diesel',None,'not_provided'),
     ('Full_Size_Sprayer_8500Kg_Diesel.csv','electric',None,'not_provided'),
     ('Sprayer_Caiman_SP_9300Kg_Hybrid.csv','hybrid',None,'not_provided'),
@@ -96,7 +96,7 @@ def test_flow_integration_uses_observed_time_and_unit_conversion():
 def test_display_name_override_does_not_erase_verified_source_identity():
     metadata = resolve_report_metadata('RoboSprayer_3500Kg_Electric.csv',profile('electric'),machine_name_override='Sergio demonstration')
     assert metadata.machine_name == 'Sergio demonstration'
-    assert metadata.reporting_inputs.battery_mass_kg == 470
+    assert metadata.reporting_inputs.battery_mass_kg is None
 
 
 def test_profile_configuration_validation(tmp_path):

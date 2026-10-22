@@ -44,13 +44,16 @@ Full Size Sprayer Diesel, subject to the following boundaries.
     separate files; editing Excel does not update a prior PowerPoint.
 
 17. Agro Capacity reports an observed maximum inferred load, not nominal tank
-    capacity. Supported mappings infer remaining mass from rear hitch force;
-    this is not a certified direct chemical-mass measurement. L/m requires known
-    density or trusted chemical volume/flow, while valid kg/m remains available.
-    Caiman's nonphysical negative contents invalidate a full-window rate. No
-    negative values are clamped and no chemical density is supplied by default.
-18. Full Size Electric/Hybrid pack mass is approximately 1700 kg or more,
-    provisional pending Sergio's calculation. Diesel receives no electric pack
-    specification; unverified pack masses remain Not specified. New qualified
-    reporting values are validated snapshots; regenerate after source/assumption
-    changes. The existing battery-energy/SOC consistency warning remains valid.
+    capacity. Remaining chemical mass may be inferred from rear hitch force;
+    this is not a certified direct mass measurement. Agro Discharge Rate uses
+    net initial-minus-final mass / final cumulative km without density. Missing
+    or nonphysical data shows N/A with a warning. Possible refills are warned
+    about; no cumulative per-refill calculation is substituted. The separate
+    legacy L/m diagnostic requires documented density or trusted volume/flow.
+    Caiman's negative inferred contents invalidate its rate; no values are clamped.
+18. Battery pack mass is optional manual engineering information for Electric
+    and Hybrid. No pack mass is inferred from filenames, vehicle mass or capacity.
+    Blank input shows N/A; supplied values are user-provided unless explicit
+    confirmation/provenance is supplied. Diesel needs no battery pack input.
+    Regenerate after changing source data or report inputs. The existing battery
+    energy/SOC consistency warning remains valid.

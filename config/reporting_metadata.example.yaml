@@ -18,10 +18,11 @@ profile:
     agro_volume_provenance: null
     agro_flow_source: null
     agro_flow_provenance: null
-# Known model/configuration/powertrain mappings are inherited automatically from
-# the existing reporting profiles. RoboSprayer V5 3500 kg Electric uses 470 kg
-# confirmed by Sergio. An unrelated 3500 kg machine does not match that mapping.
-# Full Size 8500 kg Electric/Hybrid uses ~1700 kg (estimated; calculation ongoing).
-# Full Size Diesel receives no electric battery specification.
+# Enter battery_mass_kg explicitly for each report; machine identity never supplies it.
+# Manual overrides containing only battery_mass_kg receive status user_provided and
+# provenance Manual report input. Explicit confirmed/estimated status is retained
+# only when deliberately supplied with provenance. Diesel needs no battery input.
+# Net agro discharge in kg/km reuses the profile mass calculation and final distance;
+# it does not require density. Density is only for the legacy volumetric diagnostic.
 # Advanced overrides may explicitly select a compatible machine_configuration_id.
 # Never enter density 1 kg/L unless that value is explicitly justified.

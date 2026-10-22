@@ -70,7 +70,8 @@ def inspect(excel, ppt, expected_slides):
         if excel.profile.metadata.powertrain in {'electric', 'hybrid'}:
             assert any(row[0] == 'battery_mass_kg' for row in rows)
             battery_texts = [s.text for s in prs.slides[4].shapes if s.has_text_frame]
-            assert 'BATTERY PACK MASS: ' + excel.report_metadata.reporting_inputs.battery_display in battery_texts
+            assert 'BATTERY PACK MASS' in battery_texts
+            assert excel.report_metadata.reporting_inputs.battery_card_display in battery_texts
         # All top summary cells, including text/N/A values, remain live references
         # and have readable initial caches matching their target Statistics cells.
         for col in range(excel.report_channel_count + 2, summary.max_column + 1):

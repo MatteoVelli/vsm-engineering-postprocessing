@@ -539,7 +539,7 @@ def generate_profile_excel_report(
     statistics_result.reporting_agro = calculate_reporting_kpis(statistics_result, report_metadata)
     statistics_result.diagnostics.extend(statistics_result.reporting_agro.trace['warnings'])
     if report_metadata.reporting_inputs.battery_mass_kg is None and profile.metadata.powertrain in {'electric', 'hybrid'}:
-        statistics_result.diagnostics.append('Battery pack mass not specified; select a verified configuration or provide mass and provenance')
+        statistics_result.diagnostics.append('Battery pack mass not specified; enter Battery pack mass (kg) to include it in the report')
     if not statistics_result.is_complete:
         missing_stats = [item.definition.statistic_id for item in statistics_result.unavailable_required_statistics]
         missing_kpis = [item.definition.kpi_id for item in statistics_result.unavailable_required_kpis]
@@ -985,9 +985,37 @@ def _write_profile_workbook(
 
     from .profile_kpi_formulas import write_profile_kpi_formulas
     write_profile_kpi_formulas(workbook, report, statistics_result, report_channels)
+    _write_net_mass_rate_formula(workbook, report, statistics_result, report_channels, report_metadata)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     save_report_workbook(workbook, output_path)
+
+
+def _write_net_mass_rate_formula(workbook, report, result, report_channels, metadata):
+    """Keep the shared net-mass KPI live using current semantic column mappings."""
+    metric = result.reporting_agro.net_mass_rate if result.reporting_agro else None
+    columns = {channel.channel_id: i for i, channel in enumerate(report_channels, 1)}
+    if (metric is None or metric.value is None
+            or not {'agrochemical_discharge', 'track_distance'} <= columns.keys()):
+        return
+    mass = get_column_letter(columns['agrochemical_discharge'])
+    distance = get_column_letter(columns['track_distance'])
+    last = result.dataset.quality.sample_count + 4
+    prefix = quote_sheetname(report.title) + '!'
+    masses = f'{prefix}{mass}5:{mass}{last}'
+    distances = f'{prefix}{distance}5:{distance}{last}'
+    first_mass, last_mass = f'{prefix}{mass}5', f'{prefix}{mass}{last}'
+    final_distance = f'{prefix}{distance}{last}'
+    divisor = 1000 if result.resolution.resolved['track_distance'].effective_unit == 'm' else 1
+    formula = (f'=IFERROR(IF(AND(COUNT({masses})=ROWS({masses}),'
+               f'COUNT({distances})=ROWS({distances}),MIN({masses})>=0,'
+               f'MIN({distances})>=0,{first_mass}>={last_mass},{final_distance}>0),'
+               f'({first_mass}-{last_mass})/({final_distance}/{divisor}),"N/A"),"N/A")')
+    extra_start = len(result.statistics) + len(result.kpis) + 8
+    for index, row in enumerate(reporting_metric_rows(result, metadata)):
+        if row['metric_id'] == metric.metric_id:
+            write_formula(workbook['Statistics'].cell(extra_start + index, 3), formula, metric.value)
+            break
 
 
 def _write_profile_report_sheet(

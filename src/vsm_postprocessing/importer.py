@@ -309,6 +309,13 @@ def _scan_xlsx_data(
         raw_time = value_row[time_column_index - 1]
         if raw_time is None or (isinstance(raw_time, str) and not raw_time.strip()):
             break
+        # Report workbooks may label their trailing statistics in the time
+        # column (Electric 08 uses MAX/MIN/LAST/FIRST). They are not samples.
+        # Other nonnumeric timestamps still go through normal validation.
+        if sample_count and isinstance(raw_time, str) and raw_time.strip().upper() in {
+            'MAX', 'MIN', 'LAST', 'FIRST', 'RMS', 'SUM', 'MEAN', 'AVERAGE',
+        }:
+            break
 
         sample_count += 1
         for column_offset in range(last_column):

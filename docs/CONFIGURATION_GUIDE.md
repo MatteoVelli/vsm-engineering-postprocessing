@@ -203,23 +203,32 @@ The previous composed mission scenario/provider workflow has been removed. Sourc
 
 ## Machine specifications and qualified agro reporting
 
-Existing profile metadata contains reusable `machine_configurations` records.
-Matching requires model identity, configuration tokens and compatible powertrain;
-vehicle mass alone is insufficient. Extending profiles inherit these mappings.
-RoboSprayer V5 3500 kg Electric uses Sergio's confirmed 470 kg pack. Full Size
-8500 kg Electric/Hybrid uses an estimated 1700 kg with ongoing-calculation
-provenance; Full Size Diesel uses a distinct mapping without an electric pack.
-Caiman SP 9300 kg Hybrid has no verified pack mass.
+Existing profile metadata contains reusable `machine_configurations` records for
+compatible machine identity and physical source interpretation. Vehicle mass alone
+does not identify a battery pack. Electric and Hybrid use the explicit optional
+`reporting_inputs.battery_mass_kg` value supplied for the current report. The UI
+field is **Battery pack mass (kg)**. It accepts a finite positive value, records it
+as `user_provided`, and displays it in the seventh battery-system PowerPoint card.
+Blank input displays N/A. No preset pack mass is inferred; Diesel needs no pack.
+An explicitly supplied status/provenance remains available through configuration.
 
-`reporting_inputs` supports explicit advanced overrides and density provenance.
-The `agro_density_kg_per_L` public field and `density_kg_per_L` internal alias are
-compatible; supply only one. Density must be positive, finite and documented.
-Direct trusted cumulative chemical volume takes priority over integrated
+The primary agro discharge KPI is `agro_discharge_rate_kg_per_km`: initial minus
+final remaining mass [kg] divided by final cumulative distance [km]. It reuses the
+existing mass channel, with -force/9.81 for Electric/Hybrid and -force/9.80665 for
+Diesel. Existing kg sources are not converted again. It needs no density. Missing,
+invalid or nonphysical data produces N/A and a warning. A nonzero distance start
+or possible refill is warned about without changing the specified net formula.
+Current templates are Electric 08, Hybrid 08 and Diesel 04. Semantic channel
+mapping and dynamic sample extents are retained; worksheet names do not determine
+powertrain. Legacy profiles remain available with their established templates.
+
+`reporting_inputs` also supports advanced volumetric diagnostics and density
+provenance. The `agro_density_kg_per_L` public field and `density_kg_per_L` internal
+alias are compatible; supply only one. Density must be positive, finite and
+documented. Trusted cumulative chemical volume takes priority over integrated
 volumetric flow, then supported remaining mass with density. Fuel channels are
-not chemical volume sources. Missing density leaves L/m unavailable, with a
-separate valid kg/m diagnostic where possible. Refill events, invalid distance,
-nonfinite samples, negative contents and discontinuities retain their safeguards.
-Agro Capacity is the maximum observed inferred remaining mass, not nominal tank
-capacity. Historical Diesel math retains 9.80665; reporting uses 9.81. Detailed
-source/status information is in Statistics and report metadata. The UI applies
-known mappings automatically and keeps unusual overrides collapsed.
+not chemical volume sources. Missing density leaves the separate L/m diagnostic
+unavailable. Its existing refill, discontinuity and physical-data safeguards are
+unchanged. Agro Capacity is maximum observed inferred remaining mass, not nominal
+tank capacity. The accepted legacy Diesel diagnostic gravity difference is retained.
+Detailed source, status and warnings are in Statistics and report metadata.

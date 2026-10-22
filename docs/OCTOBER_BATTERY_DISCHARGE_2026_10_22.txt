@@ -1,0 +1,160 @@
+October battery pack mass and agrochemical discharge update - 22 October 2026
+
+Implementation
+--------------
+Battery pack mass (kg) is an optional manual field in Electric/Hybrid report
+configuration. Streamlit retains its value through reruns using the existing
+session-state widget mechanism. reporting_inputs carries battery_mass_kg,
+battery_mass_status=user_provided, and provenance=Manual report input through
+resolve_report_metadata and generate_reporting_profile_engineering_report to
+Excel and PowerPoint. Blank input displays N/A. Nonpositive, nonnumeric, boolean,
+NaN and infinite values are rejected by ReportingInputs validation. Known machine
+configurations no longer supply preset battery masses. Diesel has no mass field.
+
+PowerPoint uses the existing KPI slot expansion/fit implementation to clone the
+seventh card at the right end of the Battery & Electrical Energy System row.
+The cloned card retains background, font runs, accent, shadow and internal
+margins. All seven backgrounds occupy x=0.60..12.73 inches at y=1.72 inches on
+the existing 13.333 x 7.5 inch slide. The previous mass footnote is removed.
+Status and provenance remain in manifests/slide notes, not in the numeric card.
+
+Net agro discharge uses (initial mass - final mass) / final cumulative km.
+agro_reporting.calculate_net_mass_discharge_rate is the shared deterministic
+calculator. calculate_reporting_kpis obtains remaining mass from the existing
+agrochemical_discharge mathematical channel and distance from the semantic
+track_distance resolution. Existing kg source channels can supply mass directly
+when the force-derived channel is absent; no second force conversion is applied.
+The unchanged profile expressions use -force/9.81 for Electric/Hybrid and
+-force/9.80665 for Diesel. Math-channel selection retains this optional dependency.
+No new source channel is made required.
+
+Finite aligned simulation data and nonnegative contents are required. Negative
+net discharge, invalid endpoints/units, missing channels, and nonpositive final
+distance produce an unavailable metric with an actionable warning. Nonzero
+starting distance and increases in remaining contents produce warnings. Refill
+increases are never summed into cumulative discharge; the specified net endpoint
+formula remains in force. Zero net discharge is a valid measured result.
+
+Excel receives a reusable agro_discharge_rate_kg_per_km reporting metric in
+Statistics and the existing report summary. When its source columns are exported,
+a live formula references their semantic positions and dynamic last sample row,
+with a deterministic cache matching Python. Other source selections retain the
+calculated value without broken formulas. PowerPoint displays the shared result
+to two decimals with kg/km, on the existing agro slide or Diesel executive slide.
+The older volumetric and kg/m diagnostics remain separate in Excel/metadata.
+
+Template inspection
+-------------------
+Current October profiles select Electric_08.xlsx, Hybrid_08.xlsx and Diesel
+Template_04.xlsx. Legacy profiles retain their established templates. Existing
+selection-table source/report/type mapping handles shifted columns; no old
+worksheet coordinates are used by the processing engine. The Electric workbook
+retains a Hybrid sheet name; machine type always comes from the selected profile.
+Latest templates are also included in the optional assets list for a future
+release. No release build or client archive is delivered by this update.
+
+Actual old/new comparisons:
+Electric 07 -> 08: same 3861 x 377 populated extent, NE4 adds the discharge rate
+and BW3859 the net mass difference. Hybrid 07 -> 08: 3859 rows, 386 -> 387
+columns, NW4 rate and CD3859 mass difference. Diesel 03 -> 04: 17877 -> 17878
+rows, 97 -> 98 columns, CT4 rate and R17878 mass difference. The report writer
+continues to reconstruct the existing editable workbook layout from semantic
+channels; it does not copy the reference workbook's cached reference values.
+
+Independent reference acceptance
+--------------------------------
+Reference data is read by Time/Distance/Agrochemical Discharge labels and units;
+sampling stops before the first nonnumeric time row. Tests use raw force as the
+production source and independently compare all converted kg values against the
+workbook's mass values. Reference row numbers occur only in this audit, not the
+KPI calculation.
+
+Profile       Samples  Net discharged mass [kg]  Final distance [km]  Rate [kg/km]
+Electric 08     3853   474.53109072375099         11.999600000000001   39.545575746170783
+Hybrid 08       3853   474.53109072375099         11.999600000000001   39.545575746170783
+Diesel 04      17872   3999.8677111959746         114.07939999999999   35.062138398308328
+
+The Diesel reference starts at 0.00590631 m. Its final-distance denominator is
+preserved and the nonzero-start warning is asserted. Tolerance is 2e-14 relative
+for endpoint mass and rate; full mass arrays are checked to 1e-13 relative.
+
+Reviewable generated evidence
+-----------------------------
+outputs/october_08_04_validation/audit.json records input files, templates,
+sample counts, rates, endpoint traces, chart counts and native report paths.
+Representative reports were generated through the same ui_config combined
+Excel/PowerPoint function used by Streamlit:
+- Electric CSV: 347 samples, 15 slides, 21 available charts; manual 470 kg,
+  rate 499.83168834576355 kg/km (different source simulation from the workbook).
+- Caiman Hybrid CSV: 1770 samples, 14 slides, 25 available charts; manual 725 kg,
+  N/A discharge because remaining mass becomes negative. The warning is retained.
+- Diesel CSV: 223 samples, 10 slides, 19 available charts; no battery input,
+  0 kg/km because this source's chemical force/load is measured as zero.
+Unavailable optional channels account for chart-count differences across sources.
+
+Desktop PowerPoint exported all three presentations to PDF and the affected
+slides to PNG in outputs/october_08_04_validation/visual_checks. Actual battery
+and agro slides were visually inspected: readable labels/units, seven aligned
+battery cards, no clipped values, no logo overlap, plots and existing theme
+preserved. Desktop Office reported zero card text overflows on affected slides.
+Excel CalculateFullRebuild reproduced Python values, including correct N/A and
+zero behavior. office_checks.json contains recalculated values and actual formulas.
+
+Tests, health and regression
+----------------------------
+Targeted tests cover reference rates/intermediate mass, profile gravity constants,
+kg input without double conversion, variable lengths, invalid/missing channels,
+units and endpoints, refill/net semantics, distance-start warnings, template
+selection, battery values/omission, seven-card boundaries, Diesel isolation and
+Streamlit input/rerun -> combined report -> PowerPoint propagation.
+
+Doctor: PASS, 0 warnings, 0 failures (Python 3.11.15).
+Targeted acceptance: 29 passed.
+Full suite, verified against every currently collected test ID: 757 passed,
+1 skipped, 0 failed, 0 missing (758 total). The skip is the existing Diesel soil
+slide case, which applies only to Electric/Hybrid. Tests ran in three isolated
+partitions; the later 54-pass/1-skip October regression rerun supersedes an
+already-loaded old dependency-count assertion. The final 29-pass acceptance rerun
+includes the three new XLSX summary-boundary cases. final_summary.json maps all
+758 test IDs to their final JUnit evidence. Pytest reported cache-write warnings
+for the existing .pytest_cache permissions; these do not affect report outputs.
+Legacy numerical audit: all six scenarios PASS with bit-for-bit identical math
+arrays and exact equality for existing statistics, KPIs and canonical metrics.
+Evidence: outputs/battery_agro_validation/audit.json and
+outputs/october_legacy_numerical_audit.txt.
+Full-suite evidence: outputs/october_final_tests/final_summary.json.
+
+Files changed
+-------------
+src/vsm_postprocessing/reporting_inputs.py: validation/status and clean card value.
+src/vsm_postprocessing/report_metadata.py: explicit mass overrides; remove inference.
+src/vsm_postprocessing/ui_app.py: manual Electric/Hybrid report field.
+src/vsm_postprocessing/agro_reporting.py: shared optional kg/km result and registry.
+src/vsm_postprocessing/report_selection.py: preserve the optional mass dependency.
+src/vsm_postprocessing/importer.py: exclude labelled bottom statistics from XLSX samples.
+src/vsm_postprocessing/excel_report_engine.py: live net-rate formula and input hint.
+src/vsm_postprocessing/profile_powerpoint_report_engine.py: seventh mass card and rate.
+src/vsm_postprocessing/diesel_powerpoint_report.py: mass-rate card in existing slide.
+src/vsm_postprocessing/release_builder.py: latest optional template assets only.
+config/report_profiles/robosprayer_electric.yaml: remove preset battery masses.
+config/report_profiles/sergio_2026_10/{robosprayer_electric,robosprayer_hybrid,
+full_size_sprayer_diesel}.yaml: select latest 08/08/04 templates.
+config/reporting_metadata.example.yaml and README.md: document new input semantics.
+tests/test_october_battery_mass_discharge.py: new focused acceptance coverage.
+tests/test_battery_agro_reporting.py, tests/test_sergio_reporting_automatic.py and
+tests/test_diesel_excel_report.py and tests/test_sergio_october_15.py: update
+expectations for explicitly changed behavior, including the optional KPI dependency.
+scripts/validate_october_battery_discharge.py and
+scripts/inspect_october_battery_discharge.ps1: reproducible report/Office audit.
+scripts/validate_battery_agro_reporting.py: check mass card instead of old footnote.
+This file: implementation, reference values, validation scope and limitations.
+
+Limits
+------
+Private reference workbooks are optional in source-only checkouts; their tests
+skip explicitly when unavailable. Existing required source/time validation still
+applies. Invalid optional agro data displays N/A and a warning. No refilling-cycle
+segmentation or density inference is introduced. The available real Caiman CSV
+has negative inferred contents and therefore cannot demonstrate an available
+mass-rate card; the supplied Hybrid workbook and valid synthetic report tests do.
+No commits, pushes, tags or client release ZIPs are produced.

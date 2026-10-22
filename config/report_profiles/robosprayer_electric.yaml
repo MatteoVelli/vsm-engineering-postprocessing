@@ -15,9 +15,6 @@ profile:
     powertrains:
     - electric
     reporting_inputs:
-      battery_mass_kg: 470.0
-      battery_mass_status: confirmed
-      battery_mass_provenance: 'Sergio: confirmed RoboSprayer V5 3500 kg configuration'
       hitch_force_is_remaining_agro_mass: true
       agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
         inferred load, not measured or nominal tank capacity
@@ -31,9 +28,6 @@ profile:
     - electric
     - hybrid
     reporting_inputs:
-      battery_mass_kg: 1700.0
-      battery_mass_status: estimated
-      battery_mass_provenance: 'Sergio: approximately 1700 kg or more; calculation ongoing, provisional'
       hitch_force_is_remaining_agro_mass: true
       agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
         inferred load, not measured or nominal tank capacity

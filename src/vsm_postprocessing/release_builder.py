@@ -72,6 +72,9 @@ _CLIENT_OPTIONAL_FILES = (
     "reference_files/Diesel Template_03.xlsx",
     "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_07.xlsx",
     "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_07.xlsx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_08.xlsx",
+    "reference_files/Robo_Sprayer_Electrification_Tamplate_Hybrid_08.xlsx",
+    "reference_files/Diesel Template_04.xlsx",
 )
 
 _EXCLUDED_NAMES = {

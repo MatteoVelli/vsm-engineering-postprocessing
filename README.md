@@ -26,10 +26,19 @@ Optional PowerPoint report
 
 The production client workflow supports Diesel, Hybrid and Electric. After upload,
 the UI defaults to Sergio's 15 October 2026 definitions in
-`config/report_profiles/sergio_2026_10/`, aligned with Diesel `_03` and
-Electric/Hybrid `_07`. The original profiles remain explicitly available as
+`config/report_profiles/sergio_2026_10/`, aligned with Diesel `_04` and
+Electric/Hybrid `_08`. The original profiles remain explicitly available as
 legacy reporting. Powertrain selection and source channels determine compatibility;
 machine names remain editable report metadata.
+
+Electric and Hybrid report configuration includes an optional **Battery pack mass (kg)**
+field. Enter a finite positive mass to display it as the seventh card on Battery &
+Electrical Energy System. Blank input displays N/A; no mass is inferred from the
+machine filename. Manual input is recorded as user-provided in report metadata.
+The Agro Discharge Rate card uses net initial-minus-final remaining chemical mass
+[kg] divided by final cumulative distance [km], without requiring chemical density.
+Nonzero distance starts and possible refills are reported in the diagnostics.
+The existing volumetric diagnostics remain available separately in Excel/metadata.
 
 Revised reports add measured gearbox torque and high-voltage auxiliaries,
 soil-resistance power/energy plots, configurable Diesel coolant temperature and

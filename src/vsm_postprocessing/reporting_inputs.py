@@ -26,8 +26,8 @@ class ReportingInputs:
             value = getattr(self, key)
             if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0):
                 raise ConfigurationError(f'{key} must be strictly positive and finite')
-        if self.battery_mass_status not in {'confirmed', 'estimated', 'not_provided'}:
-            raise ConfigurationError('battery_mass_status must be confirmed, estimated or not_provided')
+        if self.battery_mass_status not in {'confirmed', 'estimated', 'user_provided', 'not_provided'}:
+            raise ConfigurationError('battery_mass_status must be confirmed, estimated, user_provided or not_provided')
         if self.battery_mass_kg is not None and (self.battery_mass_status == 'not_provided' or not self.battery_mass_provenance):
             raise ConfigurationError('Battery mass requires status and provenance')
         if self.battery_mass_kg is None and self.battery_mass_status != 'not_provided':
@@ -50,6 +50,9 @@ class ReportingInputs:
         if not isinstance(raw, Mapping):
             raise ConfigurationError('reporting_inputs must be a mapping')
         raw = dict(raw)
+        if raw.get('battery_mass_kg') is not None:
+            raw.setdefault('battery_mass_status', 'user_provided')
+            raw.setdefault('battery_mass_provenance', 'Manual report input')
         # Public UI/profile name; keep the shorter calculator argument compatible.
         if 'agro_density_kg_per_L' in raw:
             if 'density_kg_per_L' in raw:
@@ -68,3 +71,7 @@ class ReportingInputs:
             return 'Not specified'
         prefix = '~' if self.battery_mass_status == 'estimated' else ''
         return f'{prefix}{self.battery_mass_kg:,.6g} kg ({self.battery_mass_status})'
+
+    @property
+    def battery_card_display(self):
+        return 'N/A' if self.battery_mass_kg is None else f'{self.battery_mass_kg:,.6g} kg'

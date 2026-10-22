@@ -100,7 +100,7 @@ def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_fil
         reporting = ppt.reporting_metric_rows(result.statistics_result, result.report_metadata) if slide_id == 'executive_results' else []
         slides.append({
             "slide_id": slide_id, "type": kind, "title": title or result.report_metadata.report_title,
-            "subtitle": subtitle, "statistics": [s for s in definition.statistics if s in statistics] + [row['metric_id'] for row in reporting if row['metric_id'] != 'agro_mass_discharge_rate_kg_per_m'],
+            "subtitle": subtitle, "statistics": [s for s in definition.statistics if s in statistics] + [row['metric_id'] for row in reporting if row['metric_id'] not in {'agro_mass_discharge_rate_kg_per_m', 'agro_discharge_rate_L_per_m'}],
             "plots": plot_ids, "body": list(bodies.get(slide_id, ())),
         })
     return {
@@ -227,10 +227,8 @@ def build_diesel_powerpoint(
         if page == 3:
             agro = excel_result.statistics_result.reporting_agro
             text = 'Capacity: observed maximum inferred load [kg], not nominal tank capacity.'
-            if agro and agro.mass_rate.value is not None:
-                text += f' Mass discharge diagnostic: {agro.mass_rate.value:.6g} kg/m.'
-            if agro and agro.rate.value is None:
-                text += '\nVolume rate unavailable: ' + agro.rate.reason + '.'
+            if agro and agro.net_mass_rate and agro.net_mass_rate.value is None:
+                text += '\nAgro discharge rate unavailable: ' + agro.net_mass_rate.reason + '.'
             _remove(shapes[37])
             ppt._add_text_box(slide, text, Inches(.6), Inches(6.32), Inches(12.13), Inches(.46), font_size=10, color=ppt.RGBColor.from_string('D8E4FF'))
         if page in (5, 6, 7, 8, 9):

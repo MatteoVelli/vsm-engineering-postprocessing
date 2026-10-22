@@ -327,7 +327,9 @@ def test_selection_exports_only_requested_channels_and_preserves_plot(tmp_path):
         assert len(book.worksheets[0]._images) == 1 and not book.worksheets[0]._charts
     finally:
         book.close()
-    assert report.math_result.calculation_order == ["distance_km"]
+    # The optional reporting KPI retains its mass dependency without adding
+    # either mass or distance back to the explicitly selected export columns.
+    assert report.math_result.calculation_order == ["distance_km", "agrochemical_discharge"]
 
 
 def test_new_soil_plots_replace_existing_powerpoint_slots(revised_report, tmp_path):

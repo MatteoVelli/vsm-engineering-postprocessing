@@ -106,8 +106,14 @@ def resolve_report_metadata(
     if len(matches) > 1:
         raise ConfigurationError('Ambiguous machine configuration; select an advanced override')
     automatic = dict(matches[0]['reporting_inputs']) if matches else {}
+    # Pack mass is an external input for this report, never a filename inference.
+    for key in ('battery_mass_kg', 'battery_mass_status', 'battery_mass_provenance'):
+        automatic.pop(key, None)
     if matches:
         automatic['machine_configuration_id'] = matches[0]['configuration_id']
+    if overrides.get('battery_mass_kg') is not None:
+        overrides.setdefault('battery_mass_status', 'user_provided')
+        overrides.setdefault('battery_mass_provenance', 'Manual report input')
     settings = ReportingInputs.from_mapping({**asdict(defaults), **automatic, **overrides})
     if powertrain_name == 'Diesel' and settings.battery_mass_kg is not None:
         raise ConfigurationError('Diesel reporting cannot use an electric battery pack specification')

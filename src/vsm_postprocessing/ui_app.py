@@ -483,13 +483,22 @@ def _render_reporting_metadata_inputs(st, definition, source_path=None):
     profile = load_reporting_profile(definition.profile_path)
     detected = resolve_report_metadata(source_path or 'Unknown.csv', profile)
     defaults = asdict(detected.reporting_inputs)
-    st.caption('Detected configuration: ' + (defaults['machine_configuration_id'] or 'Unspecified')
-               + ' | Battery pack: ' + (detected.reporting_inputs.battery_display if definition.powertrain != 'diesel' else 'Not applicable (Diesel)'))
-    st.caption('Agro load: ' + ('profile-supported inference' if defaults['hitch_force_is_remaining_agro_mass'] else 'source interpretation unavailable')
-               + '. Volumetric discharge requires a trusted volume source or documented chemical density.')
+    if definition.powertrain in {'electric', 'hybrid'}:
+        mass_text = st.text_input('Battery pack mass (kg)', value='',
+                                  key='report_battery_mass_' + definition.powertrain,
+                                  help='Optional manual engineering input. Leave blank to show N/A.')
+        try:
+            mass = float(mass_text) if mass_text.strip() else None
+        except ValueError:
+            mass = mass_text  # ReportingInputs provides the actionable validation error.
+        defaults.update(battery_mass_kg=mass,
+                        battery_mass_status='user_provided' if mass is not None else 'not_provided',
+                        battery_mass_provenance='Manual report input' if mass is not None else None)
+    manual = {key: value for key, value in defaults.items() if value != getattr(detected.reporting_inputs, key)}
+    st.caption('Agro discharge rate uses net remaining mass loss [kg] / final cumulative distance [km].')
     with st.expander('Advanced reporting overrides'):
         if not st.checkbox('Override automatically detected reporting information'):
-            return {}
+            return manual
         st.caption('Overrides affect reporting only. Chemical density has no assumed default.')
         identifiers = [None, *[item['configuration_id'] for item in profile.metadata.machine_configurations
                               if definition.powertrain in item['powertrains']]]
@@ -500,19 +509,6 @@ def _render_reporting_metadata_inputs(st, definition, source_path=None):
             record = next(item for item in profile.metadata.machine_configurations if item['configuration_id'] == selected)
             defaults.update(record['reporting_inputs'])
             defaults['machine_configuration_id'] = selected
-        enabled = st.checkbox('Specify battery pack mass', value=defaults['battery_mass_kg'] is not None)
-        if enabled:
-            mass_text = st.text_input('Battery pack mass [kg] (strictly positive)', value=str(defaults['battery_mass_kg'] or ''))
-            try:
-                defaults['battery_mass_kg'] = float(mass_text) if mass_text.strip() else None
-            except ValueError:
-                defaults['battery_mass_kg'] = mass_text
-            defaults['battery_mass_status'] = st.selectbox('Battery mass status', ['estimated', 'confirmed'], index=1 if defaults['battery_mass_status'] == 'confirmed' else 0)
-            defaults['battery_mass_provenance'] = st.text_input('Battery mass source / confirmation', value=defaults['battery_mass_provenance'] or '')
-            if defaults['battery_mass_kg'] is None:
-                defaults.update(battery_mass_status='not_provided', battery_mass_provenance=None)
-        else:
-            defaults.update(battery_mass_kg=None, battery_mass_status='not_provided', battery_mass_provenance=None)
         density = st.checkbox('Specify agrochemical density [kg/L]', value=defaults['density_kg_per_L'] is not None)
         if density:
             density_text = st.text_input('Agrochemical density [kg/L] (strictly positive)', value=str(defaults['density_kg_per_L'] or ''))

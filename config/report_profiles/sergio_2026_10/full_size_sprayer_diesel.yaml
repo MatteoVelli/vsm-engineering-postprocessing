@@ -6,7 +6,7 @@ profile:
   extends: ../full_size_sprayer_diesel.yaml
   description: 'Sergio 15 October 2026: measured sources, signed power and observed-interval
     energy.'
-  excel_template: reference_files/Diesel Template_03.xlsx
+  excel_template: reference_files/Diesel Template_04.xlsx
 overrides:
   raw:
     engine_water_temperature:

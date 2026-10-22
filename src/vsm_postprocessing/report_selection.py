@@ -87,6 +87,10 @@ def select_profile(profile: ReportingProfile, selection: ProfileReportSelection 
             elif dep in math:
                 selected_math.add(dep)
     needed = set(selected_math)
+    # Shared optional reporting KPI needs remaining mass even when its plot or
+    # individual math-channel export is deselected.
+    if 'agrochemical_discharge' in math:
+        needed.add('agrochemical_discharge')
     if selection.export_channels is not None:
         needed.update(exported & math.keys())
     needed.update(stats[name].target for name in selected_stats)

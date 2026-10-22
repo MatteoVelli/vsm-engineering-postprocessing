@@ -19,8 +19,9 @@ The first setup requires internet access if Python or Python packages are not al
 3. Upload the source VSM `.xlsx` or `.csv` results file.
 4. Review the automatically detected **Diesel**, **Hybrid** or **Electric** profile and machine information; change the selection only if needed.
 5. Click **STEP 3 - Validate**. Resolve any missing required channels or invalid data before continuing; the UI lists the affected channels and blocks report generation.
-6. Click **STEP 4 - Generate Engineering Report**.
-7. Download the Excel report and, when needed, the PowerPoint report from **STEP 5 - Access Output**. The profile workflow generates both reports; using the PowerPoint is optional.
+6. For Electric or Hybrid, enter **Battery pack mass (kg)** if known. Leave it blank to show N/A. Enter a finite positive value; no mass is inferred automatically.
+7. Click **STEP 4 - Generate Engineering Report**.
+8. Download the Excel report and, when needed, the PowerPoint report from **STEP 5 - Access Output**. The profile workflow generates both reports; using the PowerPoint is optional.
 
 The launcher opens the local Streamlit interface in your browser. If the browser does not open automatically, use `http://localhost:8501`. Keep the launcher running while using the application; close it when finished.
 
@@ -93,22 +94,26 @@ Release checks use Diesel `_07`, Electric UoL `_04` and the available Caiman SP 
 
 ## Battery and Agrochemical Reporting
 
-Supported configurations are detected automatically. RoboSprayer V5 3500 kg
-Electric displays its confirmed 470 kg battery pack. Full Size Electric/Hybrid
-uses a provisional estimate of approximately 1700 kg or more; Diesel has no
-electric pack specification. Unverified packs show Not specified.
+Electric and Hybrid have an optional **Battery pack mass (kg)** field. Enter the
+pack mass for the current report if known. The seventh card on Battery & Electrical
+Energy System displays that value in kg; blank input displays N/A. The value is
+recorded as user-provided. Diesel does not request a battery pack mass.
+
+**Agro Discharge Rate** is calculated automatically in kg/km from initial minus
+final remaining chemical mass, divided by final cumulative distance. It uses the
+current uploaded data and needs no chemical density. Invalid or missing source
+measurements show N/A with an explanation. A nonzero starting distance or a
+possible refill is reported in the diagnostics; the rate remains the specified
+net endpoint calculation. The current templates are Electric 08, Hybrid 08 and
+Diesel 04. The older volumetric diagnostics remain separate in Excel/metadata.
 
 Agro Capacity is the maximum observed inferred chemical load in kg, not a
-manufacturer's nominal tank capacity. A separate mass-discharge diagnostic uses
-kg/m when the source is valid. Agro Discharge Rate uses L/m and requires approved
-chemical density or a trusted volumetric source. Without those inputs it correctly
-shows N/A; this is a physical-data limitation, not an installation problem.
-Caiman's nonphysical negative inferred load prevents a full-cycle discharge rate.
-
-Normal reporting needs no manual source-channel setup. Uncommon assumptions and
-overrides are available under Advanced reporting overrides. Existing battery
+manufacturer's nominal tank capacity. Caiman's available reference has negative
+inferred contents, so its mass-discharge rate correctly shows N/A. Existing battery
 capacity consistency warnings and other engineering diagnostics remain valid.
-Regenerate reports after changing data or assumptions.
+Regenerate reports after changing source data or report inputs. Generated Excel
+and PowerPoint filenames use the uploaded file's stem; machine-name overrides
+change report content without renaming the source-based outputs.
 
 ## Supported Runtime
 
