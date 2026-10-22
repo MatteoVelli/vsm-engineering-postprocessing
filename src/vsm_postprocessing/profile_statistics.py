@@ -19,6 +19,7 @@ from .report_profile import (
     resolve_profile,
 )
 from .statistics_engine import compute_statistic
+from .agro_reporting import AgroReport
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,7 @@ class ProfileStatisticsResult:
     unavailable_kpis: list[UnavailableProfileKPI] = field(default_factory=list)
     kpi_calculation_order: list[str] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
+    reporting_agro: AgroReport | None = None
 
     @property
     def configured_statistic_count(self) -> int:
@@ -156,7 +158,7 @@ _POWERPOINT_LABEL_OVERRIDES = {
     "engine_torque_max": "MAX ENG TORQUE",
     "engine_energy_delivered_sum": "ENGINE ENERGY",
     "generator_power_1_max": "MAX GEN POWER",
-    "agrochemical_discharge_max": "AGRO DISCHARGE",
+    "agrochemical_discharge_max": "AGRO CAPACITY",
     "road_gradient_max": "MAX GRADIENT",
     "road_gradient_min": "MIN GRADIENT",
     "road_gradient_range": "GRADIENT RANGE",
@@ -183,6 +185,8 @@ def build_canonical_report_metrics(result: ProfileStatisticsResult) -> list[Cano
         source_definition = raw_by_name.get(definition.target) or math_by_name.get(definition.target)
         source_name = source_definition.source_name if source_definition is not None else item.channel_display_name
         excel_label = definition.display_name or item.channel_display_name
+        if definition.statistic_id == 'agrochemical_discharge_max':
+            excel_label = 'Agro Capacity (observed maximum inferred load)'
         metrics.append(
             CanonicalReportMetric(
                 metric_id=definition.statistic_id,

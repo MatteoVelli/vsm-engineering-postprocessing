@@ -4,7 +4,7 @@ from copy import deepcopy
 import json
 import math
 import re
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -32,6 +32,7 @@ from .profile_statistics import CanonicalReportMetric, build_canonical_report_me
 from .profile_soil_kpis import build_soil_powerpoint_metrics, soil_kpi_cards
 from .profile_plotting import ProfilePlottingResult, render_profile_plots
 from .report_metadata import ReportMetadata
+from .agro_reporting import reporting_metric_rows
 from .report_profile import ReportingProfile
 from .statistics_engine import (
     StatisticResult,
@@ -407,6 +408,13 @@ def build_profile_powerpoint_report(
         excel_result,
         output_filename=output_filename or _report_output_filename(excel_result.report_metadata, ".pptx"),
     )
+    extra_ids = {row['metric_id'] for row in reporting_metric_rows(excel_result.statistics_result, excel_result.report_metadata)}
+    for slide in payload['slides']:
+        if slide['slide_id'] == 'agrochemical_battery':
+            slide['statistics'] = ['agro_capacity_observed_kg', 'agro_discharge_rate_L_per_m'] + [
+                name for name in slide['statistics'] if name != 'agrochemical_discharge_max']
+            if len(slide['statistics']) > 6:
+                slide['layout'] = 'profile_extended_kpis'
     if profile.metadata.excel_template:
         # An explicitly deselected card/chart has no content of that type. Keep
         # the fixed template page, using the valid empty overview configuration.
@@ -650,7 +658,24 @@ def _render_template_slide(
             _set_shape_text(shapes[text_slots.body[0]], "\n".join(slide_def.body))
 
     stats = [statistics_by_id[stat_id] for stat_id in slide_def.statistic_ids if stat_id in statistics_by_id]
-    _replace_kpi_slots(shapes, template_slide_number, stats, layout)
+    extra = {item['metric_id']: item for item in reporting_metric_rows(excel_result.statistics_result, excel_result.report_metadata)}
+    if template_slide_number == 5 and 'battery_mass_kg' in extra:
+        _add_text_box(slide, 'BATTERY PACK MASS: ' + extra['battery_mass_kg']['display'],
+                      Inches(.6), Inches(3.08), Inches(12.13), Inches(.25),
+                      font_size=13, color=_ASTAUTO_TEXT, bold=True)
+    if template_slide_number == 8 and excel_result.profile.metadata.powertrain in {'electric', 'hybrid'}:
+        # Keep capacity/rate visible even when Hybrid substitutes inactive-agro plots.
+        stats = [item for item in stats if item.statistic_id not in {'agrochemical_discharge_max', 'agro_capacity_observed_kg', 'agro_discharge_rate_L_per_m'}]
+        stats = [statistics_by_id['agro_capacity_observed_kg'], statistics_by_id['agro_discharge_rate_L_per_m'], *stats]
+    _replace_kpi_slots(shapes, template_slide_number, stats, layout, display_overrides={key: item['display'] for key, item in extra.items()})
+    if template_slide_number == 8 and excel_result.profile.metadata.powertrain in {'electric', 'hybrid'}:
+        note = 'Capacity: observed maximum inferred load [kg]; not nominal tank capacity. See Statistics / manifest for source and quality warnings.'
+        _add_text_box(slide, note, Inches(.6), Inches(3.08), Inches(12.13), Inches(.25), font_size=9, color=_ASTAUTO_MUTED)
+    if template_slide_number in {5, 8}:
+        slide.notes_slide.notes_text_frame.text = json.dumps({
+            'reporting_inputs': asdict(excel_result.report_metadata.reporting_inputs),
+            'agro_reporting': excel_result.statistics_result.reporting_agro.to_dict() if excel_result.statistics_result.reporting_agro else None,
+        }, indent=2)
     _replace_plot_slots(slide, shapes, template_slide_number, list(slide_def.plot_ids), plots_by_id, assets, layout,
                         allow_unavailable=bool(excel_result.profile.metadata.excel_template))
     if template_slide_number == 7 and _is_inactive_hybrid_slide(excel_result) and not text_slots.body:
@@ -659,9 +684,18 @@ def _render_template_slide(
             "RANGE EXTENDER INACTIVE IN THIS SIMULATION\n"
             "ICE/generator channels resolved; no operating activity detected in this simulation.",
         )
-    if template_slide_number == 8 and slide_def.body and not text_slots.body and (excel_result.profile.metadata.powertrain or "").lower() == "hybrid":
-        _add_text_box(slide, "\n".join(slide_def.body), Inches(.6), Inches(6.66), Inches(12.13), Inches(.24),
-                      font_size=10.5, color=_ASTAUTO_MUTED, italic=True)
+    if template_slide_number == 8 and not text_slots.body:
+        agro = excel_result.statistics_result.reporting_agro
+        warning = 'Agro discharge rate unavailable: ' + agro.rate.reason if agro and agro.rate.value is None else None
+        if agro and agro.mass_rate.value is not None:
+            diagnostic = extra['agro_mass_discharge_rate_kg_per_m']['display']
+            warning = 'Mass discharge diagnostic: ' + diagnostic + (' | ' + agro.rate.reason if agro.rate.value is None else '')
+        if warning:
+            _add_text_box(slide, warning, Inches(.6), Inches(6.64), Inches(12.13), Inches(.30),
+                          font_size=10, color=_ASTAUTO_MUTED, italic=True)
+        elif slide_def.body and (excel_result.profile.metadata.powertrain or '').lower() == 'hybrid':
+            _add_text_box(slide, '\n'.join(slide_def.body), Inches(.6), Inches(6.66), Inches(12.13), Inches(.24),
+                          font_size=10.5, color=_ASTAUTO_MUTED, italic=True)
     _replace_drive_cycle_terminology(slide)
 
 
@@ -1396,6 +1430,7 @@ def _replace_kpi_slots(
     slide_number: int,
     statistics: list[StatisticResult],
     layout: _TemplateLayoutSpec,
+    display_overrides: Mapping[str, str] | None = None,
 ) -> None:
     slots = list(layout.kpi_slots.get(slide_number, ()))
     # A content variant can request more KPIs (e.g. the five-KPI inactive-agro view).
@@ -1416,7 +1451,14 @@ def _replace_kpi_slots(
         if index >= len(statistics):
             continue
         _set_shape_text(shapes[slot.label], _statistic_label(statistics[index]))
-        _set_value_text_preserve_runs(shapes[slot.value], _format_statistic_value(statistics[index]))
+        display = _format_statistic_value(statistics[index])
+        if display_overrides:
+            display = display_overrides.get(getattr(statistics[index], 'statistic_id', ''), display)
+        _set_value_text_preserve_runs(shapes[slot.value], display)
+        if len(display) > 22:
+            for paragraph in shapes[slot.value].text_frame.paragraphs:
+                for run in paragraph.runs:
+                    run.font.size = Pt(14)
 
 
 def _fit_kpi_slot_groups(shapes: list[Any], slots: tuple[_TemplateKpiSlot, ...], statistic_count: int, *, force: bool = False) -> None:
@@ -2006,16 +2048,16 @@ def _slide_8_title(definition: Any, is_hybrid: bool) -> str:
 
 def _slide_8_subtitle(definition: Any, is_hybrid: bool) -> str:
     if definition.plots == ("auxiliaries_energy_consumption", "tyres_energy_consumption"):
-        return "Fallback profile view selected because agrochemical discharge is inactive"
+        return "Fallback profile view selected because the remaining-load source is inactive"
     return "Profile-supported system interaction from the active source data"
 
 
 def _slide_8_body(definition: Any, is_hybrid: bool) -> str:
     if definition.plots == ("auxiliaries_energy_consumption", "tyres_energy_consumption"):
-        return "Agrochemical discharge is inactive/all-zero; this slide substitutes configured auxiliary and tyre energy demand."
+        return "Remaining-load source is inactive/all-zero; this slide substitutes configured auxiliary and tyre energy demand."
     if is_hybrid:
-        return "Agrochemical discharge is shown only when active in the deterministic hybrid profile data."
-    return "Agrochemical discharge is shown only when active in the deterministic profile data."
+        return "Remaining agrochemical mass is shown only when active in the deterministic hybrid profile data."
+    return "Remaining agrochemical mass is shown only when active in the deterministic profile data."
 
 
 def _profile_statistics_as_powerpoint_statistics(excel_result: ProfileExcelReportResult) -> StatisticsResult:
@@ -2024,6 +2066,15 @@ def _profile_statistics_as_powerpoint_statistics(excel_result: ProfileExcelRepor
         _canonical_metric_as_powerpoint_item(metric)
         for metric in (*canonical, *build_soil_powerpoint_metrics(excel_result, canonical))
     ]
+    reporting_rows = (reporting_metric_rows(excel_result.statistics_result, excel_result.report_metadata)
+                      if getattr(excel_result, 'report_metadata', None) is not None else ())
+    for item in reporting_rows:
+        metric = CanonicalReportMetric(
+            metric_id=item['metric_id'], excel_label=item['label'], powerpoint_label=item['ppt_label'],
+            value=item['value'] if item['value'] is not None else float('nan'), unit=item['unit'],
+            source_channel=item['source'], source_name=item['source'], source_kind='reporting',
+            statistic='REPORT', calculation=item['definition'], placement_group='reporting', notes=item['reason'])
+        statistics.append(_canonical_metric_as_powerpoint_item(metric))
     # Slide 9's RR cards are presentation-specific: keep existing Excel metrics
     # and all other slides unchanged, using the shared deterministic calculator.
     if excel_result.profile.metadata.powertrain in {"electric", "hybrid"}:
@@ -2283,6 +2334,9 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
         "machine_name": result.excel_result.report_metadata.machine_name,
         "powertrain": result.excel_result.report_metadata.powertrain_name,
         "report_title": result.excel_result.report_metadata.report_title,
+        "reporting_inputs": asdict(result.excel_result.report_metadata.reporting_inputs),
+        "reporting_metrics": reporting_metric_rows(result.excel_result.statistics_result, result.excel_result.report_metadata),
+        "agro_reporting": result.excel_result.statistics_result.reporting_agro.to_dict() if result.excel_result.statistics_result.reporting_agro else None,
         "safe_output_stem": result.presentation_path.stem,
         "source_file": str(result.excel_result.dataset.source_path),
         "source_sha256": sha256_file(result.excel_result.dataset.source_path),
@@ -2300,3 +2354,9 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
     if soil_statistics:
         payload["soil_kpis"] = soil_statistics
     profile_manifest.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    # The public result points at the renderer manifest; retain traceability
+    # there as well as in the profile-specific companion manifest.
+    manifest = json.loads(result.manifest_path.read_text(encoding='utf-8'))
+    for key in ('reporting_inputs', 'reporting_metrics', 'agro_reporting'):
+        manifest[key] = payload[key]
+    result.manifest_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding='utf-8')

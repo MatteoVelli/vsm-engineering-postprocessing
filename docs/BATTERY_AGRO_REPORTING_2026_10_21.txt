@@ -1,0 +1,175 @@
+Historical implementation record, superseded by SERGIO_REPORTING_2026_10_22.txt.
+The later implementation adds automatic profile matching and visible kg/m diagnostics.
+
+Inspection before implementation
+-------------------------------
+The live repository has Electric and Hybrid profiles in config/report_profiles,
+with Hybrid inheriting the Electric mappings. Full Size is supported as Diesel,
+not as a separate Electric/Hybrid profile. October reporting profiles extend the
+legacy profiles and add their existing soil/tyre pages. Legacy Electric/Hybrid
+decks have 12 slides; October decks already have additional pages.
+
+report_metadata.py resolves machine titles from explicit overrides, source
+metadata or filenames; ui_config.py supplies this identity to both generators.
+ui_app.py exposes profile selection, validation and report settings. The new
+reporting inputs travel through this same route and ordinary YAML profiles.
+
+profile_statistics.py provides the canonical numerical registry consumed by
+excel_report_engine.py and profile_powerpoint_report_engine.py. Slide 8 uses
+the agrochemical_battery presentation definition; inactive Hybrid sources may
+substitute auxiliary/tyre charts. The new cards remain visible in that case.
+Diesel uses diesel_powerpoint_report.py and shows agro cards in Executive Results,
+because its slide 8 is Engine Throttle. No battery specification is added to an
+ordinary Diesel report without an explicit pack value.
+
+The original AGRO DISCHARGE card is agrochemical_discharge_max, MAX of the
+agrochemical_discharge channel. Electric/Hybrid convert the raw vertical hitch
+force using -Fz / 9.81, yielding kg of inferred REMAINING mass. This is not a
+cumulative sprayed volume. Diesel's legacy conversion uses 9.80665; it remains
+unchanged. The source VSM headers, aliases, channel IDs and numerical expressions
+are preserved. Chart/report channel names containing Agrochemical Discharge
+are legacy mappings, not evidence of volume. No trusted agro volume, tank volume
+or volumetric flow mapping was found; explicit mappings now require exact source
+headers, confirmed units and provenance.
+
+Definitions and configuration
+-----------------------------
+battery_mass_kg: optional reporting metadata, strictly positive and finite.
+Status: confirmed, estimated or not_provided; a provided value requires a source.
+Explicit machine_configuration_id=robosprayer_v5_3500kg selects 470 kg confirmed
+only when the resolved machine identity is RoboSprayer or RoboSprayer V5.
+Generic RoboSprayer names/3500 kg filenames do not select this configuration.
+An override to another machine conflicts with that configuration and is rejected.
+Full Size is TBC by default; no 1700 kg value is assigned. An explicitly entered
+preliminary estimate is printed with ~ and (estimated). Caiman/others remain
+Not specified. Mass is never used in dynamics, GVW, power or energy calculations.
+
+agrochemical_discharge_max: preserved legacy numerical ID and array values.
+Display label: Agro Capacity (observed maximum inferred load), kg.
+agro_capacity_observed_kg: report-qualified observed maximum -Fz/9.81, kg,
+with explicit confirmation that force represents remaining agrochemical mass.
+This is an observed loading estimate, not a verified design tank capacity.
+An all-zero/missing/nonfinite force source has unavailable capacity. Later negative
+contents invalidate the rate; a valid positive observed maximum can still be
+reported as a loading estimate, with the quality warning retained.
+
+agro_discharge_rate_L_per_m: discharged_volume_L / (distance_last - distance_first),
+using the entire report sample window and resolved track_distance (m or km).
+Priority: explicitly trusted cumulative volume [L], then explicitly trusted
+volumetric flow integrated by the trapezoid rule using strictly increasing time
+[s], then inferred remaining mass from the hitch force [N]. An invalid explicitly
+configured direct source never falls back to force. A cumulative volume channel
+is differenced across the report window, so a nonzero counter origin is allowed.
+
+Force method: remaining mass = -Fz/9.81; discharged mass = first - last;
+discharged volume = discharged mass / agro_density_kg_per_L. The public YAML/UI
+name agro_density_kg_per_L has a compatible internal alias density_kg_per_L.
+Density must be positive/finite with provenance. There is no default density.
+A kg/m diagnostic may be available without density; it is never shown as L/m.
+
+Missing channels, unit mismatches, nonfinite data, reversed/nonmonotonic distance,
+zero distance, negative contents, all-zero force, increasing load/refill events,
+counter resets and detected discontinuities make the rate unavailable with a
+reason. There is no clamping, refill segmentation or active-spraying-window
+inference. A conservative discontinuity screen rejects an isolated increment
+over 20 times the median positive increment when at least five such increments
+exist. This screen requires source/window review; it does not repair the data.
+Absolute upper physical limits require verified tank/model information; none
+was supplied. No such design limit or chemical density is inferred.
+
+Surfaces and traceability
+------------------------
+Streamlit: Battery pack and agrochemical reporting settings, with explicit
+configuration identity, mass/status/source, density/source, force interpretation
+confirmation, exact direct-volume/flow source and provenance. Settings participate
+in validation/run identity. Completion displays quality warnings.
+Excel: original charts/formulas/layout preserved. Existing capacity label is
+corrected; separate battery mass/rate summaries reference the Statistics sheet.
+The reporting block records status, units, source, definitions and N/A reasons.
+The fixed-width top header uses Agro Capacity [kg]; its observed-load qualification
+stays in the detailed registry. New detail rows have expanded source-note space.
+Metadata and manifests record all inputs, sample/time/distance windows, method,
+diagnostics and intermediate mass/volume quantities. Text formula caches preserve
+Not specified/N/A and estimated mass in non-recalculating workbook readers.
+PowerPoint: editable native template cards; battery mass on the battery system
+page; separate capacity and discharge-rate cards on slide 8; cloned/reflowed card
+groups retain the template style. Notes and manifests contain source diagnostics.
+Existing slide counts and chart data stay unchanged for each profile revision.
+
+Scientific limits
+-----------------
+Sergio's pack confirmation applies only to RoboSprayer V5 / 3500 kg. Full Size
+pack calculation is in progress. No chemical density is approved by the brief.
+Hitch force can be interpreted as agrochemical mass only after verification for
+the actual machine/model; the UI requires an explicit confirmation. Caiman's
+negative inferred load requires source/operating-phase investigation before a
+valid full-cycle rate can be reported. No nominal tank capacity is established.
+
+Validation outcomes and local sample paths are recorded in the generated audit
+under outputs/battery_agro_validation. No commit, push or release ZIP is made.
+
+Files changed for this extension
+-------------------------------
+src/vsm_postprocessing/reporting_inputs.py (new metadata model/validation)
+src/vsm_postprocessing/agro_reporting.py (new calculator/shared display registry)
+src/vsm_postprocessing/report_metadata.py (identity and metadata resolution)
+src/vsm_postprocessing/report_profile.py (YAML parsing and inheritance)
+src/vsm_postprocessing/profile_statistics.py (capacity presentation; legacy values retained)
+src/vsm_postprocessing/excel_report_engine.py (summary, Statistics and manifests)
+src/vsm_postprocessing/excel_formulas.py (text caches for reporting references)
+src/vsm_postprocessing/profile_powerpoint_report_engine.py (native cards/specifications/diagnostics)
+src/vsm_postprocessing/powerpoint_report_engine.py (explicit seven-card profile layout)
+src/vsm_postprocessing/diesel_powerpoint_report.py (agro executive cards)
+src/vsm_postprocessing/ui_config.py (metadata transport)
+src/vsm_postprocessing/ui_app.py (settings, validation, warnings)
+config/report_profiles/robosprayer_electric.yaml (capacity display label/definition)
+config/statistics_excel_report.yaml (capacity summary label)
+config/reporting_metadata.example.yaml (new explicit metadata configuration example)
+tests/test_battery_agro_reporting.py (new numerical/source/UI/report acceptance tests)
+tests/test_profile_powerpoint_report.py (new labels and reporting display assertions)
+tests/test_diesel_excel_report.py (additive summary field assertions)
+tests/test_diesel_powerpoint_report.py (reporting registry and visible N/A assertions)
+scripts/validate_battery_agro_reporting.py (new sample generation and numerical/structure audit)
+scripts/inspect_battery_agro_office.ps1 (new read-only native Office inspection)
+docs/BATTERY_AGRO_REPORTING_2026_10_21.txt (this inspection/definition/validation record)
+
+Validation evidence
+-------------------
+Validated runtime: repository .venv, Python 3.11.15, pytest 8.4.2.
+Targeted acceptance: 31 battery/agro tests plus the existing native-card expansion
+and two rear-right KPI compatibility regressions pass (34 total). Settings/profile/metadata regressions passed (53 tests
+in the earlier settings run). Full suite outcome is recorded in
+outputs/battery_agro_pytest_verified.txt. The earlier complete regression run
+(battery_agro_pytest_final.txt) found three compatibility errors in lightweight
+PowerPoint helper calls, now fixed and covered by the targeted rerun. Its other
+699 tests passed, with one existing Diesel soil-page test skipped as inapplicable.
+Final isolated full run completed on 22 October 2026: 702 passed, 1 skipped,
+0 failed in 999.87 seconds (16 min 39 sec). The same existing Diesel soil-page
+skip remains. Both native report acceptance tests were also rerun successfully
+after the small Excel header/source-note layout adjustment. No unresolved test
+failure remains. git diff --check is clean apart from Git's informational
+LF-to-CRLF notices for existing Windows text files.
+
+Six sample scenarios are audited in outputs/battery_agro_validation/audit.json:
+RoboSprayer explicitly confirmed V5 mass with hypothetical density 1 kg/L;
+Caiman nonphysical inferred load; all-zero hitch source; October Electric without
+density; October Hybrid; and Full Size Diesel. They retain respectively
+12, 12, 12, 15, 14 and 10 slides and 15, 21, 15, 21, 25 and 17 Excel charts.
+All pre-existing calculated math arrays, statistic values, KPI values and canonical
+numeric mappings match the repository HEAD implementation exactly in each scenario.
+XLSX references and initial caches are readable, and native agro card backgrounds
+have no overlap. PowerPoint text stays editable. Office inspections and slide PNG
+previews are saved beside the audit. Native Excel recalculation confirms the new
+summary references, including N/A and Not specified; native PowerPoint checks
+found no agro-card text overflow.
+
+RoboSprayer reference rate is 0.4998316883457636 L/m only in the explicitly
+hypothetical density=1 test. The same source without density gives N/A with a
+density-required reason. Caiman gives N/A with a nonphysical-negative-contents
+warning. All-zero hitch data gives unavailable capacity and rate. Synthetic tests
+also demonstrate 0.5 L/m, direct cumulative-volume precedence, volumetric flow
+integration, invalid units/distance/data/refills/resets, configuration inheritance,
+Streamlit settings round trips, machine overrides and provisional battery display.
+
+Test packaging runs only use temporary pytest fixtures. No distributable archive
+is built in dist, and no source changes are committed or pushed.

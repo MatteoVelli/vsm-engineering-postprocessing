@@ -5,6 +5,18 @@ profile:
   description: Hybrid extension of the Electric/common base using the nine additional Sergio Hybrid workbook entries.
   powertrain: hybrid
   extends: robosprayer_electric.yaml
+  machine_configurations:
+  - configuration_id: caiman_sp_9300kg_hybrid
+    machine_names:
+    - Caiman SP
+    identity_tokens:
+    - 9300kg
+    powertrains:
+    - hybrid
+    reporting_inputs:
+      hitch_force_is_remaining_agro_mass: true
+      agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
+        inferred load, not measured or nominal tank capacity
 channels:
   plot_overrides:
     wheel_load_dynamic_fl: true

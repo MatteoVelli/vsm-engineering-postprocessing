@@ -1,0 +1,237 @@
+Final Sergio feedback: engineering completion report
+17 October 2026
+
+1. Initial findings
+
+The production profiles are config/report_profiles/sergio_2026_10/*.yaml,
+inheriting the legacy Electric, Hybrid and independent Diesel definitions.
+report_profile.py loads and validates their semantic channel definitions,
+statistics, plots and presentation selections. The importer retains raw VSM
+channels; profile_math.py calculates channels; profile_statistics.py supplies
+canonical statistics and KPIs. excel_report_engine.py constructs report columns,
+native charts, formula references and mapping/statistics sheets from these
+definitions. profile_powerpoint_report_engine.py reuses the approved Astauto
+template; diesel_powerpoint_report.py supplies Diesel-specific content.
+report_metadata.py already preserves the uploaded source basename exactly.
+profile_soil_kpis.py already supplies the six-card presentation metric provider.
+
+The repository contained existing uncommitted reporting work. It was preserved.
+The pre-task src/config/test files and numerical hashes are retained locally in
+outputs/sergio_final_2026_10_17/before and baseline.json. No importer, numerical
+engine, Engine Torque expression, application version or dependency was changed.
+
+2. Implementation decisions
+
+Reuse the existing source metadata rather than reconstructing a filename from
+the title or generated deck name. A shared cover helper avoids powertrain-specific
+filename implementations. Preserve exact text with native PowerPoint wrapping
+and Latin word splitting, rather than inserting characters into the basename.
+
+Reuse the established tyre total rather than introducing a second formula or
+adding the soft-soil components to an already inclusive total. The additional
+Electric page is configured before the two soil pages; the existing renderer
+numbers the resulting list dynamically. Two separate time plots provide the
+same power/energy panel format as those pages and also become native Excel
+charts through the existing shared plot catalogue.
+
+Suppress Engine Load at the reporting layer rather than deleting its raw
+mapping. A default-true for_report raw-channel flag controls Excel export and
+the UI export chooser. Remove the associated configured statistic and plot.
+Retain valid throttle on a centred, single-plot Engine Throttle page. This also
+corrects legacy Diesel reporting, which inherits the same semantic definitions.
+
+3. Requirement 1: source filename
+
+Every Electric, Hybrid and Diesel cover now contains exactly:
+    Source: <ReportMetadata.source_filename>
+
+The basename includes its original extension, spaces, underscores and parentheses.
+It is independent of the output deck filename. Source metadata is not used as a
+measured simulation result. The original title, branding, KPI cards and footer
+are preserved. The subtitle and metadata pills are repositioned to accommodate
+a four-line 13 pt Calibri filename area with readable light-blue text.
+
+The real Diesel _07 basename was checked in full. All three profiles were also
+checked with a long mixed-separator filename and a 253-character unbroken
+filename. Native PowerPoint bounds passed for all nine cases. Real XLSX ingestion
+tests for all three profiles confirm the original input basename reaches the
+cover, even when the output deck is called different_report_name.pptx.
+
+4. Requirement 2: physical definitions and numerical validation
+
+The existing total is tyre resistance absorption, not total wheel shaft input
+power and not a claim to include every possible tyre loss mechanism.
+
+For each wheel c = FL, FR, RL, RR, use the VSM channels:
+    Tyre_RollingResistancePower_c     [kW]
+    Tyre_BulldozingResistancePower_c   [kW]
+    Tyre_CompactionResistancePower_c   [kW]
+
+P_total(t) = sum over corners of (P_rolling + P_bulldozing + P_compaction).
+These are the existing mechanism components, not the sum of a total and its
+subcomponents. The Electric_05 reference workbook explicitly sums the corner
+channels at DL/DX/FL, then sums those component totals at FP. Its cached total
+power unit label says kWh; the application already correctly defines power as kW.
+No new native total channel was introduced or inferred from force/torque signals.
+The real Electric export has no native total absorbed-power channel. It also
+contains Tyre_SlipagePower_* and longitudinal/lateral tyre energy channels (kJ).
+Those are outside the reference workbook's established resistance total; their
+independence from its mechanisms is not established by the supplied repository.
+They are therefore not added to the validated total or mixed with cumulative
+energy signals. The new slide's subtitle states its three included mechanisms.
+
+The current October profile uses the observed Track_Time timebase in seconds:
+    delta_E_i = (P_(i-1) + P_i) / 2 * (t_i - t_(i-1)) / 3600 [kWh]
+    delta_E_0 = 0
+    E_total = cumulative sum of interval component energies.
+
+Linearity makes this equal to trapezoidal integration of P_total. Signs are
+retained; negative values are not clipped or replaced by absolute values.
+Soft-soil energy comprises bulldozing plus compaction and is already included.
+Nonuniform time intervals are supported. Missing/nonfinite/invalid-unit optional
+constituents make the total unavailable; partial totals and replacement zeros
+are not reported. Valid measured zeros remain valid.
+
+The six cards retain the existing soil conventions: signed maximum power,
+time-weighted mean power, sample RMS power, net accumulated energy change,
+energy divided by the canonical distance, and canonical distance. Accumulated
+energy is not integrated a second time. Unavailable cards show N/A with reasons.
+
+Real Electric _04 independent checks:
+    Maximum power           35.268893000 kW
+    Time-weighted mean      25.575692103 kW
+    Sample RMS              26.654530808 kW
+    Total energy            28.083530801 kWh
+    Energy per distance      2.615073032 kWh/km
+    Distance                10.739100000 km
+    Rolling energy          14.605418520 kWh
+    Bulldozing + compaction  13.478112281 kWh
+
+The new total page is slide 12 in this complete Electric run, immediately before
+bulldozing and compaction on slides 13 and 14. These numbers are generated from
+the configured slide list, not used as insertion identifiers. The final summary
+is slide 15. Electric now has 25 Excel charts and 15 presentation slides; the
+validated Hybrid reference retains 25 charts and 14 slides.
+
+5. Requirement 3: Diesel correction
+
+Engine_Load remains an available raw semantic mapping with its original Nm unit.
+Its report column, statistics, bottom-column summaries, dedicated chart,
+PowerPoint plot and KPI are absent. The export chooser no longer offers it.
+Column references are rebuilt from semantic channel identifiers; no destructive
+worksheet column deletion or fixed-column-letter assumption is used.
+
+Engine_Torque and all its calculations remain unchanged. The real _07 maximum is
+936.586 Nm, displayed as 936.59 Nm. The rejected raw Engine_Load maximum is
+18151.3 Nm and is recorded only as audit evidence, not in the client reports.
+The real Diesel report now has 19 Excel charts and 10 presentation slides.
+
+6. Modified files for this task
+
+Source:
+    src/vsm_postprocessing/report_profile.py
+    src/vsm_postprocessing/excel_report_engine.py
+    src/vsm_postprocessing/profile_powerpoint_report_engine.py
+    src/vsm_postprocessing/profile_soil_kpis.py
+    src/vsm_postprocessing/diesel_powerpoint_report.py
+    src/vsm_postprocessing/ui_app.py
+Configuration:
+    config/report_profiles/full_size_sprayer_diesel.yaml
+    config/report_profiles/sergio_2026_10/full_size_sprayer_diesel.yaml
+    config/report_profiles/sergio_2026_10/robosprayer_electric.yaml
+Tests:
+    tests/test_sergio_final_feedback.py (new)
+    tests/test_diesel_excel_report.py
+    tests/test_diesel_finalization.py
+    tests/test_diesel_powerpoint_report.py
+    tests/test_diesel_profile.py
+    tests/test_diesel_template_extension.py
+    tests/test_october_soil_plots.py
+    tests/test_sergio_october_15.py
+    tests/test_soil_powerpoint_kpis.py
+Validation scripts:
+    scripts/validate_sergio_final_feedback.py (new)
+    scripts/render_sergio_final_feedback.ps1 (new)
+    scripts/validate_sergio_final_excel.ps1 (new)
+Documentation:
+    README.md
+    docs/CLIENT_QUICK_START.md
+    docs/CONFIGURATION_GUIDE.md
+    docs/FINAL_RELEASE_NOTES.md
+    docs/FINAL_SERGIO_FEEDBACK_2026_10_17.txt (this report)
+
+7. Testing and limitations
+
+Commands use .venv/Scripts/python.exe from the repository root:
+    python -m pytest -p no:cacheprovider --basetemp .pytest_tmp/sergio_final_full
+    python -m pytest -p no:cacheprovider tests/test_sergio_final_feedback.py
+        --basetemp .pytest_tmp/sergio_final_xlsx
+    python scripts/validate_sergio_final_feedback.py
+    powershell -NoProfile -ExecutionPolicy Bypass
+        -File scripts/render_sergio_final_feedback.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass
+        -File scripts/validate_sergio_final_excel.ps1
+    git diff --check
+
+The full suite passed: 644 passed, 1 skipped in 855.78 seconds (14 min 15 sec).
+The skipped case is the intentionally inapplicable Diesel soil-slide test.
+The focused acceptance file passed all 19 tests in 11.95 seconds, including
+actual XLSX ingestion. Its three XLSX cases were added after full-suite
+collection and ran separately; the union covers 647 passing current tests and
+one intentional skip. No failing tests remain. git diff --check passed.
+
+Earlier development runs exposed stale slide/chart-count assertions, one shifted
+Excel summary-column assertion, and filename clipping in the unbroken stress
+case. The tests/layout were corrected to the requested output structure without
+relaxing numerical comparisons. A temporary test indentation error was corrected.
+The preliminary whole-suite run was interrupted after implementation began and
+is not counted as a successful baseline test run. The pre-change numerical
+baseline was captured separately before implementation. Pytest cache writes
+were denied by the environment; subsequent runs disable that optional cache.
+Desktop Office checks ran outside the restricted process sandbox.
+
+8. Generated-output inspection
+
+All outputs are local under outputs/sergio_final_2026_10_17/:
+    reports/diesel, reports/electric, reports/hybrid: workbooks and decks
+    audit.json: numerical, source-name, chart-range and formula inspections
+    baseline.json: pre-change calculation hashes and statistics
+    presentation_preservation.json: retained plot image comparisons
+    visual_checks: native PowerPoint PDFs, slide PNGs and text-bound measurements
+    excel_recalculation: cleared-cache workbook, native recalculation and charts
+    full_suite.log and final_acceptance.log: test evidence
+
+All 86 calculated arrays (20 Diesel, 36 Electric, 30 Hybrid) retain identical
+hashes. All 128 retained configured statistics and all existing KPIs are exactly
+unchanged. Every retained presentation plot image has identical pixels to the
+previous same-source reference output: 10 Diesel, 17 Electric and 16 Hybrid.
+Only the rejected Diesel plot is removed and the two Electric total plots added.
+
+Every exported data column was compared with its computed/source array. Native
+Excel chart ranges were checked against the resulting semantic column mapping
+and actual sample bounds. No #REF! or error cells were found. Diesel's 5442
+formula caches were cleared, then rebuilt by desktop Excel. Its 16596 numerical
+cells agree within 9.094947017729282e-13 absolute difference; all formulas remain.
+The retained Engine Torque/Power and throttle charts were rendered and inspected.
+
+Desktop PowerPoint opened and rendered the actual decks and long-name variants.
+Visual inspection covered all powertrain covers, long/unbroken covers, Electric
+total/bulldozing/compaction pages, and Diesel engine/throttle pages. Titles,
+legends, axes, units, six-card geometry, source wrapping, dynamic numbering and
+Astauto branding are readable without the observed clipping/overlap defect.
+
+9. Remaining issues and release status
+
+No unresolved mathematical ambiguity was found for the repository's established
+tyre resistance total. This definition does not assert an exhaustive physical
+tyre-loss model beyond its three documented resistance mechanisms. Existing
+legacy-profile numerical conventions are unchanged.
+
+Validation uses the supplied real Diesel _07, Electric _04 and available real
+Hybrid reference, plus controlled edge cases. It does not establish universal
+coverage for every future VSM export or arbitrary-length metadata string.
+The cover stress test reaches 253 basename characters, including an unbroken
+wide-character Latin case; it is not a claim of unlimited filename capacity.
+
+All work remains local and inspectable. No commit, push, release or final client
+ZIP package has been created. Existing delivery packages were not updated.

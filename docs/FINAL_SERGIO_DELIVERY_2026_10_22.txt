@@ -1,0 +1,139 @@
+FINAL ASTAUTO / SERGIO CLIENT DISTRIBUTION ? 22 OCTOBER 2026
+
+READY FOR SERGIO
+
+A. PREVIOUS RELEASE
+Original folder: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_19102026
+Original ZIP: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_19102026.zip
+Original checksum: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_19102026.sha256
+Original ZIP SHA-256: 55d31fcadfd3ac9a61fd100dc3c39776a2c4093c58ed3e9b778a1253d05ae135
+Verified original file count: 107
+Root layout: root SETUP_VSM_TOOL.bat, START_VSM_TOOL.bat, README_SERGIO.txt, RELEASE_MANIFEST.json and Tool/
+All three predecessor items were moved intact to: dist\Archived_Client_Packages\2026-10-22_before_final_delivery
+The previous current-delivery JSON and README are retained there for rollback.
+
+B. NEW RELEASE
+Exact name: Astauto_VSM_October_22102026
+Application folder: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_22102026
+ZIP: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_22102026.zip
+Checksum: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_22102026.sha256
+ZIP size: 94430516 bytes (90.06 MiB)
+ZIP SHA-256: c5c8565cf6bdbdec47c816f01b4c6bd53da1b6cbbbb052b35ac470a3f383f42d
+Files including RELEASE_MANIFEST.json: 110
+Both canonical and portable builds reproduced identical bytes across two builds.
+Final ZIP CRC, manifest hashes, extracted-folder byte parity and checksum: PASS.
+The established active directory now contains only the new folder, ZIP and checksum.
+
+C. APPLICATION CONTENTS
+Root launchers: SETUP_VSM_TOOL.bat and START_VSM_TOOL.bat; unchanged.
+Entry point: Tool/src/vsm_postprocessing/ui_app.py
+Setup/start implementations: Tool/scripts/client_setup.ps1 and client_start.ps1
+Dependency specification: Tool/pyproject.toml; unchanged application 1.3.0.
+Python policy: >=3.11,<3.12; app-local CPython 3.11.9 bootstrap unchanged.
+Machine profiles: Tool/config/report_profiles and sergio_2026_10 inheritance.
+Templates and branding: Tool/reference_files; all prior packaged resources retained.
+Instructions: README_SERGIO.txt and Tool/docs/CLIENT_QUICK_START.md.
+Only three files were added relative to the previous client ZIP:
+  Tool/src/vsm_postprocessing/agro_reporting.py
+  Tool/src/vsm_postprocessing/reporting_inputs.py
+  Tool/config/reporting_metadata.example.yaml
+No previous packaged file was removed. Runtime/configuration/launcher/dependency
+bytes match the already validated working tree. No engineering code changed in
+this release task. Only release-facing documentation was updated.
+No Git directory, venv, caches, private CSV, generated reports, old archives,
+tests, credentials or developer QA scripts are included in the client ZIP.
+
+D. VALIDATION
+Focused reporting/configuration/identification/UI/bootstrap/package tests: 99 passed.
+Complete suite: 728 passed, 0 failed, 1 existing skip; 729/729 unique cases.
+Existing skip: Diesel soil-plot variant; soil plots apply to Electric/Hybrid.
+Source regression uses the existing development Python 3.11 environment.
+That environment contains Streamlit 1.61.1, outside the unchanged client policy.
+Fresh client QA deliberately retained the prior validated client dependencies:
+CPython 3.11.9, Streamlit 1.49.1, Matplotlib 3.11.2 and the previous transitive versions.
+No dependency or Python compatibility policy was changed to match the developer environment.
+A clean extraction with spaces created a genuinely new local runtime and venv.
+Only cached official Python installer/NuGet downloads were reused. The missing
+Python path was simulated; no existing runtime/environment was reused.
+Shipped setup, pip check and doctor passed. Doctor has one expected nonblocking
+warning: its private example CSV is not distributed; UI uploads remain supported.
+First setup still requires internet when runtime/dependencies are not cached.
+This was a fresh local installation on the available Windows machine, not a
+fresh physical Windows-machine or uncached-runtime-download test.
+
+Three isolated package-only Excel/PPT pairs passed. All imported application
+modules and runtime assets came from extracted Tool, with user-site/PYTHONPATH
+removed. All captured math-array hashes, statistics and KPIs match the validated
+source baseline exactly. Every slide text/geometry and decoded picture pixel
+matches the validated source reports; different PNG Software metadata is allowed.
+Chart source ranges and all internal Office relationships resolve correctly.
+
+The real shipped root START BAT was launched from an unrelated directory with
+spaces and a system-only PATH, without the developer environment. Isolated
+headless Edge received HTTP 200 and uploaded all three actual reference inputs.
+Automatic profiles and battery summaries were correct; validation, generation
+and both downloads succeeded with zero Streamlit exceptions and no technical
+reporting overrides. All three UI-generated pairs match the installed/source
+reporting values and slide geometry. Owned browser/server processes were closed.
+
+Native Excel recalculated the three installed workbooks. PowerPoint rendered
+the affected battery/agro slides, and all 39 slides had zero text-height
+overflows. All 69 native Excel charts are preserved. No numeric cells display
+hash-mark clipping. Editable KPI cards, plot labels and source notes are retained.
+
+E. SERGIO REPORTING REQUIREMENTS
+
+electric:
+  Inferred observed capacity [kg]: 498.94597349643215
+  Mass-discharge diagnostic [kg/m]: 0.04533818805785114
+  Volumetric discharge [L/m]: N/A ? density required (kg/L) for mass-to-volume conversion
+  Pack mass [kg]: 470.0; confirmed
+  Slides/charts: 15/25
+
+diesel:
+  Inferred observed capacity [kg]: 499.82976554536185
+  Mass-discharge diagnostic [kg/m]: 0.4998508170252672
+  Volumetric discharge [L/m]: N/A ? density required (kg/L) for mass-to-volume conversion
+  Pack mass [kg]: None; not_provided
+  Slides/charts: 10/19
+
+hybrid:
+  Inferred observed capacity [kg]: 3998.6544342507646
+  Mass-discharge diagnostic [kg/m]: None
+  Volumetric discharge [L/m]: N/A ? nonphysical negative inferred contents; verify source model and operating phases
+  Pack mass [kg]: None; not_provided
+  Slides/charts: 14/25
+
+RoboSprayer V5 3500 kg pack: 470 kg confirmed. Full Size Diesel has no
+electric pack. Caiman pack remains Not specified. Full Size Electric/Hybrid
+configuration inheritance returns 1700 kg estimated, with approximately 1700 kg
+or more and ongoing-calculation provenance; never presented as confirmed.
+AGRO CAPACITY is observed inferred remaining mass, not nominal tank capacity.
+AGRO DISCHARGE RATE is a separate L/m KPI; kg/m is never relabelled as L/m.
+Caiman negative contents invalidate the full-cycle rate. No density is invented.
+Historical Diesel 9.80665 and current reporting 9.81 conversions are unchanged.
+RMS/MAX/MIN/LAST, battery-energy calculations, the battery-capacity consistency
+warning and the channel-specific auxiliary kW interpretation remain intact.
+
+F. EVIDENCE / FINAL STATE
+Evidence directory: outputs\final_sergio_delivery_2026_10_22
+release_validation_summary.json ? concise final release and engineering audit
+regression_audit.json and junit_group_0..3.xml ? complete test case aggregation
+focused.txt ? 99 focused cases
+candidate.json / previous_release.json / promotion_journal.json / delivery.json
+fresh_installation.json / installed_dependency_versions.json / fresh_* logs
+installed_reports/audit.json and isolation.json ? standalone runtime + numerical checks
+installed_reports/office_inspection.json and preview/ ? actual native Office checks
+browser_validation.json / browser_*.png / browser_*.txt / ui_output_audit.json
+Client-ready: YES. Final checksum verified: YES. Old release archived: YES.
+Independent of development repository: YES, after normal first-run setup.
+Outstanding engineering inputs:
+  Approved chemical density or trusted chemical volume/flow for L/m
+  Full Size Electric/Hybrid battery pack mass remains provisional, approximately 1700 kg or more
+  Caiman verified pack mass and model explanation for negative inferred chemical load
+  Manufacturer nominal tank capacity is not established
+
+No staging, commit, push, tag, publication, reset or Git history modification
+was performed. HEAD and index exactly match their pre-task snapshots.
+All prior uncommitted implementation changes are retained.
+The ZIP was not modified after its final checksum was calculated and verified.

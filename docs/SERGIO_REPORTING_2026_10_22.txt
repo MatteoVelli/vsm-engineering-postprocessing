@@ -1,0 +1,256 @@
+ASTAUTO VSM REPORTING ? AUTOMATIC SPECIFICATIONS AND QUALIFIED AGRO KPIS
+22 October 2026
+
+Implementation and engineering interpretation
+
+The prior reporting inputs defaulted the rear-hitch interpretation to false,
+although the established Electric/Hybrid math and Statistics sheet already
+calculated the inferred load. The report-qualified card therefore displayed N/A
+beside a valid historical maximum. Battery mass likewise required an explicit
+configuration selection despite Sergio's verified specification. The kg/m result
+was only stored in a trace, and remaining-load charts retained discharge labels.
+
+The existing reporting profile YAML now stores reusable machine configurations.
+Inheritance merges configuration records by configuration_id; the ordinary
+strict profile parser validates their inputs, identity lists and powertrains.
+There is no separate machine registry or replacement configuration system.
+A source must match a model name/alias, a configuration token and a compatible
+powertrain. Configuration mass alone never identifies a machine. Source suffixes
+are irrelevant. A contradictory filename powertrain prevents automatic matching.
+A cosmetic report-title override preserves the actual source identification.
+An explicit advanced configuration must be compatible with model and powertrain.
+
+RoboSprayer / RoboSprayer V5 + 3500kg + Electric selects the Sergio-confirmed
+470 kg pack. Full Size / Full Size Sprayer + 8500kg + Electric or Hybrid selects
+~1700 kg, explicitly estimated; the provenance says approximately 1700 kg or more
+and calculation ongoing. Full Size 8500kg Diesel selects its separate inferred
+load mapping and receives no electric pack. Caiman SP 9300kg Hybrid has a known
+load mapping but no verified pack specification. Unmatched machines retain
+Not specified and cannot acquire load interpretation from their mass alone.
+Battery specifications affect reporting only, never vehicle or energy dynamics.
+
+The mapping supports an INFERRED load; it does not certify that a dynamic hitch
+force is a direct measurement of chemical mass. Repository workbook formulas and
+historical Sergio source mappings support that interpretation for the identified
+profiles. No source model definition independently proves sensor physics or
+chemical density. The reports retain the inferred status and provenance.
+
+Definitions and shared calculation
+
+agro_reporting.calculate_reporting_kpis resolves semantic raw sources and invokes
+one report calculator. The resulting object and shared reporting_metric_rows
+registry supply both Excel and PowerPoint. Presentation code never recomputes
+chemical quantities. Reporting provenance stays in Statistics, hidden workbook
+metadata, report manifests and PowerPoint notes, without diagnostic JSON on slides.
+
+Remaining agrochemical mass [kg] = -rear hitch vertical force [N] / 9.81.
+Agro Capacity [kg] = maximum observed inferred remaining mass, NOT manufacturer
+nominal tank capacity. Nominal tank capacity remains unspecified.
+Discharged mass [kg] = initial remaining mass - final remaining mass over a valid
+continuous full report window. It differs from both remaining mass and capacity.
+Mass discharge diagnostic [kg/m] = discharged mass / (last distance - first distance).
+Agro Discharge Rate [L/m] = discharged volume / that same travelled distance.
+This is a full drive-cycle average, including stationary/non-spraying intervals;
+it does not silently become an active-spraying rate. There is no verified spraying
+mask or operating-phase segmentation supporting a different default denominator.
+
+Volume priority is explicitly trusted cumulative volume in L (last minus first),
+then explicitly trusted volumetric flow integrated by the trapezoidal rule over
+observed, strictly increasing time in seconds, then supported mass divided by an
+explicit positive finite density in kg/L. Flow supports L/s, L/min and L/h.
+The initial time interval is not extrapolated. Invalid configured direct sources
+remain unavailable rather than silently switching methods. Fuel-named channels
+are refused as agro volume/flow sources. No default density is supplied.
+
+Distance supports m/km and must be finite, nonnegative, nondecreasing and have a
+positive endpoint difference. Nonfinite/insufficient force, unit errors, all-zero
+force, negative inferred contents, refill/loading increases and discontinuities
+prevent an unsupported mass-derived rate. No negative loads are clamped. Isolated
+jumps greater than 20 times the median positive increment, with at least five
+positive increments, trigger a conservative discontinuity warning. This screen
+is not a proven segmentation algorithm. Multiple monotonic discharge phases and
+plateaus are accepted over the full window; refills need a separately validated
+per-cycle analysis. A positive observed maximum may remain an inferred capacity
+estimate even when later contents are negative; the quality warning is retained.
+
+Electric/Hybrid legacy math uses 9.81. Diesel's historical math uses 9.80665 and
+is preserved exactly, including its bottom statistics and plotted samples. Its
+legacy mass header/axes explicitly identify that conversion. The new reporting
+capacity and mass/volume rate consistently use Sergio's 9.81 convention. The
+manifest records both the reporting gravity and preserved legacy expression.
+These historical conversion outputs are not relabelled as a second new capacity
+KPI. All captured arrays/statistics/KPIs are compared exactly against baseline.
+
+Interface and reporting
+
+Upload identifies the powertrain from source identity and selects the profile.
+A read-only caption shows detected configuration, battery specification and load
+interpretation. The user validates and generates reports. The existing profile
+choice remains editable and zero/inactive signals never determine powertrain.
+Uncommon battery, density, physical interpretation and exact source mappings are
+inside a collapsed Advanced reporting overrides section. The normal workflow
+passes no override dictionary that could erase the automatic configuration.
+Existing channel/statistic/plot selections and source-quality validation remain.
+
+Electric/Hybrid slide 5 displays pack mass as editable text. Slide 8 includes
+separate editable AGRO CAPACITY and AGRO DISCHARGE RATE cards, a capacity qualifier,
+and a valid kg/m diagnostic or a readable unavailable reason. Full Size Diesel
+adds its agro cards to Executive Results (slide 3); its slide 8 remains throttle.
+The Diesel explanation replaces the old template note to avoid overlap and uses
+light text on the dark background. Relevant chart titles/axes now say Remaining
+Agrochemical Mass; legacy IDs, aliases and raw source names stay traceable.
+Excel summaries contain live Statistics references, with the same values/units,
+status, provenance and explicit N/A reasons. Raw N and calculated kg remain distinct.
+
+Latest real simulations (all values independently recomputed, g=9.81)
+
+RoboSprayer Electric UoL _04: 3954 samples, 608 channels, distance 10739.1 m.
+Remaining mass: 498.94597349643215 -> 12.054638124362894 kg.
+Discharged mass: 486.89133537206925 kg; diagnostic 0.04533818805785114 kg/m.
+Capacity: 498.94597349643215 kg inferred. Pack: 470 kg confirmed.
+L/m unavailable: chemical density/direct chemical volume missing.
+
+Full Size Diesel 1000m _07: 232 samples, 608 channels, distance 999.942 m.
+Remaining mass: 499.82976554536185 -> 0.00793986748216106 kg.
+Discharged mass: 499.8218256778797 kg; diagnostic 0.4998508170252672 kg/m.
+Capacity: 499.82976554536185 kg inferred. No electric pack specification.
+L/m unavailable: chemical density/direct chemical volume missing.
+Its Engine_FuelConsumption_volumeflow is diesel fuel, not chemical discharge.
+Static vehicle mass is not used to derive the changing chemical load.
+
+Caiman SP Hybrid: 1770 samples, 600 channels, distance 12000 m.
+Remaining mass: 3998.6544342507646 -> -2799.0417940876655 kg.
+Capacity: positive observed maximum 3998.6544342507646 kg, inferred with quality
+warning. Both kg/m and L/m are unavailable because the trace becomes nonphysical.
+No pack mass is verified. No misleading discharged mass/rate is published.
+
+Validation and artifacts
+
+Latest reports: outputs/sergio_reporting_2026_10_22/{electric,diesel,hybrid}/
+Each contains excel/ and powerpoint/ output folders.
+Source SHA256, raw findings, all pre-change math hashes and exact numerical
+statistics/KPIs: baseline.json. Original workbook formula evidence:
+workbook_evidence.json. Expected/actual quantities, units, status, provenance,
+cache checks and native editable card geometry: audit.json.
+Native Office recalculation/inspection: office_inspection.json.
+Actual PowerPoint-rendered slide PNGs: preview/.
+Actual three-source Streamlit upload/validation checks: ui_inspection.json.
+Focused and full regression logs are saved beside the audit.
+
+The audit checks every legacy numeric result against the pre-edit baseline:
+Electric 32 math arrays / 35 statistics / 12 KPIs;
+Diesel 20 arrays / 54 statistics / 5 KPIs;
+Hybrid 26 arrays / 39 statistics / 10 KPIs. Exact equality is required.
+Preserved reports: Electric 15 slides / 25 native Excel charts;
+Diesel 10 slides / 19 charts; Hybrid 14 slides / 25 charts.
+
+Test commands:
+.venv/Scripts/python.exe -m pytest --basetemp=outputs/pytest_sergio_full_verified -p no:cacheprovider -q -o addopts='' --tb=short
+.venv/Scripts/python.exe scripts/validate_sergio_reporting.py
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& './scripts/inspect_battery_agro_office.ps1' -Scenarios @('electric','diesel','hybrid') -AuditRoot './outputs/sergio_reporting_2026_10_22'"
+
+Outstanding engineering information
+
+A documented chemical density or trusted chemical volume/flow is required for
+real L/m results. Manufacturer nominal tank capacity is not established. Full
+Size Electric/Hybrid pack mass is provisional, approximately 1700 kg or more;
+Sergio's calculation is ongoing. Caiman pack mass and the cause of its negative
+load trace remain unresolved. Hitch force remains a model-supported inference,
+not a certified measured chemical payload. No model physics were fabricated.
+
+No commit, push, publication or final client ZIP was made.
+
+Implementation files (including the preceding battery/agro change set)
+
+config/report_profiles/full_size_sprayer_diesel.yaml
+config/report_profiles/robosprayer_electric.yaml
+config/report_profiles/robosprayer_hybrid.yaml
+config/reporting_metadata.example.yaml
+config/statistics_excel_report.yaml
+docs/BATTERY_AGRO_REPORTING_2026_10_21.txt
+docs/SERGIO_REPORTING_2026_10_22.txt
+scripts/inspect_battery_agro_office.ps1
+scripts/validate_battery_agro_reporting.py
+scripts/validate_sergio_reporting.py
+src/vsm_postprocessing/agro_reporting.py
+src/vsm_postprocessing/diesel_powerpoint_report.py
+src/vsm_postprocessing/excel_formulas.py
+src/vsm_postprocessing/excel_report_engine.py
+src/vsm_postprocessing/powerpoint_report_engine.py
+src/vsm_postprocessing/profile_powerpoint_report_engine.py
+src/vsm_postprocessing/profile_statistics.py
+src/vsm_postprocessing/report_metadata.py
+src/vsm_postprocessing/report_profile.py
+src/vsm_postprocessing/reporting_inputs.py
+src/vsm_postprocessing/ui_app.py
+src/vsm_postprocessing/ui_config.py
+tests/test_battery_agro_reporting.py
+tests/test_diesel_excel_report.py
+tests/test_diesel_powerpoint_report.py
+tests/test_latest_template_math.py
+tests/test_profile_excel_report.py
+tests/test_profile_powerpoint_report.py
+tests/test_sergio_reporting_automatic.py
+
+Focused preflight: 44 passed, 2 intentionally deselected release/generation cases.
+Native Office: all 39 slides inspected; zero text-height overflows. New card
+rectangles do not overlap; rendered affected slides were visually reviewed.
+All 69 Excel charts are preserved and the new live summary cells recalculate
+to the independently audited values. All three real Streamlit uploads selected
+the correct profile and validated without technical reporting overrides.
+
+Final focused battery/agro suite: 57 passed in 34.32 seconds, including latest
+source regressions, automatic specifications and shared display precision.
+New capacity cells display two decimals; rate cells use the same six-significant-
+digit precision as the PowerPoint registry. Stored numeric values stay unrounded.
+
+The final native Excel check also rejects hash-mark numeric clipping. Added
+reporting fields extending beyond the old template grid have explicit widths.
+The Electric kg/m diagnostic displays 0.0453382 (locale decimal separator may
+vary), rather than three-decimal rounding or hash marks. All three reports pass.
+
+Historical workbook compatibility: the report engine and classification test
+honor preserved source aliases after correcting display labels. The raw source
+identity, VSM/MATH classification, plot-selection flags and channel counts remain
+checked. Both Electric_05 and Hybrid_06 classification cases pass.
+
+Complete regression is executed in four isolated pytest groups, covering all
+44 test files and all 729 collected cases exactly once. Each worker uses a unique
+temporary directory and writes JUnit evidence. regression_audit.json aggregates
+case identities, counts, exit status and commands; full_group_0..3.txt retain
+individual output. The earlier interrupted serial log is explicitly superseded.
+Reproduce this complete run with:
+.venv/Scripts/python.exe outputs/sergio_reporting_2026_10_22/run_complete_regression.py
+
+Qualified reporting metric cells are validated snapshot values. The top summary
+references remain live to Statistics; regenerate the reports after editing raw
+data or assumptions to repeat the Python physical-validity checks and update
+PowerPoint consistently. Existing live math and bottom-statistic formulas remain.
+
+FINAL VERIFICATION RESULT
+
+Complete suite: 728 passed, 0 failed, 1 existing skip; 729/729 unique cases.
+Four isolated groups: 182 passed; 176 passed; 230 passed + 1 skipped; 140 passed.
+Elapsed wall time: 454.55 seconds. JUnit case identity aggregation: PASS.
+The existing skip is the Diesel variant of
+ test_new_soil_plots_replace_existing_powerpoint_slots:
+ soil plots apply to Electric and Hybrid profiles.
+Focused battery/agro suite: 57 passed. Historical classification cases: 2 passed.
+All latest numerical comparisons, native Office and normal Streamlit checks: PASS.
+Concise machine-readable delivery audit: validation_summary.json.
+Detailed expected/actual quantities and provenance: audit.json.
+Complete regression commands, test identities/counts: regression_audit.json.
+
+Exact generated report paths:
+
+electric
+outputs\sergio_reporting_2026_10_22\electric\excel\RoboSprayer_3500Kg_Electric_UoL_DriveCycle_12kph_DriverPC_20pcGrad_04.xlsx
+outputs\sergio_reporting_2026_10_22\electric\powerpoint\RoboSprayer_3500Kg_Electric_UoL_DriveCycle_12kph_DriverPC_20pcGrad_04.pptx
+
+diesel
+outputs\sergio_reporting_2026_10_22\diesel\excel\Full_Size_Sprayer_8500Kg_Diesel_1000m_20kph_4WS_DriverPC_up_to_25pcGrad_SL_LSD_07.xlsx
+outputs\sergio_reporting_2026_10_22\diesel\powerpoint\Full_Size_Sprayer_8500Kg_Diesel_1000m_20kph_4WS_DriverPC_up_to_25pcGrad_SL_LSD_07.pptx
+
+hybrid
+outputs\sergio_reporting_2026_10_22\hybrid\excel\Sprayer_Caiman_SP_9300Kg_Hybrid_12x1Km_4000Kg_Chem.xlsx
+outputs\sergio_reporting_2026_10_22\hybrid\powerpoint\Sprayer_Caiman_SP_9300Kg_Hybrid_12x1Km_4000Kg_Chem.pptx

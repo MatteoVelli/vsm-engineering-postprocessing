@@ -154,7 +154,7 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
         return "".join(run.t for paragraph in chart.title.tx.rich.p for run in paragraph.r)
     assert title_text(report_sheet._charts[0]) == "Speed Vs Distance"
     assert title_text(report_sheet._charts[2]) == "Road Profile"
-    assert title_text(report_sheet._charts[12]) == "Agrochemical Discharge and Battery SOC Vs Time"
+    assert title_text(report_sheet._charts[12]) == "Remaining Agrochemical Mass and Battery SOC Vs Time"
     assert report_sheet.cell(6, electric_report.report_channel_count + 2).value is None
     assert report_sheet._charts[0].anchor.ext.cx == 637 * 9525
     assert report_sheet._charts[0].anchor.ext.cy == 3.75 * 914400

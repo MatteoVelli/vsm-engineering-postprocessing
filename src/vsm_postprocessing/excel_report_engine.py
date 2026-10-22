@@ -36,6 +36,7 @@ from .profile_math import DEFAULT_PROFILE_MATH_CONSTANTS, ProfileMathResult, cal
 from .profile_plotting import ProfilePlottingResult, render_profile_plots, _prepare_plot_definition
 from .profile_statistics import ProfileStatisticsResult, build_canonical_report_metrics, calculate_profile_statistics
 from .report_metadata import ReportMetadata, resolve_report_metadata
+from .agro_reporting import calculate_reporting_kpis, reporting_metric_rows
 from .report_profile import ProfileResolutionResult, ReportingProfile, load_reporting_profile, resolve_profile
 from .report_selection import ProfileReportSelection, select_profile
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics, compute_statistic
@@ -492,6 +493,7 @@ def generate_profile_excel_report(
     report_metadata: ReportMetadata | None = None,
     machine_name_override: str | None = None,
     selection: ProfileReportSelection | None = None,
+    reporting_inputs: Mapping[str, Any] | None = None,
 ) -> ProfileExcelReportResult:
     """Generate a profile-driven engineering workbook.
 
@@ -507,6 +509,7 @@ def generate_profile_excel_report(
         source_path,
         profile,
         machine_name_override=machine_name_override,
+        reporting_inputs=reporting_inputs,
     )
     options = import_options or ImportOptions(strict=not bool(profile.metadata.excel_template))
     dataset = load_data_file(source_path, options)
@@ -533,6 +536,10 @@ def generate_profile_excel_report(
         )
 
     statistics_result = calculate_profile_statistics(dataset, profile, resolution, math_result)
+    statistics_result.reporting_agro = calculate_reporting_kpis(statistics_result, report_metadata)
+    statistics_result.diagnostics.extend(statistics_result.reporting_agro.trace['warnings'])
+    if report_metadata.reporting_inputs.battery_mass_kg is None and profile.metadata.powertrain in {'electric', 'hybrid'}:
+        statistics_result.diagnostics.append('Battery pack mass not specified; select a verified configuration or provide mass and provenance')
     if not statistics_result.is_complete:
         missing_stats = [item.definition.statistic_id for item in statistics_result.unavailable_required_statistics]
         missing_kpis = [item.definition.kpi_id for item in statistics_result.unavailable_required_kpis]
@@ -711,6 +718,7 @@ def _profile_report_channels_from_template(
     definitions_by_exact_key: dict[tuple[str, str, str], list[str]] = {}
     definitions_by_key: dict[tuple[str, str], list[str]] = {}
     definitions_by_report_key: dict[tuple[str, str], list[str]] = {}
+    definitions_by_alias_key: dict[tuple[str, str], list[str]] = {}
     for semantic_name, definition in definitions.items():
         channel_type = definition.channel_type.upper()
         definitions_by_exact_key.setdefault(
@@ -719,6 +727,8 @@ def _profile_report_channels_from_template(
         ).append(semantic_name)
         definitions_by_key.setdefault((_template_channel_name(definition.source_name), channel_type), []).append(semantic_name)
         definitions_by_report_key.setdefault((_template_channel_name(definition.report_name), channel_type), []).append(semantic_name)
+        for alias in getattr(definition, 'aliases', ()):
+            definitions_by_alias_key.setdefault((_template_channel_name(alias), channel_type), []).append(semantic_name)
 
     channels: list[ChannelInfo] = []
     seen: set[str] = set()
@@ -755,6 +765,9 @@ def _profile_report_channels_from_template(
                 definitions_by_report_key.get((_template_channel_name(entry["report_name"]), channel_type), []),
                 seen,
             )
+        if semantic_name is None:
+            semantic_name = _consume_template_match(
+                definitions_by_alias_key.get((_template_channel_name(entry['source_name']), channel_type), []), seen)
         if semantic_name is None:
             missing.append(f"{entry['source_name']} / {entry['report_name']} [{channel_type}]")
             continue
@@ -950,6 +963,7 @@ def _write_profile_workbook(
     statistics_sheet = workbook.create_sheet("Statistics")
     _write_profile_statistics_sheet(
         statistics_sheet, statistics_result,
+        report_metadata=report_metadata,
         border=border, label_fill=label_fill, kpi_fill=kpi_fill, white_bold=white_bold,
     )
     if profile.metadata.excel_template:
@@ -1123,6 +1137,7 @@ def _write_profile_report_sheet(
     _write_profile_right_summary(
         sheet,
         statistics_result,
+        report_metadata=report_metadata,
         start_col=summary_start_col,
         start_row=3,
         bottom_results=bottom_results,
@@ -1266,6 +1281,7 @@ def _write_profile_right_summary(
     sheet: Any,
     statistics_result: ProfileStatisticsResult,
     *,
+    report_metadata: ReportMetadata,
     bottom_results: Mapping[str, str],
     start_col: int,
     start_row: int,
@@ -1281,11 +1297,31 @@ def _write_profile_right_summary(
         item.definition.kpi_id: f"'Statistics'!C{row}"
         for row, item in enumerate(statistics_result.kpis, start=len(statistics_result.statistics) + 5)
     })
-    for offset, item in enumerate(_profile_right_summary_items(statistics_result)):
+    extra_rows = reporting_metric_rows(statistics_result, report_metadata)
+    extra_start = len(statistics_result.statistics) + len(statistics_result.kpis) + 8
+    extras = {item['metric_id']: (item, f"'Statistics'!C{extra_start + index}")
+              for index, item in enumerate(extra_rows)}
+    items = _profile_right_summary_items(statistics_result)
+    for item in items:
+        if item['metric_id'] == 'agrochemical_discharge_max' and 'agro_capacity_observed_kg' in extras:
+            extra, reference = extras['agro_capacity_observed_kg']
+            # Keep the fixed-width summary header legible; the observed-load
+            # qualification and complete source definition live in Statistics.
+            item.update(label=_summary_label(extra['label'], extra['unit']),
+                        value=extra['value'] if extra['value'] is not None else 'N/A', reference=reference,
+                        number_format=extra['number_format'])
+    existing_capacity = any(item['metric_id'] == 'agrochemical_discharge_max' for item in items)
+    for extra, reference in extras.values():
+        if extra['metric_id'] == 'agro_capacity_observed_kg' and existing_capacity:
+            continue
+        value = extra['display'] if extra['metric_id'] == 'battery_mass_kg' else extra['value'] if extra['value'] is not None else 'N/A'
+        items.append({'metric_id': extra['metric_id'], 'label': _summary_label(extra['label'], extra['unit']),
+                      'value': value, 'reference': reference, 'number_format': extra.get('number_format', 'General')})
+    for offset, item in enumerate(items):
         col = start_col + offset
         label = sheet.cell(start_row, col, item["label"])
         value = sheet.cell(start_row + 1, col)
-        reference = bottom_results.get(item["metric_id"], canonical_references[item["metric_id"]])
+        reference = item.get('reference') or bottom_results.get(item['metric_id']) or canonical_references[item['metric_id']]
         write_formula(value, "=" + reference, item["value"])
         label.fill = label_fill
         label.font = white_bold
@@ -1293,7 +1329,11 @@ def _write_profile_right_summary(
         label.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         value.border = border
         value.alignment = Alignment(horizontal="center", vertical="center")
-        value.number_format = "0.000"
+        value.number_format = item.get('number_format', '0.000')
+        if 'number_format' in item:
+            # New fields may extend beyond the template's pre-sized summary grid.
+            dimension = sheet.column_dimensions[get_column_letter(col)]
+            dimension.width = max(dimension.width or 13, 18)
 
 
 def _profile_right_summary_items(statistics_result: ProfileStatisticsResult) -> list[dict[str, Any]]:
@@ -1301,7 +1341,8 @@ def _profile_right_summary_items(statistics_result: ProfileStatisticsResult) -> 
     for metric in build_canonical_report_metrics(statistics_result):
         if statistics_result.profile.metadata.powertrain == "diesel" and metric.placement_group != "diesel_executive":
             continue
-        items.append({"metric_id": metric.metric_id, "label": _summary_label(metric.excel_label, metric.unit), "value": metric.value})
+        unit = 'kg' if metric.metric_id == 'agrochemical_discharge_max' else metric.unit
+        items.append({"metric_id": metric.metric_id, "label": _summary_label(metric.excel_label, unit), "value": metric.value})
     return items
 
 
@@ -1616,7 +1657,7 @@ def _client_kpi_label(kpi_id: str, display_name: str | None) -> str:
 
 def _client_plot_title(plot_id: str, title: str) -> str:
     if plot_id == "agrochemical_discharge_and_charge_vs_time":
-        return "Agrochemical Discharge and Battery SOC Vs Time"
+        return "Remaining Agrochemical Mass and Battery SOC Vs Time"
     return title
 
 
@@ -1624,6 +1665,7 @@ def _write_profile_statistics_sheet(
     sheet: Any,
     statistics_result: ProfileStatisticsResult,
     *,
+    report_metadata: ReportMetadata,
     border: Border,
     label_fill: PatternFill,
     kpi_fill: PatternFill,
@@ -1651,7 +1693,7 @@ def _write_profile_statistics_sheet(
             item.definition.statistic_id,
             item.target_channel,
             item.definition.operation,
-            item.definition.display_name or item.channel_display_name,
+            'Agro Capacity (observed maximum inferred load)' if item.definition.statistic_id == 'agrochemical_discharge_max' else item.definition.display_name or item.channel_display_name,
             item.value,
             item.channel_unit or "-",
             item.definition.placement_group or "-",
@@ -1687,6 +1729,22 @@ def _write_profile_statistics_sheet(
             if col == 3:
                 cell.number_format = "0.000"
 
+    extra_start = len(statistics_result.statistics) + len(statistics_result.kpis) + 8
+    headers = ['Reporting metric ID', 'Display name', 'Value', 'Unit', 'Status', 'Source / provenance', 'Definition / unavailable reason']
+    for col, header in enumerate(headers, 1):
+        cell = sheet.cell(extra_start - 1, col, header)
+        cell.fill, cell.font = kpi_fill, white_bold
+    sheet.merge_cells(start_row=extra_start - 1, start_column=7, end_row=extra_start - 1, end_column=10)
+    for row, item in enumerate(reporting_metric_rows(statistics_result, report_metadata), extra_start):
+        value = item['display'] if item['metric_id'] == 'battery_mass_kg' else item['value'] if item['value'] is not None else 'N/A'
+        for col, text in enumerate([item['metric_id'], item['label'], value, item['unit'], item['status'],
+                                    item['source'], item['definition'] + '; ' + item['reason']], 1):
+            cell = sheet.cell(row, col, text)
+            cell.border = border
+            cell.alignment = Alignment(wrap_text=True, vertical='top')
+        sheet.cell(row, 3).number_format = item.get('number_format', 'General')
+        sheet.merge_cells(start_row=row, start_column=7, end_row=row, end_column=10)
+        sheet.row_dimensions[row].height = 84
     sheet.freeze_panes = "A2"
     for col in range(1, 11):
         sheet.column_dimensions[get_column_letter(col)].width = 22
@@ -1813,6 +1871,11 @@ def _write_profile_metadata_sheet(
     for cell in (sheet.cell(1, 1), sheet.cell(1, 2)):
         cell.font = white_bold
         cell.border = border
+    metadata.extend([
+        ('Reporting inputs', json.dumps(asdict(report_metadata.reporting_inputs))),
+        ('Battery pack mass', report_metadata.reporting_inputs.battery_display),
+        ('Agro reporting diagnostics', json.dumps(statistics_result.reporting_agro.to_dict()) if statistics_result.reporting_agro else 'Unavailable'),
+    ])
     for row, (key, value) in enumerate(metadata, start=2):
         sheet.cell(row, 1, key).border = border
         sheet.cell(row, 2, value).border = border
@@ -1959,6 +2022,9 @@ def _profile_manifest(
         "powertrain": result.report_metadata.powertrain_name,
         "safe_output_stem": result.report_path.stem,
         "machine_detection_source": result.report_metadata.detection_source,
+        "reporting_inputs": asdict(result.report_metadata.reporting_inputs),
+        "reporting_metrics": reporting_metric_rows(result.statistics_result, result.report_metadata),
+        "agro_reporting": result.statistics_result.reporting_agro.to_dict() if result.statistics_result.reporting_agro else None,
         "source_file": str(source_path),
         "source_sha256": result.dataset.quality.source_sha256,
         "profile_file": str(profile_path),

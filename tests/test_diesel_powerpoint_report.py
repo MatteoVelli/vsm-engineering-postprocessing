@@ -76,12 +76,19 @@ def test_major_displayed_values_match_independent_d1_golden_results(report, metr
 
 
 def test_all_displayed_kpis_retain_canonical_values_and_units(report):
+    from vsm_postprocessing.agro_reporting import reporting_metric_rows
     canonical = {m.metric_id: m for m in report.excel_result.statistics_result.canonical_metrics}
+    reporting = {row['metric_id']: row for row in reporting_metric_rows(report.excel_result.statistics_result, report.report_metadata)}
     ppt_result = report.powerpoint_result.powerpoint_result
     for stat in ppt_result.statistics_result.statistics:
+        if stat.statistic_id in reporting:
+            item = reporting[stat.statistic_id]
+            assert stat.channel_unit == item['unit']
+            assert (not np.isfinite(stat.value)) if item['value'] is None else stat.value == item['value']
+            continue
         metric = canonical[stat.statistic_id]
         assert stat.value == metric.value and stat.channel_unit == metric.unit
-    assert all(s in canonical for slide in ppt_result.config.slides for s in slide.statistic_ids)
+    assert all(s in canonical or s in reporting for slide in ppt_result.config.slides for s in slide.statistic_ids)
 
 
 def test_diesel_terms_and_existing_plot_bytes_with_no_crop(report):
@@ -156,7 +163,12 @@ def test_missing_optional_data_removes_only_dependent_content(tmp_path, missing,
     assert len(prs.slides) == count and result.powerpoint_result.plot_count == plots
     assert sum(len(_plots(s)) for s in prs.slides) == plots
     text = "\n".join(_text(s) for s in prs.slides)
-    assert "n/a" not in text.lower() and "battery" not in text.lower()
+    assert "battery" not in text.lower()
+    # Agro reporting cards are intentionally visible when their source or
+    # physical interpretation is unavailable; unrelated optional cards omit.
+    unavailable = [(definition.slide_id, shape.text) for slide, definition in zip(prs.slides, result.powerpoint_result.powerpoint_result.config.slides)
+                   for shape in slide.shapes if shape.has_text_frame and 'n/a' in shape.text.lower()]
+    assert unavailable == [('executive_results', 'N/A'), ('executive_results', 'N/A')]
     if missing in ("all", "fuel_flow"):
         assert "AVG FUEL FLOW" not in text and "INTEGRATED FUEL VOLUME" not in text
     if missing in ("all", "engine_oil_temperature"):

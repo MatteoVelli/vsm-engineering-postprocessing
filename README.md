@@ -44,8 +44,9 @@ The October client update retains application version 1.3.0 and adds live formul
 for all applicable configured Excel KPIs. The existing Diesel thermal slide shows
 independent oil/water plots and four MIN/MAX cards; its compact Excel header is
 24 pt. Diesel and Electric use updated real VSM CSVs for release validation.
-Hybrid passes available reference/controlled integration tests; its latest real
-CSV has not been individually acceptance-tested and is not a release gate.
+The available Caiman SP Hybrid reference also passes report-generation checks;
+its negative inferred chemical contents correctly prevent a full-cycle rate.
+A newer client Hybrid export beyond that reference is not claimed as tested.
 See [client release notes](docs/FINAL_RELEASE_NOTES.md) for the validation scope
 and operating instructions.
 
@@ -54,7 +55,7 @@ to current Electric and Hybrid Excel and PowerPoint reports, reusing existing
 power and cumulative-energy calculations. Existing combined charts remain.
 Two Astauto pages precede the final summary; complete Electric reports now have
 25 Excel charts and 15 PowerPoint slides after the final Sergio refinements. The portable folder and archive are
-named `Astauto_VSM_October_19102026` for the final 19 October delivery.
+named `Astauto_VSM_October_22102026` for the final 22 October delivery.
 The two soil pages also include six engineering KPI cards each, using the Wheel
 Steering Angles card style and existing signed power/energy/distance conventions.
 The soil cards reuse existing Excel calculations and layouts.

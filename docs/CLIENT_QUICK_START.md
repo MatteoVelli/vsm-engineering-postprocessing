@@ -15,9 +15,9 @@ The first setup requires internet access if Python or Python packages are not al
 ## Normal Use
 
 1. Double-click `START_VSM_TOOL.bat`.
-2. Select **Profile-driven VSM report**.
+2. Select **Engineering Report**.
 3. Upload the source VSM `.xlsx` or `.csv` results file.
-4. Choose **Diesel**, **Hybrid** or **Electric**, and confirm the detected machine name.
+4. Review the automatically detected **Diesel**, **Hybrid** or **Electric** profile and machine information; change the selection only if needed.
 5. Click **STEP 3 - Validate**. Resolve any missing required channels or invalid data before continuing; the UI lists the affected channels and blocks report generation.
 6. Click **STEP 4 - Generate Engineering Report**.
 7. Download the Excel report and, when needed, the PowerPoint report from **STEP 5 - Access Output**. The profile workflow generates both reports; using the PowerPoint is optional.
@@ -26,7 +26,7 @@ The launcher opens the local Streamlit interface in your browser. If the browser
 
 ## Workflows
 
-**Profile-driven VSM report** generates the client Excel report and optional PowerPoint directly from the uploaded source data and selected reporting profile.
+**Engineering Report** generates the client Excel report and optional PowerPoint directly from the uploaded source data and selected reporting profile.
 
 **Custom Analysis** analyzes the uploaded file exactly as supplied and keeps the manual channel/math/statistics/plot/report controls for engineering investigation.
 
@@ -86,13 +86,29 @@ The existing combined soil charts and all other plots remain available. Missing
 or invalid wheel resistance measurements disable only their dependent plots;
 PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
 
-The final 19 October delivery folder and ZIP are named
-`Astauto_VSM_October_19102026`. Keep the two root launchers beside `Tool`.
+The final 22 October delivery folder and ZIP are named
+`Astauto_VSM_October_22102026`. Keep the two root launchers beside `Tool`.
 
-Diesel `_07` and Electric UoL `_04` real CSVs are the current release-validation
-inputs. Hybrid passed available automated and reference/controlled integration
-tests; its latest real export has not been individually acceptance-tested. This
-pending real-data confirmation does not prevent using the tested Hybrid profile.
+Release checks use Diesel `_07`, Electric UoL `_04` and the available Caiman SP Hybrid reference. Caiman's negative inferred chemical contents are correctly flagged; a newer Hybrid export beyond this reference is not claimed as tested.
+
+## Battery and Agrochemical Reporting
+
+Supported configurations are detected automatically. RoboSprayer V5 3500 kg
+Electric displays its confirmed 470 kg battery pack. Full Size Electric/Hybrid
+uses a provisional estimate of approximately 1700 kg or more; Diesel has no
+electric pack specification. Unverified packs show Not specified.
+
+Agro Capacity is the maximum observed inferred chemical load in kg, not a
+manufacturer's nominal tank capacity. A separate mass-discharge diagnostic uses
+kg/m when the source is valid. Agro Discharge Rate uses L/m and requires approved
+chemical density or a trusted volumetric source. Without those inputs it correctly
+shows N/A; this is a physical-data limitation, not an installation problem.
+Caiman's nonphysical negative inferred load prevents a full-cycle discharge rate.
+
+Normal reporting needs no manual source-channel setup. Uncommon assumptions and
+overrides are available under Advanced reporting overrides. Existing battery
+capacity consistency warnings and other engineering diagnostics remain valid.
+Regenerate reports after changing data or assumptions.
 
 ## Supported Runtime
 

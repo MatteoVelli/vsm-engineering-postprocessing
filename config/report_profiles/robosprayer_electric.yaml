@@ -5,6 +5,38 @@ profile:
   description: Semantic Electric reporting profile extracted from Sergio workbook templates. Runtime channel IDs are resolved
     from source names at import time.
   powertrain: electric
+  machine_configurations:
+  - configuration_id: robosprayer_v5_3500kg
+    machine_names:
+    - RoboSprayer
+    - RoboSprayer V5
+    identity_tokens:
+    - 3500kg
+    powertrains:
+    - electric
+    reporting_inputs:
+      battery_mass_kg: 470.0
+      battery_mass_status: confirmed
+      battery_mass_provenance: 'Sergio: confirmed RoboSprayer V5 3500 kg configuration'
+      hitch_force_is_remaining_agro_mass: true
+      agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
+        inferred load, not measured or nominal tank capacity
+  - configuration_id: full_size_sprayer_8500kg
+    machine_names:
+    - Full Size
+    - Full Size Sprayer
+    identity_tokens:
+    - 8500kg
+    powertrains:
+    - electric
+    - hybrid
+    reporting_inputs:
+      battery_mass_kg: 1700.0
+      battery_mass_status: estimated
+      battery_mass_provenance: 'Sergio: approximately 1700 kg or more; calculation ongoing, provisional'
+      hitch_force_is_remaining_agro_mass: true
+      agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
+        inferred load, not measured or nominal tank capacity
 channels:
   raw:
   - semantic_name: track_time
@@ -451,7 +483,7 @@ channels:
     channel_type: VSM
   - semantic_name: agrochemical_discharge_force
     source_name: HitchRear_Force_Z_VehicleCoordinates
-    report_name: Agrochemical Discharge
+    report_name: Rear Hitch Vertical Force
     unit: N
     required: false
     for_plot: true
@@ -2175,7 +2207,7 @@ channels:
     expression: edu_mech_power_fl + edu_mech_power_fr + edu_mech_power_rr + edu_mech_power_rl
   - semantic_name: agrochemical_discharge
     source_name: Agrochemical Discharge
-    report_name: Agrochemical Discharge
+    report_name: Remaining Agrochemical Mass
     unit: Kg
     required: false
     for_plot: true
@@ -2598,11 +2630,11 @@ statistics:
   - statistic_id: agrochemical_discharge_max
     target: agrochemical_discharge
     operation: max
-    display_name: Max Agrochemical Discharge
+    display_name: Agro Capacity (observed maximum inferred load)
     unit: Kg
     placement_group: summary
     required: false
-    notes: Uses the converted agrochemical mass channel derived from HitchRear_Force_Z_VehicleCoordinates.
+    notes: Observed maximum remaining agrochemical mass inferred from HitchRear_Force_Z_VehicleCoordinates / -9.81, in kg. Not validated nominal tank capacity or discharged volume. Legacy numeric ID retained.
   - statistic_id: road_gradient_max
     target: track_gradient
     operation: max
@@ -2891,17 +2923,17 @@ plots:
   - plot_id: agrochemical_discharge_vs_distance
     order: 9
     reference_chart_number: 9
-    title: Agrochemical Discharge Vs Distance
+    title: Remaining Agrochemical Mass Vs Distance
     x: distance_km
     x_label: Distance [km]
-    primary_y_label: Agrochemical Discharge [kg]
+    primary_y_label: Remaining Agrochemical Mass [kg]
     output_filename: 09_agrochemical_discharge_vs_distance.png
     status: PASS
-    evidence: Electric chart 9 points to the profile MATH Agrochemical Discharge output; Sergio mapping evidence confirms the raw source as HitchRear_Force_Z_VehicleCoordinates.
+    evidence: Electric chart 9 points to the profile MATH Remaining Agrochemical Mass output; Sergio mapping evidence confirms the raw source as HitchRear_Force_Z_VehicleCoordinates.
     series:
       - semantic_name: agrochemical_discharge
         axis: primary
-        label: Agrochemical Discharge
+        label: Remaining Agrochemical Mass
   - plot_id: battery_energy_time_based
     order: 10
     reference_chart_number: 10
@@ -2941,18 +2973,18 @@ plots:
   - plot_id: agrochemical_discharge_and_charge_vs_time
     order: 12
     reference_chart_number: 12
-    title: Agrochemical Discharge and Battery SOC Vs Time
+    title: Remaining Agrochemical Mass and Battery SOC Vs Time
     x: time_minutes
     x_label: Time [min]
-    primary_y_label: Agrochemical Discharge [kg]
+    primary_y_label: Remaining Agrochemical Mass [kg]
     secondary_y_label: Battery SOC [%]
     output_filename: 12_agrochemical_discharge_and_charge_vs_time.png
     status: RECONSTRUCTED
-    evidence: Electric chart 12 points to Agrochemical Discharge with Battery SOC on the secondary axis; the title is corrected to name both series explicitly.
+    evidence: Electric chart 12 points to Remaining Agrochemical Mass with Battery SOC on the secondary axis; the title is corrected to name both series explicitly.
     series:
       - semantic_name: agrochemical_discharge
         axis: primary
-        label: Agrochemical Discharge
+        label: Remaining Agrochemical Mass
       - semantic_name: electricsystem_battery_soc
         axis: secondary
         label: Battery SOC

@@ -179,6 +179,11 @@ def test_latest_workbook_channel_classifications_and_selection(kind, version):
         if not candidates:
             candidates = [c for c in remaining if c.channel_type == row[3] and
                           _template_channel_name(c.report_name) == _template_channel_name(row[2])]
+        if not candidates:
+            # Corrected client labels retain their historical template aliases.
+            candidates = [c for c in remaining if c.channel_type == row[3] and
+                          any(_template_channel_name(alias) == _template_channel_name(row[1])
+                              for alias in getattr(c, 'aliases', ()))]
         assert candidates, row
         channel = candidates[0]
         assert channel.for_plot == bool(row[4]), channel.semantic_name

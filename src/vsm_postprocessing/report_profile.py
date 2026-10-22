@@ -11,6 +11,7 @@ import yaml
 from .errors import ConfigurationError
 from .models import ChannelInfo, ImportedDataset
 from .utils import normalize_display_unit
+from .reporting_inputs import ReportingInputs
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 _NORMALIZE_PATTERN = re.compile(r"[^a-z0-9]+")
@@ -24,6 +25,8 @@ class ProfileMetadata:
     powertrain: str | None = None
     extends: str | None = None
     excel_template: str | None = None
+    reporting_inputs: ReportingInputs = field(default_factory=ReportingInputs)
+    machine_configurations: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -460,6 +463,14 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
         parent_path = (path.parent / metadata.extends).resolve()
         parent = _load_reporting_profile(parent_path, seen=(*seen, path))
         profile = _merge_profiles(parent, profile)
+        # Reporting metadata inherits independently of child identity/title fields.
+        inherited_inputs = asdict(parent.metadata.reporting_inputs)
+        inherited_inputs.update(raw['profile'].get('reporting_inputs', {}))
+        if 'agro_density_kg_per_L' in inherited_inputs:
+            inherited_inputs['density_kg_per_L'] = inherited_inputs.pop('agro_density_kg_per_L')
+        configurations = {item['configuration_id']: item for item in parent.metadata.machine_configurations}
+        configurations.update({item['configuration_id']: item for item in profile.metadata.machine_configurations})
+        profile = replace(profile, metadata=replace(profile.metadata, reporting_inputs=ReportingInputs.from_mapping(inherited_inputs), machine_configurations=tuple(configurations.values())))
 
     profile = _apply_profile_overrides(profile, raw.get("overrides", {}))
     _validate_unique_semantic_names(profile)
@@ -488,7 +499,25 @@ def _load_reporting_profile(path: Path, seen: tuple[Path, ...]) -> ReportingProf
 def _parse_metadata(raw: Any) -> ProfileMetadata:
     if not isinstance(raw, dict):
         raise ConfigurationError("profile must be a YAML mapping")
-    _reject_unknown_keys(raw, {"profile_id", "name", "description", "powertrain", "extends", "excel_template"}, "profile")
+    _reject_unknown_keys(raw, {"profile_id", "name", "description", "powertrain", "extends", "excel_template", "reporting_inputs", "machine_configurations"}, "profile")
+    configurations = raw.get('machine_configurations', [])
+    if not isinstance(configurations, list):
+        raise ConfigurationError('profile.machine_configurations must be a list')
+    seen_configurations = set()
+    for item in configurations:
+        if not isinstance(item, dict):
+            raise ConfigurationError('machine configuration must be a mapping')
+        _reject_unknown_keys(item, {'configuration_id', 'machine_names', 'identity_tokens', 'powertrains', 'reporting_inputs'}, 'machine configuration')
+        identity = _required_string(item, 'configuration_id')
+        if identity in seen_configurations:
+            raise ConfigurationError('Duplicate machine configuration: ' + identity)
+        seen_configurations.add(identity)
+        for key in ('machine_names', 'identity_tokens', 'powertrains'):
+            if not isinstance(item.get(key), list) or not item[key] or any(not isinstance(v, str) or not v.strip() for v in item[key]):
+                raise ConfigurationError('machine configuration requires nonempty text lists: ' + key)
+        ReportingInputs.from_mapping(item.get('reporting_inputs'))
+        if not set(item['powertrains']) <= {'electric', 'hybrid', 'diesel'}:
+            raise ConfigurationError('machine configuration powertrains must be electric, hybrid or diesel')
     profile_id = _required_string(raw, "profile.profile_id")
     _validate_identifier(profile_id, "profile.profile_id")
     name = _required_string(raw, "profile.name")
@@ -499,6 +528,8 @@ def _parse_metadata(raw: Any) -> ProfileMetadata:
         powertrain=_optional_string(raw.get("powertrain"), "profile.powertrain"),
         extends=_optional_string(raw.get("extends"), "profile.extends"),
         excel_template=_optional_string(raw.get("excel_template"), "profile.excel_template"),
+        reporting_inputs=ReportingInputs.from_mapping(raw.get("reporting_inputs")),
+        machine_configurations=tuple(configurations),
     )
 
 

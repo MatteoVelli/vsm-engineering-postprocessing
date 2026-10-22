@@ -1,0 +1,27 @@
+# Load as an ordinary reporting profile, or use the Streamlit reporting settings.
+# Paths are relative to this file. Numeric defaults remain unset.
+version: 1
+profile:
+  profile_id: battery_agro_example
+  name: Electric with explicit reporting metadata
+  powertrain: electric
+  extends: report_profiles/robosprayer_electric.yaml
+  reporting_inputs:
+    machine_configuration_id: null
+    battery_mass_kg: null
+    battery_mass_status: not_provided
+    battery_mass_provenance: null
+    agro_density_kg_per_L: null
+    density_provenance: null
+    hitch_force_is_remaining_agro_mass: false
+    agro_volume_source: null
+    agro_volume_provenance: null
+    agro_flow_source: null
+    agro_flow_provenance: null
+# Known model/configuration/powertrain mappings are inherited automatically from
+# the existing reporting profiles. RoboSprayer V5 3500 kg Electric uses 470 kg
+# confirmed by Sergio. An unrelated 3500 kg machine does not match that mapping.
+# Full Size 8500 kg Electric/Hybrid uses ~1700 kg (estimated; calculation ongoing).
+# Full Size Diesel receives no electric battery specification.
+# Advanced overrides may explicitly select a compatible machine_configuration_id.
+# Never enter density 1 kg/L unless that value is explicitly justified.

@@ -587,7 +587,7 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     prs = Presentation(report.presentation_path)
     assert len(prs.slides) == 12
     slide_8_text = [shape.text.strip() for shape in prs.slides[7].shapes if getattr(shape, "text", "").strip()]
-    for label in ("AGRO DISCHARGE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "DRIVE CYCLE TIME"):
+    for label in ("AGRO CAPACITY", "AGRO DISCHARGE RATE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "DRIVE CYCLE TIME"):
         assert label in slide_8_text
     assert "FUEL\nCONSUMPTION" not in text
     assert "ROAD HEIGHT NOT AVAILABLE" in text
@@ -836,9 +836,12 @@ def test_all_generated_slides_share_electric_visual_system(request, fixture_name
             report = result.powerpoint_result.powerpoint_result
             statistics = {item.statistic_id: item for item in report.statistics_result.statistics}
             values = {" ".join(shape.text.split()) for shape in slide.shapes if shape.has_text_frame}
+            from vsm_postprocessing.agro_reporting import reporting_metric_rows
+            reporting = {row['metric_id']: row['display'] for row in reporting_metric_rows(result.excel_result.statistics_result, result.report_metadata)}
             for metric_id in report.config.slides[index].statistic_ids:
                 if metric_id in statistics:
-                    assert " ".join(_format_statistic_value(statistics[metric_id]).split()) in values, (index + 1, metric_id)
+                    expected = reporting.get(metric_id, _format_statistic_value(statistics[metric_id]))
+                    assert " ".join(expected.split()) in values, (index + 1, metric_id)
         if index in (9, 10):
             caption = _find_text_shape(slide, result.powerpoint_result.powerpoint_result.config.slides[index].subtitle)
             assert caption.top == reference.slides[8].shapes[3].top

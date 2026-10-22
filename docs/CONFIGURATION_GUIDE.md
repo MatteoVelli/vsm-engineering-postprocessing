@@ -200,3 +200,26 @@ KPI inherits that source. Soil diagnostics remain independent and missing soil
 inputs do not disable rolling consumption. Integration conventions are unchanged.
 
 The previous composed mission scenario/provider workflow has been removed. Source files are processed directly through the selected profile or generic pipeline configuration.
+
+## Machine specifications and qualified agro reporting
+
+Existing profile metadata contains reusable `machine_configurations` records.
+Matching requires model identity, configuration tokens and compatible powertrain;
+vehicle mass alone is insufficient. Extending profiles inherit these mappings.
+RoboSprayer V5 3500 kg Electric uses Sergio's confirmed 470 kg pack. Full Size
+8500 kg Electric/Hybrid uses an estimated 1700 kg with ongoing-calculation
+provenance; Full Size Diesel uses a distinct mapping without an electric pack.
+Caiman SP 9300 kg Hybrid has no verified pack mass.
+
+`reporting_inputs` supports explicit advanced overrides and density provenance.
+The `agro_density_kg_per_L` public field and `density_kg_per_L` internal alias are
+compatible; supply only one. Density must be positive, finite and documented.
+Direct trusted cumulative chemical volume takes priority over integrated
+volumetric flow, then supported remaining mass with density. Fuel channels are
+not chemical volume sources. Missing density leaves L/m unavailable, with a
+separate valid kg/m diagnostic where possible. Refill events, invalid distance,
+nonfinite samples, negative contents and discontinuities retain their safeguards.
+Agro Capacity is the maximum observed inferred remaining mass, not nominal tank
+capacity. Historical Diesel math retains 9.80665; reporting uses 9.81. Detailed
+source/status information is in Statistics and report metadata. The UI applies
+known mappings automatically and keeps unusual overrides collapsed.

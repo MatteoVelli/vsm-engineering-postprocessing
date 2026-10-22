@@ -1,0 +1,132 @@
+FINAL ASTAUTO CLIENT RELEASE - 17 October 2026
+
+1. Changes completed
+
+The total-tyre slide subtitle is now:
+Rolling resistance + bulldozing + compaction; absorbed power and accumulated energy versus time
+
+Its energy legend is now:
+Accumulated Tyre Resistance Energy
+
+These are the only two remaining configuration differences from the accepted
+17 October implementation. The six display-name changes made by the interrupted,
+superseded task were reversed exactly. The shared base Electric profile matches
+its prior file byte-for-byte. Original VSM names, ASTAUTO display labels, template
+conventions, source selection, mathematical definitions and units are preserved.
+No engineering calculation or sign convention was changed.
+
+The approved covers are unchanged, including title, subtitle, full original
+basename, font, placement, KPI cards and branding. The Electric reference retains
+15 slides: total tyre absorption 12, bulldozing 13, compaction 14, summary 15.
+All six total-tyre cards and both plots are preserved. Other slide XML and retained
+plot pixels match the previously validated same-source decks.
+Diesel Engine Load Torque remains excluded from report columns, statistics and
+charts, while its original raw mapping remains available. Correct Engine Torque
+is unchanged: 936.586 Nm, displayed as 936.59 Nm. Engine Throttle is retained.
+
+2. Regression and engineering validation
+
+Full current suite: 655 passed, 0 failed, 1 intentionally skipped,
+in 946.64 seconds. The skip is the inapplicable Diesel soil-slide case.
+Focused wording, mapping-preservation, source-name, CSV/XLSX and Diesel checks:
+27 passed, 0 failed (19 prior acceptance cases plus 8 final-preservation cases).
+The interrupted partial run and its candidate are isolated under
+outputs/final_sergio_delivery_2026_10_17/superseded_label_changes and are not
+counted as release validation.
+
+All 86 calculated arrays retain their pre-change hashes, both from the source
+checkout and from the cleanly installed package. All 128 retained configured
+statistics and existing KPIs are unchanged. Actual source-file hashes match.
+
+Independent Electric energy check, kWh:
+  Rolling resistance: 14.605418520278
+  Bulldozing:         5.402950407114
+  Compaction:         8.075161873669
+  Total:              28.083530801061
+
+Total resistance power is the established sum of four-corner rolling,
+bulldozing and compaction power in kW. Interval energy uses the existing signed
+trapezoidal convention on actual Track_Time seconds, divided by 3600 to kWh;
+cumulative energy is not integrated again. Signs, nonuniform-time handling and
+data-quality rules are preserved. This is the agreed resistance total, not a new
+claim about all possible tyre losses. No equality between tyre, auxiliary and
+battery energies is imposed across unestablished physical system boundaries.
+
+The six displayed values remain 35.27 kW, 25.58 kW, 26.65 kW, 28.08 kWh,
+2.62 kWh/km and 10.74 km. Source and package workbooks passed full data-column
+comparisons, semantic chart-range checks, formula/error checks and ZIP integrity.
+
+Desktop Excel rebuilt 209,415 formulas
+after every formula cache was cleared. The 1,904,353
+numeric cells across all three workbooks agree with the engine. Maximum absolute
+differences: Diesel 9.09494701773e-13, Electric
+4.26325641456e-14, Hybrid 1.42108547152e-13.
+Native PowerPoint opened/rendered source and package decks for all profiles.
+Affected slides were visually inspected; native text bounds, axes, legends,
+cards, source filenames, numbering and ASTAUTO branding passed. The new total
+page has no visible occurrence of signed; the existing soil pages are unchanged.
+
+3. Client distribution
+
+Final ZIP: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_16102026.zip
+Filename: Astauto_VSM_October_16102026.zip
+Size: 94,441,956 bytes (90.07 MiB)
+Packaged files: 119 (including RELEASE_MANIFEST.json)
+SHA-256: c85b0fc345b6a5068248d9f6b74a6256ae7b954eb53e25f2e2385c9a8d22c7b1
+Checksum file: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_16102026.sha256
+Extracted client folder: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_16102026
+Previous active ZIP: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_16102026.zip
+Verified rollback ZIP: dist\Archived_Client_Packages\2026-10-17_before_final_delivery\Astauto_VSM_October_16102026.zip
+Rollback SHA-256: e53ea2cb1a233fd10819913039d1123effe3672142de18704f68157d5e558db3
+
+The candidate was built twice with the canonical release builder to verify
+reproducibility, then wrapped in the existing launcher-beside-Tool layout.
+It contains the complete application, current tracked/untracked required modules,
+profiles, approved templates/branding, dependencies, SETUP/START and client docs.
+No developer venv, Git metadata, raw VSM CSV, credential, downloaded runtime,
+test output, cache, older distribution or generated report is included.
+ZIP CRC and manifest file hashes passed before and after promotion; the final
+unpacked client folder matches the ZIP. No absolute developer-machine path is
+required by the application.
+
+Fresh extraction path (including spaces): <temporary directory>\ASTAUTO Preserved Mapping QA 17102026
+Its unchanged setup created a new package-local CPython 3.11.9 runtime and venv,
+installed dependencies, passed pip check and doctor, and generated all three
+report pairs from its own installed modules. The shipped root START BAT was
+tested from an unrelated working directory. Headless Edge received HTTP 200 and
+completed actual Diesel, Electric and available-reference Hybrid uploads,
+validation, report generation and both download buttons with no Streamlit
+exceptions. Those UI-generated files also passed the final output audit.
+The QA server/browser were closed before promotion.
+
+4. Replacement confirmation
+
+The previous ZIP was copied and hash-verified outside the active delivery
+location before replacement. The validated ZIP replaced the active file by
+atomic rename on the destination filesystem. Its checksum and full extracted
+Tool distribution were updated, and the previous extracted distribution is
+retained beside the rollback ZIP. Other superseded distributions were moved
+intact into Archived_Client_Packages. dist/CURRENT_SERGIO_DELIVERY.json and
+dist/README_CURRENT_SERGIO.txt identify the one active client package.
+
+5. Outstanding limitations
+
+The missing-Python bootstrap branch was explicitly simulated on this existing
+Windows machine, using cached official CPython installer/NuGet downloads. The
+runtime, venv and dependency installation were genuinely new; this was not a
+fresh Windows-machine test. Office rendering was checked with installed Windows
+Office. First-time client setup still needs permitted network access for missing
+runtime/packages, as documented by the established distribution.
+
+Hybrid compatibility uses the available older real reference and controlled
+regression cases; latest-client Hybrid input acceptance is not claimed.
+The pre-existing semantic/display-label differences remain a separate review
+topic. They do not authorise a mapping or numerical reinterpretation in this
+delivery and have deliberately been preserved.
+No release-blocking failure remains. No commit, push, tag, GitHub release or
+message to Sergio was made. Only the authorised local distribution replacement
+was performed.
+
+6. Final verdict
+
+READY FOR SERGIO

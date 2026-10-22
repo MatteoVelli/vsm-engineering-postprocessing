@@ -258,10 +258,11 @@ def generate_reporting_profile_excel_report(
     import_options: ImportOptions | None = None,
     *,
     machine_name_override: str | None = None,
+    reporting_inputs: Mapping[str, Any] | None = None,
 ) -> ProfileExcelReportResult:
     validate_profile_upload_extension(source_file)
     profile = load_reporting_profile(profile_file)
-    report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override)
+    report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override, reporting_inputs=reporting_inputs)
     return generate_profile_excel_report(
         source_file,
         profile_file,
@@ -279,12 +280,13 @@ def generate_reporting_profile_engineering_report(
     *,
     machine_name_override: str | None = None,
     selection: ProfileReportSelection | None = None,
+    reporting_inputs: Mapping[str, Any] | None = None,
 ) -> ReportingProfileEngineeringReportResult:
     validate_profile_upload_extension(source_file)
     profile = load_reporting_profile(profile_file)
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override)
+    report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override, reporting_inputs=reporting_inputs)
     selection_options = {"selection": selection} if selection is not None else {}
     excel_result = generate_profile_excel_report(
         source_file,

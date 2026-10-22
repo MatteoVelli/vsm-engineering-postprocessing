@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
 from .report_profile import ReportingProfile
 from .utils import client_display_filename
+from .reporting_inputs import ReportingInputs
+from .errors import ConfigurationError
 
 _SEPARATOR_PATTERN = re.compile(r"[_\-\s]+")
 _INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]+')
@@ -58,6 +60,8 @@ class ReportMetadata:
     source_filename: str
     detection_source: str
     simulation_description: str | None = None
+    reporting_inputs: ReportingInputs = field(default_factory=ReportingInputs)
+    configuration_detection: str = 'unmatched'
 
 
 def resolve_report_metadata(
@@ -66,6 +70,7 @@ def resolve_report_metadata(
     *,
     machine_name_override: str | None = None,
     source_metadata: Mapping[str, Any] | None = None,
+    reporting_inputs: Mapping[str, Any] | None = None,
 ) -> ReportMetadata:
     source_filename = client_display_filename(source_file)
     powertrain_name = _powertrain_name(profile, source_filename)
@@ -75,6 +80,37 @@ def resolve_report_metadata(
         source_metadata=source_metadata,
     )
     report_title = f"{machine_name} {powertrain_name}".strip()
+    defaults = getattr(getattr(profile, 'metadata', None), 'reporting_inputs', ReportingInputs())
+    overrides = dict(reporting_inputs or {})
+    if 'agro_density_kg_per_L' in overrides:
+        if 'density_kg_per_L' in overrides:
+            raise ConfigurationError('Specify density only once')
+        overrides['density_kg_per_L'] = overrides.pop('agro_density_kg_per_L')
+    configurations = getattr(getattr(profile, 'metadata', None), 'machine_configurations', ())
+    tokens = {token.casefold() for token in _filename_tokens(Path(source_filename).stem)}
+    source_powertrains = tokens & set(_POWERTRAIN_ALIASES)
+    requested = overrides.get('machine_configuration_id',
+                              (source_metadata or {}).get('machine_configuration_id', defaults.machine_configuration_id))
+    identity_name = machine_name if requested else _resolve_machine_name(
+        source_filename, machine_name_override=None, source_metadata=source_metadata)[0]
+    matches = []
+    for item in configurations:
+        compatible = (identity_name.casefold() in {name.casefold() for name in item['machine_names']}
+                      and powertrain_name.casefold() in item['powertrains']
+                      and (not source_powertrains or source_powertrains == {powertrain_name.casefold()}))
+        if compatible and ((requested and requested == item['configuration_id']) or
+                           (not requested and set(map(str.casefold, item['identity_tokens'])) <= tokens)):
+            matches.append(item)
+    if requested and not matches:
+        raise ConfigurationError('Machine configuration conflicts with machine name or powertrain, or is not defined in this profile')
+    if len(matches) > 1:
+        raise ConfigurationError('Ambiguous machine configuration; select an advanced override')
+    automatic = dict(matches[0]['reporting_inputs']) if matches else {}
+    if matches:
+        automatic['machine_configuration_id'] = matches[0]['configuration_id']
+    settings = ReportingInputs.from_mapping({**asdict(defaults), **automatic, **overrides})
+    if powertrain_name == 'Diesel' and settings.battery_mass_kg is not None:
+        raise ConfigurationError('Diesel reporting cannot use an electric battery pack specification')
     return ReportMetadata(
         machine_name=machine_name,
         powertrain_name=powertrain_name,
@@ -83,6 +119,8 @@ def resolve_report_metadata(
         source_filename=source_filename,
         detection_source=detection_source,
         simulation_description=_simulation_description(source_filename, machine_name, powertrain_name),
+        reporting_inputs=settings,
+        configuration_detection=('explicit profile configuration' if requested else 'profile model/configuration/powertrain mapping') if matches else 'unmatched',
     )
 
 

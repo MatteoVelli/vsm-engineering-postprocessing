@@ -5,6 +5,20 @@ profile:
   name: Full Size Sprayer Diesel
   powertrain: diesel
   description: Verified Diesel analysis with native Excel and Astauto PowerPoint reporting.
+  machine_configurations:
+  - configuration_id: full_size_sprayer_8500kg_diesel
+    machine_names:
+    - Full Size
+    - Full Size Sprayer
+    identity_tokens:
+    - 8500kg
+    powertrains:
+    - diesel
+    reporting_inputs:
+      hitch_force_is_remaining_agro_mass: true
+      agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
+        inferred load, not measured or nominal tank capacity; legacy Diesel workbook uses 9.80665, reporting
+        convention uses 9.81
 channels:
   raw:
   - semantic_name: track_time
@@ -230,7 +244,7 @@ channels:
     for_plot: true
   - semantic_name: agrochemical_discharge_force
     source_name: HitchRear_Force_Z_VehicleCoordinates
-    report_name: Agrochemical Discharge
+    report_name: Rear Hitch Vertical Force
     channel_type: VSM
     unit: N
     required: false
@@ -403,7 +417,7 @@ channels:
       actual intervals; first interval follows existing sample_energy_kwh convention.
   - semantic_name: agrochemical_discharge
     source_name: Agrochemical Discharge
-    report_name: Agrochemical Discharge
+    report_name: Remaining Agrochemical Mass (legacy g=9.80665)
     unit: kg
     required: false
     dependencies:
@@ -845,7 +859,7 @@ statistics:
 - statistic_id: agrochemical_discharge_max
   target: agrochemical_discharge
   operation: max
-  display_name: Agrochemical Mass MAX
+  display_name: Legacy Remaining Mass MAX (g=9.80665)
   required: false
   placement_group: diesel_template
 - statistic_id: wheel_power_total_max
@@ -1117,14 +1131,14 @@ plots:
   reference_chart_number: 5
   evidence: Corrects chart5 auxiliary_2 x extent typo 117876; all series use the current aligned distance samples.
 - plot_id: diesel_agrochemical_vs_distance
-  title: Agrochemical Discharge-Charge Cycle Vs Distance
+  title: Remaining Agrochemical Mass Vs Distance
   order: 16
   x: distance_km
   x_label: Distance [km]
-  primary_y_label: Agrochemical Mass [kg]
+  primary_y_label: Remaining Mass [kg] (legacy g=9.80665)
   series:
   - semantic_name: agrochemical_discharge
-    label: Agrochemical Mass
+    label: Remaining Agrochemical Mass (legacy)
     axis: primary
     required: false
   reference_chart_number: 6
@@ -1146,14 +1160,14 @@ plots:
   reference_chart_number: 7
   secondary_y_label: Fuel Flow [L/h]
 - plot_id: diesel_agrochemical_vs_time_minutes
-  title: Agrochemical Discharge-Charge Cycle Vs Time
+  title: Remaining Agrochemical Mass Vs Time
   order: 18
   x: time_minutes
   x_label: Time [min]
-  primary_y_label: Agrochemical Mass [kg]
+  primary_y_label: Remaining Mass [kg] (legacy g=9.80665)
   series:
   - semantic_name: agrochemical_discharge
-    label: Agrochemical Mass
+    label: Remaining Agrochemical Mass (legacy)
     axis: primary
     required: false
   reference_chart_number: 8

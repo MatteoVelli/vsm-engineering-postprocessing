@@ -3,7 +3,7 @@
 Version 1.3.0 provides deterministic profile reporting for Electric, Hybrid and
 Full Size Sprayer Diesel, subject to the following boundaries.
 
-1. Current profiles follow the Diesel `_03` and Electric/Hybrid `_07` reporting layouts; original profiles remain explicit legacy options. Release checks use the updated Diesel `_07` CSV and Electric UoL `_04` CSV, including nonzero gearbox torque and Sergio-confirmed HV power. Hybrid passes available older-reference and controlled integration tests, including generator activity. The latest real Hybrid export has not been individually acceptance-tested; this is not a release gate or a known software defect.
+1. Current profiles follow the Diesel `_03` and Electric/Hybrid `_07` reporting layouts; original profiles remain explicit legacy options. Release checks use the updated Diesel `_07` CSV and Electric UoL `_04` CSV, including nonzero gearbox torque and Sergio-confirmed HV power. The available Caiman SP Hybrid reference and controlled integrations are validated, including generator activity and correct rejection of negative chemical contents. A newer client Hybrid export beyond this reference is not claimed as tested.
 2. Optional source channels, including `Track_Height`, are exported only when present in the uploaded data.
 3. The current automatic header/unit detection is validated against normal CSV/XLSX layouts. Unusual multi-sheet or multi-level-header exports may require explicit import settings.
 4. Math channels are configured expressions, not a free-form graphical formula editor.
@@ -42,3 +42,15 @@ Full Size Sprayer Diesel, subject to the following boundaries.
     their original conventions. Regenerate after source changes to refresh all
     retained values, chart caches and PowerPoint. Excel and PowerPoint remain
     separate files; editing Excel does not update a prior PowerPoint.
+
+17. Agro Capacity reports an observed maximum inferred load, not nominal tank
+    capacity. Supported mappings infer remaining mass from rear hitch force;
+    this is not a certified direct chemical-mass measurement. L/m requires known
+    density or trusted chemical volume/flow, while valid kg/m remains available.
+    Caiman's nonphysical negative contents invalidate a full-window rate. No
+    negative values are clamped and no chemical density is supplied by default.
+18. Full Size Electric/Hybrid pack mass is approximately 1700 kg or more,
+    provisional pending Sergio's calculation. Diesel receives no electric pack
+    specification; unverified pack masses remain Not specified. New qualified
+    reporting values are validated snapshots; regenerate after source/assumption
+    changes. The existing battery-energy/SOC consistency warning remains valid.

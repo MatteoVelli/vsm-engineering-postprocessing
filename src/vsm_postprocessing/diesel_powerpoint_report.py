@@ -97,9 +97,10 @@ def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_fil
         if (slide_id in _OPTIONAL_SLIDES and not plot_ids
                 and not (slide_id == "diesel_thermal" and profile.metadata.excel_template)):
             continue
+        reporting = ppt.reporting_metric_rows(result.statistics_result, result.report_metadata) if slide_id == 'executive_results' else []
         slides.append({
             "slide_id": slide_id, "type": kind, "title": title or result.report_metadata.report_title,
-            "subtitle": subtitle, "statistics": [s for s in definition.statistics if s in statistics],
+            "subtitle": subtitle, "statistics": [s for s in definition.statistics if s in statistics] + [row['metric_id'] for row in reporting if row['metric_id'] != 'agro_mass_discharge_rate_kg_per_m'],
             "plots": plot_ids, "body": list(bodies.get(slide_id, ())),
         })
     return {
@@ -217,10 +218,21 @@ def build_diesel_powerpoint(
             ppt._set_summary_banner_preserve_runs(shapes[4], banner)
             ppt._set_overview_card_body(shapes[6], "\n".join(definition.body))
         selected = [statistics[s] for s in definition.statistic_ids]
-        ppt._replace_kpi_slots(shapes, page, selected, ppt._ELECTRIC_LAYOUT)
+        ppt._replace_kpi_slots(shapes, page, selected, ppt._ELECTRIC_LAYOUT,
+                               display_overrides={row['metric_id']: row['display'] for row in ppt.reporting_metric_rows(excel_result.statistics_result, excel_result.report_metadata)})
         for slot, stat in zip(ppt._ELECTRIC_LAYOUT.kpi_slots[page], selected):
-            ppt._set_value_text_preserve_runs(shapes[slot.value], _display(stat))
+            if stat.placement_group != 'reporting':
+                ppt._set_value_text_preserve_runs(shapes[slot.value], _display(stat))
         _replace_plots(slide, shapes, page, definition.plot_ids, plots, assets, prs.slide_width)
+        if page == 3:
+            agro = excel_result.statistics_result.reporting_agro
+            text = 'Capacity: observed maximum inferred load [kg], not nominal tank capacity.'
+            if agro and agro.mass_rate.value is not None:
+                text += f' Mass discharge diagnostic: {agro.mass_rate.value:.6g} kg/m.'
+            if agro and agro.rate.value is None:
+                text += '\nVolume rate unavailable: ' + agro.rate.reason + '.'
+            _remove(shapes[37])
+            ppt._add_text_box(slide, text, Inches(.6), Inches(6.32), Inches(12.13), Inches(.46), font_size=10, color=ppt.RGBColor.from_string('D8E4FF'))
         if page in (5, 6, 7, 8, 9):
             picture = shapes[1]
             rect = picture.left, picture.top, picture.width, picture.height

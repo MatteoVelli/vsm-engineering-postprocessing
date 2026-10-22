@@ -1,0 +1,166 @@
+FINAL ASTAUTO / SERGIO DELIVERY - 19 OCTOBER 2026
+
+A. PRESENTATION CORRECTION
+
+Changed exactly two soil-page subtitles in each of:
+  config/report_profiles/sergio_2026_10/robosprayer_electric.yaml
+  config/report_profiles/sergio_2026_10/robosprayer_hybrid.yaml
+
+New text: "Total resistance power [kW] and accumulated energy [kWh] versus time [s]".
+Electric still has 15 slides. Slides 13/14 retain their titles, positions,
+six cards and two charts. Slide 12 retains the rolling-resistance detail;
+slide 9 retains the corrected Tyres Energy Consumption chart. Diesel has
+no equivalent soil-page subtitles and is unchanged.
+
+All 714 resolved raw/calculated arrays, statistics, KPIs, plot pixels and
+slide geometry match the approved 18 October rolling-correction outputs.
+Every source-deck slide XML part matches exactly after the four requested
+subtitle replacements; all other slide XML and source media are identical.
+Native Excel chart XML is byte-identical. No sign convention, integral,
+source mapping, plot axis or numerical engineering calculation was changed.
+
+Other delivery-maintenance changes:
+  tests/test_final_sergio_delivery.py - assert the exact new subtitle.
+  README.md - identify the current 19102026 package.
+  docs/CLIENT_QUICK_START.md - identify the current package/folder name.
+  docs/FINAL_RELEASE_NOTES.md - final wording, retained rolling correction, current package.
+  src/vsm_postprocessing/release_builder.py - optionally include the existing
+    18 October audit so README's documentation link resolves in the package.
+The launchers, setup procedure, dependencies and application version 1.3.0
+are unchanged. Previously validated, uncommitted correction work is retained.
+
+B. REPORT AND TEST VALIDATION
+
+Complete suite: 671 passed, 1 expected skip, zero failures.
+The skipped test is the inapplicable Diesel soil-plot case. Focused
+presentation, package and rolling-resistance tests: 31 passed.
+The first full run was stopped after its deeply nested temporary path
+prevented a Windows venv fixture from being created. The unchanged test
+passed under a shorter path, followed by the complete passing run at
+outputs/s19_all. No launcher/runtime change was made to work around it.
+
+Three source report pairs, three freshly installed-copy report pairs, and
+three actual browser-generated report pairs passed. All expected source
+channels, accumulated values, live Excel KPI equations, chart references
+and subtitle texts were inspected. Four redundant additive tyre channels
+remain absent. All 266 native chart x/y references resolve correctly.
+
+Diesel: 232 samples, 67 report columns, 19 charts, 10 slides.
+  Rolling accumulated energy 2.212024584722 kWh; peak 47.197700000000 kW.
+  Independent Excel numeric checks: 16044; maximum absolute
+  difference 9.09494701773e-13; zero Excel error cells.
+Electric: 3954 samples, 326 report columns, 25 charts, 15 slides.
+  Rolling accumulated energy 14.605418520278 kWh; peak 18.275790000000 kW.
+  Independent Excel numeric checks: 1290505; maximum absolute
+  difference 4.26325641456e-14; zero Excel error cells.
+Hybrid: 1770 samples, 320 report columns, 25 charts, 14 slides.
+  Rolling accumulated energy 8.251955232403 kWh; peak 37.872720000000 kW.
+  Independent Excel numeric checks: 567894; maximum absolute
+  difference 1.42108547152e-13; zero Excel error cells.
+
+Electric uses the semantic rolling-power/accumulated-energy channels at FM/FP
+in this workbook; Hybrid and Diesel positions are resolved separately.
+Bulldozing and compaction remain diagnostics and are not added again.
+The available Hybrid source lacks the measured auxiliary channel; its
+combined tyre-plus-auxiliary KPI remains unavailable, with no fabricated zero.
+
+Desktop Excel independently rebuilt all 186,487 cleared formula caches.
+All 1,874,443 main/Statistics numeric cells match at rtol=3e-14, atol=1e-12.
+All recalculated sheets, including hidden helpers, contain zero error cells.
+Desktop PowerPoint rendered the three full source decks and verified
+native text bounds, including the corrected soil subtitles.
+
+Fresh ZIP extraction with spaces created a genuinely new package-local
+CPython 3.11.9 runtime and venv using the unchanged shipped setup. Only
+cached official Python installer/NuGet downloads were reused. pip check
+and doctor passed (doctor's example-source warning is expected: private
+raw datasets are excluded). Installed report imports and assets were
+verified inside extracted Tool, with the working directory set there.
+Fresh setup installed an allowed Matplotlib patch, 3.11.2 versus 3.11.1
+in the source environment. Only PNG Software metadata differs; all 69
+decoded plot images and all PowerPoint image pixels match exactly.
+
+The real shipped root START BAT was invoked from an unrelated directory
+with spaces and without the developer environment. Isolated headless Edge
+received HTTP 200, uploaded all three real sources, validated each,
+generated Excel/PowerPoint and found both download buttons with zero
+Streamlit exceptions. Actual UI output values/formulas/subtitles passed.
+Owned browser/server processes were closed after QA.
+
+Limitation: this is fresh-extraction/runtime/environment testing on the
+existing Windows machine, not a fresh Windows-machine test. First client
+setup may require network access for Python and dependencies. Keep the
+extraction path short and writable as described by the client instructions.
+
+C. CLIENT DELIVERY
+
+ZIP: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_19102026.zip
+Filename: Astauto_VSM_October_19102026.zip
+Size: 94,414,309 bytes (90.04 MiB)
+SHA-256: 55d31fcadfd3ac9a61fd100dc3c39776a2c4093c58ed3e9b778a1253d05ae135
+Files: 107 including RELEASE_MANIFEST.json
+Checksum: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_19102026.sha256
+Clean client folder: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_19102026
+
+The canonical build and launcher/Tool wrapper each reproduced identical
+SHA-256 values across two builds. ZIP CRC, every manifest size/hash,
+packaged runtime source bytes and extracted-folder parity passed.
+All runtime modules, three powertrain profiles, Streamlit UI, dependencies,
+required templates/branding, launchers and client instructions are included.
+No venv, caches, raw CSV, generated report, old ZIP, tests or developer
+QA baseline is bundled. Historical private-data validation scripts and
+stale egg-info are excluded from the client wrapper; no runtime code was removed.
+No developer-machine absolute path is required by the delivered tool.
+
+Previous active ZIP: dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_17102026.zip
+Verified historical rollback: dist\Archived_Client_Packages\2026-10-19_before_final_delivery\Astauto_VSM_October_17102026.zip
+Rollback SHA-256: c85b0fc345b6a5068248d9f6b74a6256ae7b954eb53e25f2e2385c9a8d22c7b1
+The previous active filename was 17102026, while its old pointer,
+checksum and ZIP root still said 16102026. Those stale current references
+are corrected. Original archived deliveries were preserved intact.
+The new ZIP is the sole active Sergio ZIP in the established delivery
+directory. dist/CURRENT_SERGIO_DELIVERY.json, dist/README_CURRENT_SERGIO.txt,
+the checksum, root README_SERGIO.txt and packaged RELEASE_MANIFEST.json
+identify Astauto_VSM_October_19102026. Recorded size/SHA match the file.
+
+D. GIT / REVIEW STATUS
+
+Branch: main
+HEAD: 7301f1770bcbf37772f72acfb9b2b174731845ae
+No commit, push, tag or staging operation was performed.
+All pre-existing working-tree changes remain available for review.
+
+ M README.md
+ M config/report_profiles/robosprayer_electric.yaml
+ M config/report_profiles/sergio_2026_10/robosprayer_electric.yaml
+ M config/report_profiles/sergio_2026_10/robosprayer_hybrid.yaml
+ M docs/CLIENT_QUICK_START.md
+ M docs/CONFIGURATION_GUIDE.md
+ M docs/FINAL_RELEASE_NOTES.md
+ M src/vsm_postprocessing/excel_report_engine.py
+ M src/vsm_postprocessing/profile_soil_kpis.py
+ M src/vsm_postprocessing/release_builder.py
+ M tests/test_electric_rr_power_plot.py
+ M tests/test_final_sergio_delivery.py
+ M tests/test_latest_template_math.py
+ M tests/test_profile_excel_report.py
+ M tests/test_profile_math.py
+ M tests/test_profile_statistics.py
+ M tests/test_report_profile.py
+ M tests/test_sergio_final_feedback.py
+ M tests/test_sergio_october_15.py
+ M tests/test_ui_config.py
+?? docs/FINAL_CLIENT_DELIVERY_2026_10_17.txt
+?? docs/FINAL_SERGIO_DELIVERY_2026_10_19.txt
+?? docs/FINAL_SERGIO_FEEDBACK_2026_10_17.txt
+?? docs/OCTOBER_2026_CLIENT_RELEASE_2026_10_16.md
+?? docs/TYRE_ROLLING_CORRECTION_2026_10_18.txt
+?? scripts/render_sergio_final_feedback.ps1
+?? scripts/validate_sergio_final_excel.ps1
+?? scripts/validate_sergio_final_feedback.py
+?? scripts/validate_tyre_rolling_correction.py
+?? tests/test_tyre_rolling_correction.py
+
+Evidence: outputs/final_sergio_delivery_2026_10_19/
+
+READY FOR SERGIO

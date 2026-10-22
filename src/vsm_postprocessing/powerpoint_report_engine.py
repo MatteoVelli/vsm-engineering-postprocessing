@@ -800,8 +800,9 @@ def _load_slide(raw: object, index: int) -> PowerPointSlideDefinition:
     if slide_type == "plot_pair":
         if not 1 <= len(plot_ids) <= 2:
             raise ConfigurationError(f"{context}.plots must contain one or two plot IDs for plot_pair slides")
-        if len(statistic_ids) > 6:
-            raise ConfigurationError(f"{context}.statistics supports at most 6 KPI statistics")
+        maximum = 7 if layout == 'profile_extended_kpis' else 6
+        if len(statistic_ids) > maximum:
+            raise ConfigurationError(f"{context}.statistics supports at most {maximum} KPI statistics")
     return PowerPointSlideDefinition(
         slide_id=slide_id,
         slide_type=slide_type,

@@ -332,11 +332,20 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         help="Supported formats: CSV and XLSX.",
         key="profile_report_source",
     )
+    if uploaded is not None:
+        upload_identity = (uploaded.name, len(uploaded.getvalue()))
+        if st.session_state.get('auto_profile_source') != upload_identity:
+            detected_powertrain = resolve_report_metadata(uploaded.name).powertrain_name.lower()
+            candidates = [p.profile_id for p in profiles if p.powertrain == detected_powertrain]
+            if len(candidates) == 1:
+                st.session_state['engineering_profile_choice'] = candidates[0]
+            st.session_state['auto_profile_source'] = upload_identity
     selected_profile_id = st.selectbox(
         "STEP 2 - Select Report Profile",
         [profile.profile_id for profile in profiles],
         format_func=lambda profile_id: next(profile.display_name for profile in profiles if profile.profile_id == profile_id),
-        help="Select the powertrain explicitly; zero or inactive channels do not determine the profile.",
+        help="Detected from the source identity when available. Change it here if necessary; inactive channels never determine the powertrain.",
+        key="engineering_profile_choice",
     )
     profile_definition = get_reporting_profile_definition(PROJECT_ROOT, selected_profile_id)
 
@@ -345,6 +354,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
     machine_name_override: str | None = None
     selection = None
     report_import_options = ImportOptions(strict=True)
+    reporting_inputs = None
     if uploaded is None:
         st.info("Upload a supported VSM CSV or XLSX file to validate it against the selected profile.")
     else:
@@ -384,7 +394,9 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
                 profile_definition, selection, report_import_options = _render_profile_report_options(st, profile_definition, inspection)
             else:
                 st.info("Legacy reporting uses the previous source mappings and sample-energy convention. The legacy high-voltage auxiliary definition is a constant zero, not a measured high-voltage source.")
-            settings = repr((profile_definition.profile_path, selection, report_import_options))
+            reporting_inputs = _render_reporting_metadata_inputs(st, profile_definition, source_path)
+            verified_identity = machine_name_override if reporting_inputs.get('machine_configuration_id') == 'robosprayer_v5_3500kg' else None
+            settings = repr((profile_definition.profile_path, selection, report_import_options, reporting_inputs, verified_identity))
             validation_key += ":" + hashlib.sha256(settings.encode()).hexdigest()
 
     if st.session_state.get("profile_input_key") != validation_key:
@@ -400,6 +412,8 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         _clear_profile_report_state(st)
         try:
             with st.spinner("Validating source channels against reporting profile..."):
+                resolve_report_metadata(source_path, load_reporting_profile(profile_definition.profile_path),
+                                        machine_name_override=machine_name_override, reporting_inputs=reporting_inputs)
                 summary = validate_reporting_profile_source(source_path, profile_definition.profile_path, report_import_options)
         except VSMPostProcessingError as exc:
             st.error(_friendly_profile_error(exc))
@@ -417,7 +431,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
 
     if profile_definition.powertrain == "diesel":
         _render_diesel_report_workflow(st, profile_definition, source_path, validation_key, summary, machine_name_override,
-                                      selection=selection, import_options=report_import_options)
+                                      selection=selection, import_options=report_import_options, reporting_inputs=reporting_inputs)
         return
 
     can_generate = (
@@ -446,6 +460,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
                     report_import_options,
                     machine_name_override=machine_name_override,
                     selection=selection,
+                    reporting_inputs=reporting_inputs,
                 )
         except VSMPostProcessingError as exc:
             st.error(_friendly_profile_error(exc))
@@ -462,6 +477,61 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
     if result is not None and st.session_state.get("profile_report_result_key") == (validation_key, machine_name_override):
         st.subheader("STEP 5 - Access Output")
         _render_profile_report_download(st, result)
+
+
+def _render_reporting_metadata_inputs(st, definition, source_path=None):
+    profile = load_reporting_profile(definition.profile_path)
+    detected = resolve_report_metadata(source_path or 'Unknown.csv', profile)
+    defaults = asdict(detected.reporting_inputs)
+    st.caption('Detected configuration: ' + (defaults['machine_configuration_id'] or 'Unspecified')
+               + ' | Battery pack: ' + (detected.reporting_inputs.battery_display if definition.powertrain != 'diesel' else 'Not applicable (Diesel)'))
+    st.caption('Agro load: ' + ('profile-supported inference' if defaults['hitch_force_is_remaining_agro_mass'] else 'source interpretation unavailable')
+               + '. Volumetric discharge requires a trusted volume source or documented chemical density.')
+    with st.expander('Advanced reporting overrides'):
+        if not st.checkbox('Override automatically detected reporting information'):
+            return {}
+        st.caption('Overrides affect reporting only. Chemical density has no assumed default.')
+        identifiers = [None, *[item['configuration_id'] for item in profile.metadata.machine_configurations
+                              if definition.powertrain in item['powertrains']]]
+        selected = st.selectbox('Machine configuration override', identifiers,
+                                index=identifiers.index(defaults['machine_configuration_id']) if defaults['machine_configuration_id'] in identifiers else 0,
+                                format_func=lambda value: value or 'Automatic / unspecified')
+        if selected and selected != defaults['machine_configuration_id']:
+            record = next(item for item in profile.metadata.machine_configurations if item['configuration_id'] == selected)
+            defaults.update(record['reporting_inputs'])
+            defaults['machine_configuration_id'] = selected
+        enabled = st.checkbox('Specify battery pack mass', value=defaults['battery_mass_kg'] is not None)
+        if enabled:
+            mass_text = st.text_input('Battery pack mass [kg] (strictly positive)', value=str(defaults['battery_mass_kg'] or ''))
+            try:
+                defaults['battery_mass_kg'] = float(mass_text) if mass_text.strip() else None
+            except ValueError:
+                defaults['battery_mass_kg'] = mass_text
+            defaults['battery_mass_status'] = st.selectbox('Battery mass status', ['estimated', 'confirmed'], index=1 if defaults['battery_mass_status'] == 'confirmed' else 0)
+            defaults['battery_mass_provenance'] = st.text_input('Battery mass source / confirmation', value=defaults['battery_mass_provenance'] or '')
+            if defaults['battery_mass_kg'] is None:
+                defaults.update(battery_mass_status='not_provided', battery_mass_provenance=None)
+        else:
+            defaults.update(battery_mass_kg=None, battery_mass_status='not_provided', battery_mass_provenance=None)
+        density = st.checkbox('Specify agrochemical density [kg/L]', value=defaults['density_kg_per_L'] is not None)
+        if density:
+            density_text = st.text_input('Agrochemical density [kg/L] (strictly positive)', value=str(defaults['density_kg_per_L'] or ''))
+            try:
+                defaults['density_kg_per_L'] = float(density_text) if density_text.strip() else None
+            except ValueError:
+                defaults['density_kg_per_L'] = density_text  # validated by ReportingInputs before generation
+            defaults['density_provenance'] = st.text_input('Density source / assumption', value=defaults['density_provenance'] or '') or None
+        else:
+            defaults.update(density_kg_per_L=None, density_provenance=None)
+        if st.checkbox('Override remaining-load interpretation'):
+            defaults['hitch_force_is_remaining_agro_mass'] = st.checkbox('Rear hitch represents remaining chemical load', value=defaults['hitch_force_is_remaining_agro_mass'])
+            defaults['agro_mass_provenance'] = st.text_input('Load interpretation source', value=defaults['agro_mass_provenance'] or '')
+        st.caption('Force inference uses -Fz/9.81. Negative contents, refills and discontinuities make the full-window rate unavailable.')
+        for prefix, label in [('agro_volume', 'Trusted cumulative discharged volume [L]'), ('agro_flow', 'Trusted discharged flow [L/s, L/min or L/h]')]:
+            defaults[prefix + '_source'] = st.text_input(label + ' — exact source header (optional)', value=defaults[prefix + '_source'] or '') or None
+            defaults[prefix + '_provenance'] = st.text_input(label + ' — source provenance', value=defaults[prefix + '_provenance'] or '') or None
+        st.caption('Direct cumulative volume takes priority over flow and force. An invalid configured direct source is reported as unavailable.')
+    return {key: value for key, value in defaults.items() if value != getattr(detected.reporting_inputs, key)}
 
 
 def _render_profile_report_options(st, definition, inspection):
@@ -550,7 +620,7 @@ def _clear_profile_report_state(st: Any) -> None:
 
 def _render_diesel_report_workflow(st: Any, profile_definition: Any, source_path: Path | None,
                                  validation_key: str | None, summary: Any, machine_name: str | None,
-                                 *, selection=None, import_options=None) -> None:
+                                 *, selection=None, import_options=None, reporting_inputs=None) -> None:
     st.info("Diesel Excel and PowerPoint reporting are available.")
     can_generate = (source_path is not None and summary is not None and summary.is_valid
                     and st.session_state.get("profile_validation_key") == validation_key)
@@ -566,6 +636,7 @@ def _render_diesel_report_workflow(st: Any, profile_definition: Any, source_path
                     source_path, profile_definition.profile_path,
                     UI_RUNS / datetime.now().strftime("%Y%m%d_%H%M%S_%f"),
                     import_options or ImportOptions(strict=True), machine_name_override=machine_name,
+                    reporting_inputs=reporting_inputs,
                     **({"selection": selection} if selection is not None else {}),
                 )
         except VSMPostProcessingError as exc:
@@ -630,6 +701,8 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
 
 
 def _render_profile_report_completion(st: Any, result: Any) -> None:
+    for warning in result.excel_result.statistics_result.diagnostics:
+        st.warning(warning)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Machine", result.report_metadata.machine_name)
     c2.metric("Samples", f"{result.sample_count:,}")

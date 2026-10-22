@@ -5,6 +5,7 @@ from io import BytesIO
 import math
 import re
 from zipfile import ZipFile
+from xml.sax.saxutils import escape
 
 import numpy as np
 from openpyxl.utils import get_column_letter
@@ -161,7 +162,16 @@ def save_report_workbook(workbook, output_path):
 
                 def fill_cache(match):
                     coordinate = match[1].decode("ascii")
-                    if coordinate not in values or not math.isfinite(values[coordinate]):
+                    if coordinate not in values:
+                        return match[0]
+                    if isinstance(values[coordinate], str):
+                        # Reporting metadata/N/A references must retain text in
+                        # readers that do not recalculate Excel formula caches.
+                        cell = match[0]
+                        head, body = cell.split(b'>', 1)
+                        head = re.sub(rb'\s+t="[^"]*"', b'', head) + b' t="str">'
+                        return head + body.replace(b'<v></v>', b'<v>' + escape(values[coordinate]).encode('utf-8') + b'</v>')
+                    if not math.isfinite(values[coordinate]):
                         return match[0]
                     cached = repr(float(values[coordinate])).encode("ascii")
                     return match[0].replace(b"<v></v>", b"<v>" + cached + b"</v>")
