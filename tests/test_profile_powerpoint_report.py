@@ -311,11 +311,11 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
 
     electric_cover = list(electric.slides[0].shapes)
     assert [electric_cover[index].text for index in (6, 8, 10, 12, 14)] == [
-        "GVW 3,500 kg",
+        "Mass 3,500 kg (TBC)",
         "Electric powertrain",
-        "12 kph field",
-        "Battery 50 kW",
-        "Motor 63 rpm",
+        "Target 12 kph (TBC)",
+        "Battery Not specified",
+        "Motor Not specified",
     ]
     assert "Source RoboSprayer raw VSM CSV" not in _visible_text(electric_report.presentation_path)
     assert _run_texts(electric_cover[18]) == ["12.00", " km"]
@@ -547,7 +547,7 @@ def test_profile_powerpoint_replaces_mission_with_drive_cycle(electric_report, h
     for result in (electric_report, hybrid_report):
         text = _visible_text(result.presentation_path)
         assert "DRIVE CYCLE TIME" in text
-        assert "Drive Cycle Structure" in text
+        assert "Machine Specifications" in text
         assert "MISSION TIME" not in text
         assert "Mission Structure" not in text
         assert "Mission duration" not in text
@@ -587,7 +587,7 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     prs = Presentation(report.presentation_path)
     assert len(prs.slides) == 12
     slide_8_text = [shape.text.strip() for shape in prs.slides[7].shapes if getattr(shape, "text", "").strip()]
-    for label in ("AGRO CAPACITY", "AGRO DISCHARGE RATE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "DRIVE CYCLE TIME"):
+    for label in ("AGRO CAPACITY (INFERRED)", "AGRO DISCHARGE RATE", "FINAL BATTERY SOC", "FUEL CONSUMPTION", "DRIVE CYCLE TIME"):
         assert label in slide_8_text
     assert "FUEL\nCONSUMPTION" not in text
     assert "ROAD HEIGHT NOT AVAILABLE" in text
@@ -598,16 +598,17 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     reference = Presentation(ELECTRIC_REFERENCE_DECK).slides[1]
     assert overview.shapes[2].text == "System & Simulation Overview"
     assert overview.shapes[3].text == "Hybrid profile resolution and deterministic simulation scope"
-    for index, heading in ((17, "Drive Cycle Structure"), (22, "Hybrid System Context")):
+    for index, heading in ((17, "Machine Specifications"), (22, "Hybrid System Context")):
         assert overview.shapes[index].text == heading
         run = overview.shapes[index].text_frame.paragraphs[0].runs[0]
         assert run.font.name == "Cambria" and run.font.size.pt == 17 and run.font.bold
         assert str(run.font.color.rgb) == "0E1A4A"
     expected_bodies = {
         18: [
-            "Source dataset: Profile source dataset", "Imported samples: 1,770",
-            "Drive cycle duration: 29.48 min", "Drive cycle distance: 12.00 km",
-            "Maximum speed: 33.78 kph",
+            "Machine: Caiman SP; powertrain: Hybrid.",
+            "Mass / GVW: 9,300 kg (TBC); target speed: Not specified",
+            "Battery: Not specified; motor: Not specified",
+            "Generator: Not specified; engine: Not specified",
         ],
         23: [
             "Battery SOC: 57.40 % to 46.20 %", "Fuel consumption: 3.63 kg",
@@ -632,8 +633,8 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
         assert body.text_frame.margin_left == reference.shapes[index].text_frame.margin_left
         assert body.top + body.height <= overview.shapes[24].top
     assert [overview.shapes[i].text for i in (5, 7, 9, 11, 13)] == [
-        "Machine Caiman SP", "Powertrain Hybrid", "Source Profile source dataset",
-        "Samples 1,770", "Tool v1.3.0",
+        "Mass 9,300 kg (TBC)", "Hybrid powertrain", "Target Not specified",
+        "Battery Not specified", "Motor Not specified",
     ]
     assert [overview.shapes[i].text for i in (26, 30, 34, 38)] == [
         "DRIVE CYCLE TIME", "DISTANCE", "MAX SPEED", "MAX GEN POWER",

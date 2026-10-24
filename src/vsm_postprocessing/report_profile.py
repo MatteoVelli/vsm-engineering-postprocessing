@@ -12,6 +12,7 @@ from .errors import ConfigurationError
 from .models import ChannelInfo, ImportedDataset
 from .utils import normalize_display_unit
 from .reporting_inputs import ReportingInputs
+from .machine_specifications import validate_specifications
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 _NORMALIZE_PATTERN = re.compile(r"[^a-z0-9]+")
@@ -507,7 +508,7 @@ def _parse_metadata(raw: Any) -> ProfileMetadata:
     for item in configurations:
         if not isinstance(item, dict):
             raise ConfigurationError('machine configuration must be a mapping')
-        _reject_unknown_keys(item, {'configuration_id', 'machine_names', 'identity_tokens', 'powertrains', 'reporting_inputs'}, 'machine configuration')
+        _reject_unknown_keys(item, {'configuration_id', 'machine_names', 'identity_tokens', 'powertrains', 'reporting_inputs', 'specifications'}, 'machine configuration')
         identity = _required_string(item, 'configuration_id')
         if identity in seen_configurations:
             raise ConfigurationError('Duplicate machine configuration: ' + identity)
@@ -516,6 +517,7 @@ def _parse_metadata(raw: Any) -> ProfileMetadata:
             if not isinstance(item.get(key), list) or not item[key] or any(not isinstance(v, str) or not v.strip() for v in item[key]):
                 raise ConfigurationError('machine configuration requires nonempty text lists: ' + key)
         ReportingInputs.from_mapping(item.get('reporting_inputs'))
+        validate_specifications(item.get('specifications', {}))
         if not set(item['powertrains']) <= {'electric', 'hybrid', 'diesel'}:
             raise ConfigurationError('machine configuration powertrains must be electric, hybrid or diesel')
     profile_id = _required_string(raw, "profile.profile_id")

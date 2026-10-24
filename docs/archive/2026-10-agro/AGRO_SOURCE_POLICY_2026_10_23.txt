@@ -1,0 +1,267 @@
+General, configuration-independent agro mass reporting
+23 October 2026
+
+This supersedes the Agro Capacity decision in MACHINE_REPORTING_AUDIT_2026_10_23.txt.
+No production calculation branches on a machine name, vehicle mass or filename.
+Existing machine-specification fixes from the preceding audit are preserved.
+
+Architectural root cause and complete workflow
+---------------------------------------------
+1. Import and semantic resolution preserve CSV headers, units, channel IDs and
+   simulation samples. resolve_profile() in report_profile.py resolves configured
+   raw semantic names and aliases; it does not establish physical interpretation.
+   agrochemical_discharge_force is the existing optional rear-hitch mapping.
+2. The legacy MATH engine independently evaluates agrochemical_discharge from that
+   force. Electric/Hybrid use -Fz/9.81; Diesel uses -Fz/9.80665. Those expressions,
+   calculated arrays, dependencies and legacy statistics remain unchanged.
+3. The old reporting calculator, calculate_agro_kpis(), required the boolean
+   hitch_force_is_remaining_agro_mass before even making a numerical capacity
+   available. resolve_report_metadata() previously populated that boolean from
+   machine_configurations selected by name, filename tokens and powertrain.
+   Consequently numerical eligibility depended on a machine identity allowlist.
+4. Separately, calculate_reporting_kpis() fed the legacy MATH mass array to the
+   kg/km endpoint calculator without that boolean. Capacity and rate therefore
+   had different eligibility, source selection and potentially different gravity.
+   A raw kg fallback also existed only for the rate, without an explicit policy.
+5. reporting_metric_rows() supplies qualified metrics to both report renderers.
+   Excel replaces the legacy maximum in its top summary with reporting Capacity,
+   writes details in Statistics, diagnostics in Metadata and a JSON manifest.
+   PowerPoint uses those same metrics on the agro page / Diesel executive page.
+   This downstream sharing propagated the upstream disagreement faithfully.
+6. Excel's live kg/km formula independently referenced the legacy MATH column.
+   Fixing only Python capacity would leave recalculation and direct-source reports
+   inconsistent. Hybrid's agro-page activity test likewise used only legacy mass
+   statistics / force activity rather than the selected reporting mass source.
+
+Current code entry points:
+reporting_inputs.py: ReportingInputs source-policy validation.
+report_metadata.py: report inputs inherit source policy from the reporting profile;
+  automatic machine matching cannot supply mass policy or physical confirmation.
+agro_mass.py: resolve_mass_values(), one source-policy numerical validation path.
+agro_reporting.py: calculate_agro_kpis(), calculate_reporting_kpis(), shared metrics.
+profile_plotting.py: render_profile_plots(..., reporting_agro=...), reporting view.
+excel_report_engine.py: _write_agro_source_sheet(), _write_net_mass_rate_formula().
+profile_powerpoint_report_engine.py: _agrochemical_active(), shared cards and notes.
+diesel_powerpoint_report.py: Diesel cards/caption using the same reporting result.
+
+Exact historical root-cause references at unchanged HEAD
+6112f34fd6857f42c3bf78a3114c3bc80ea5b6cc (line numbers before this correction):
+  agro_reporting.py:199: capacity blocked by physical-confirmation boolean.
+  report_metadata.py:89-117: machine matching injects automatic reporting inputs.
+  agro_reporting.py:251-261: net kg/km independently consumes legacy MATH mass.
+  excel_report_engine.py:994-1001: live rate independently uses legacy mass column.
+These historical references describe the removed behavior; current line numbers
+and implementations differ. New numerical policy begins at agro_mass.py:5;
+current machine-policy exclusion is report_metadata.py:126-127.
+
+General solution and explicit source contract
+--------------------------------------------
+Reporting inputs support:
+  agro_mass_source_policy: unconfigured | force_inference | direct_mass
+  agro_mass_source: configured raw semantic name OR exact raw CSV header
+  agro_mass_source_provenance: required nonempty policy/assumption provenance
+
+The ordinary Electric and independent Diesel profiles explicitly configure
+force_inference with agro_mass_source=agrochemical_discharge_force. Hybrid and
+the October extensions inherit that source policy. The policy openly states
+that assigning the resolved hitch force to remaining agrochemical load is an
+assumption, not physical proof from the channel name or signal trend.
+
+Machine-configuration records no longer enable that assumption or confirm its
+physics. Automatic machine resolution cannot override these source-policy fields.
+It continues to serve unrelated machine specifications. An unfamiliar filename,
+different vehicle mass or unmatched configuration does not disable a supported
+source. A renamed or differently configured machine needs no new Python case.
+
+force_inference requires resolved finite N samples and computes exactly:
+  reporting_remaining_mass_kg = -selected_force_N / 9.81
+  observed_mass_kg = MAX(reporting_remaining_mass_kg)
+Status is inferred; interpretation defaults to assumed. Independent, explicitly
+entered confirmation with provenance records user_confirmed interpretation,
+while the numerical method and inferred status remain unchanged. Nothing becomes
+a measured mass or a nominal tank capacity because a checkbox was checked.
+
+direct_mass requires a configured kg source and uses its simulation values
+directly, without a force conversion. Status is simulated, interpretation is
+configured_simulation_source. Direct VSM values are not asserted to be external
+measurements. A malformed or missing selected source never silently falls back
+to another source. There is no filename inference, signal-shape inference or
+default chemical density. Ambiguous duplicate raw headers are unsupported.
+
+The legacy hitch confirmation flag records confidence only: even an explicit
+confirmation cannot enable an absent/unconfigured numerical source policy.
+Machine matching cannot supply that confirmation. Integrations use the explicit
+three-field policy above. The same settings are available under Advanced
+reporting overrides in the UI and through YAML/API report inputs.
+
+Numerical eligibility and quality safeguards
+--------------------------------------------
+* At least two finite one-dimensional source samples and correct units are needed.
+  No NaN omission, silent interpolation, clamping, assumed unit conversion or
+  fabricated value is introduced. Global file/Diesel validation can still reject
+  unsafe files earlier; that existing numerical-engine behavior is preserved.
+* All-zero force is unavailable: an inactive/unmapped signal and an empty tank
+  cannot be distinguished. Explicit direct kg data may validly describe zero
+  contents; the reported simulated maximum is then zero.
+* Entirely negative inferred contents are unavailable. A positive observed
+  maximum in a partly negative trace remains an explicitly questionable observed
+  estimate; negative samples are retained. Full-window discharge is unavailable.
+* Constant, increasing/refill and discontinuous traces carry warnings. A constant
+  force may be tare, and a falling force is not proof of chemical discharge.
+  No design-capacity upper bound is invented. Segmentation is not fabricated.
+* Capacity does not need a valid distance trace. Rate calculations require aligned
+  finite mass/distance samples, supported distance units and a positive monotonic
+  cumulative distance. Invalid distance does not erase an otherwise observed mass.
+
+Consistent quantities, definitions and statuses
+---------------------------------------------
+One selected mass array supplies observed maximum, initial/final contents, net
+mass loss, kg/m diagnostics, kg/km and density-based volumetric inference.
+The existing calculate_net_mass_discharge_rate() endpoint algorithm is unchanged:
+  (initial_mass_kg - final_mass_kg) / final_cumulative_distance_km
+This is net endpoint loss, not total sprayed mass across refill cycles. It retains
+its nonzero-origin warning and explicit final-counter denominator. The separate
+kg/m and density-based L/m diagnostic uses travelled distance (end minus start)
+and retains stricter refill/discontinuity checks. These denominators are named in
+the metadata; they are not silently treated as equivalent when counters are offset.
+Configured direct cumulative volume or volumetric flow remains an independent,
+explicitly attributed source; invalid configured volume does not fall back.
+
+All report-facing force-derived mass quantities use 9.81 consistently, including
+Diesel. Its legacy MATH column still uses 9.80665 and retains its values. Thus a
+nonzero Diesel reporting rate changes by the explicit 9.80665/9.81 ratio compared
+with its old rate-only legacy path; this is source-convention unification, not a
+change to the validated MATH engine. Legacy statistics are labelled as legacy
+profile mass, rather than presenting a second, conflicting Agro Capacity.
+
+Excel, PowerPoint, plots and metadata
+-----------------------------------
+Excel's visible Agro Mass Source sheet records raw source, units, policy,
+assumption/provenance, raw samples, reporting remaining mass and cumulative
+distance. B5 onward contains =-Arow/9.81 or =Arow formulas with numeric caches.
+Capacity and kg/km formulas reference this canonical sheet. This works even
+when the raw mass source is not exported in the legacy main data columns.
+Legacy main-sheet MATH values and their original formulas remain separate.
+
+The report plotting view uses reporting_agro_mass for agro series, with inferred
+or simulated labels. It does not mutate legacy MATH arrays or statistics.
+PowerPoint embeds those images, and Excel's native agro charts reference the
+same canonical samples. Unsupported mass plots are omitted, not substituted with
+an unrelated plausible legacy trace. Hybrid agro activity uses canonical mass,
+including when a configured direct kg source is valid but hitch force is zero.
+
+The shared metric registry emits matching value, label, unit, status, quality,
+interpretation status and provenance for Excel/PPT manifests and notes. Capacity
+labels explicitly say inferred or simulated. The captions distinguish observed
+maximum from nominal tank capacity. Every slide's notes contain source mapping,
+units, formula, provenance, quality warnings, endpoint calculations and the same
+agro report. Arrays themselves are not repeated in JSON or every speaker note;
+the canonical workbook samples and original source hash provide numerical trace.
+
+Changes for this revision
+-------------------------
+New: agro_mass.py (source-policy validation/calculation),
+tests/test_agro_source_policy.py (arbitrary machines, magnitudes/lengths, direct kg,
+confidence separation, quality failures and cross-format/chart propagation),
+scripts/audit_agro_source_policy.py (reference reports, unknown-name fixture and
+exact legacy-engine comparison), and this document.
+
+Updated source files:
+agro_reporting.py: resolve once, reuse across all reporting quantities; carry
+  separate method/confidence/quality/provenance; remove implicit rate-only fallback.
+reporting_inputs.py: validate source policy, explicit source and provenance.
+report_metadata.py: prevent automatic machine matching from supplying mass policy
+  or interpretation confirmation.
+profile_plotting.py: canonical reporting mass series without altering legacy arrays.
+profile_statistics.py: legacy mass display label only; calculations unchanged.
+excel_report_engine.py: canonical source worksheet, formulas, charts and manifest.
+profile_powerpoint_report_engine.py: canonical Hybrid activity and qualified caption.
+diesel_powerpoint_report.py: qualified inferred/simulated/unavailable caption.
+ui_app.py: source-policy controls; confirmation remains a separate setting.
+
+Updated configuration: all three ordinary reporting profiles and
+reporting_metadata.example.yaml. Removed machine-specific force-confirmation
+defaults; added an explicit reusable policy inherited by October/Hybrid profiles.
+
+Updated existing regressions: test_sergio_reporting_automatic.py,
+test_battery_agro_reporting.py, test_october_battery_mass_discharge.py, test_machine_specifications.py,
+test_profile_excel_report.py, test_profile_powerpoint_report.py,
+test_diesel_excel_report.py, test_diesel_powerpoint_report.py and test_diesel_finalization.py. Expectations
+now require explicit direct-source mapping, canonical 9.81 reporting, qualified
+labels and the canonical worksheet. Unsupported zero/negative-force agro charts
+are no longer counted as valid mass plots in Diesel/GUI inventories. Numerical
+legacy golden assertions remain.
+
+Physical assumptions still requiring Sergio's confirmation
+---------------------------------------------------------
+The source mapping assumes the selected rear force represents remaining chemical
+weight. Confirm implement tare, dynamic reactions, slopes, sign convention and
+whether other payloads contribute. No generic formula can prove that meaning.
+For direct kg sources, confirm that values represent remaining chemical contents
+and provide the simulation/export definition. Establish calibrated measured
+provenance separately if a measured-mass claim is desired. Nominal tank capacity,
+chemical density, refill segmentation and actual sprayed volumes remain separate
+engineering inputs. The explicit report convention uses 9.81; legacy Diesel
+9.80665 results remain visible and labelled separately.
+
+Generated evidence
+------------------
+outputs/agro_source_policy_2026_10_23/audit.json indexes fresh October Electric
+3500/8500, Hybrid and Diesel XLSX/PPTX reports, with exact source hashes, policy,
+statuses, confidence, provenance, endpoints and original report comparisons.
+
+The requested 3500 UoL source yields observed inferred maximum
+498.1569826707441 kg and net mass rate 45.33840184907765 kg/km. The requested 8500
+source yields observed inferred maximum 3996.788990825688 kg and net mass rate
+363.1218540582613 kg/km. These are results of the raw samples, not runtime constants.
+
+unknown_machine_proof.json records an unrecognised Future Carrier X99 filename
+with configuration_detection=unmatched and no machine configuration ID. It still
+receives the dynamically calculated 3996.788990825688 kg inferred maximum from
+the configured source. This fixture deliberately renames a copy of the original
+CSV; it does not claim a new physical simulation was performed. The synthetic
+regressions independently vary names, loads, sample lengths and direct kg sources
+across Electric, Hybrid and Diesel.
+
+legacy_engine_comparison.json confirms exact equality with saved HEAD snapshots
+for all 110 legacy math arrays, 161 statistics and 39 KPIs in the four cases.
+Original Electric Statistics/KPI values also match the archived workbooks to
+1e-12 relative/absolute tolerance for Excel serialization. The reporting mass
+source and derived reporting quantities are separately qualified as above.
+
+Additional reference behavior: the older 3500 Crop Field _05 CSV has all-zero
+hitch force; it correctly remains unavailable, with its two unsupported mass
+plots omitted. The requested 3500 UoL CSV has valid force samples and is available.
+This distinction follows actual data, not the shared 3500 machine identity.
+
+No native Office visual validation is claimed. The earlier PowerPoint COM server
+could not start. Reopening, formula caches, chart references, plotted sample
+arrays, notes and JSON metadata are verified using Python/OOXML.
+
+Final validation results
+------------------------
+The fresh complete suite on the final implementation completed successfully:
+  809 passed, 1 skipped in 1182.34s (19m42s); no failures.
+Command:
+  .venv\Scripts\python.exe -u -m pytest -ra -p no:cacheprovider
+    --basetemp outputs/agro_policy_accepted_all_tmp
+Log: outputs/agro_policy_accepted_all.log
+The existing skip is tests/test_sergio_october_15.py:338: soil plots apply to
+Electric and Hybrid profiles, not Diesel.
+
+Focused final checks (overlapping runs, not additive):
+  32 new source-policy regression cases passed (agro_policy_final_contract.log).
+  89 policy/battery/Sergio cases passed (agro_policy_strict_final.log).
+  105 affected reporting/UI cases passed (agro_policy_fix_check.log).
+  26 profile-statistics cases passed (agro_policy_registry.log).
+All log paths above are under outputs/. Earlier full-run failures were stale
+chart-count expectations for the all-zero Crop Field _05 source; those were
+corrected before the fresh successful complete run. Earlier logs are retained.
+
+The reviewable reference/unknown-machine generation also passed for all five
+cases (outputs/agro_policy_reviewable_generation.log). Legacy numerical checks
+are recorded separately in legacy_engine_comparison.json as described above.
+git diff --check reports no whitespace errors. No commit or push was performed;
+HEAD remains 6112f34fd6857f42c3bf78a3114c3bc80ea5b6cc.
+Final SHA-256 checks also confirm that both original Electric workbooks and both
+original Electric PowerPoint presentations exactly match their archived hashes.

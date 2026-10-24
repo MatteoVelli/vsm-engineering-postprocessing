@@ -149,7 +149,9 @@ def test_native_chart_series_units_and_signed_axes(diesel_report, workbook, inde
 
 def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     sheet = workbook.worksheets[0]
-    assert len(sheet._charts) == 17 and not sheet._images
+    assert len(sheet._charts) == 15 and not sheet._images
+    assert diesel_report.statistics_result.reporting_agro.capacity.value is None
+    assert 'reporting_agro_mass' not in diesel_report.plotting_result.values_by_semantic_name
     assert sheet.freeze_panes == "B6"
     assert sheet["A3"].fill.fgColor.rgb.endswith("1F4E78")
     assert sheet.cell(3, _columns(diesel_report)["engine_power"]).fill.fgColor.rgb.endswith("C65911")
@@ -176,7 +178,7 @@ def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     assert 637 < 8 * 91 and 3.75 * 72 < 20 * 15
     with ZipFile(diesel_report.report_path) as archive:
         files = archive.namelist()
-        assert len([p for p in files if p.startswith("xl/charts/chart") and p.endswith(".xml")]) == 17
+        assert len([p for p in files if p.startswith("xl/charts/chart") and p.endswith(".xml")]) == 15
         assert not any(p.startswith("xl/media/") or p.startswith("xl/externalLinks/") for p in files)
         for path in files:
             if path.endswith(".xml"):
@@ -184,7 +186,7 @@ def test_native_structure_styles_and_no_overlaps(diesel_report, workbook):
     assert not any(c.data_type == "e" for s in workbook for row in s for c in row)
 
 
-@pytest.mark.parametrize("missing,expected_charts", [("all", 7), ("fuel_flow", 16), ("engine_load", 17), ("engine_throttle", 16), ("engine_oil_temperature", 16), ("driveshaft_torque_fl", 16)])
+@pytest.mark.parametrize("missing,expected_charts", [("all", 7), ("fuel_flow", 14), ("engine_load", 15), ("engine_throttle", 14), ("engine_oil_temperature", 14), ("driveshaft_torque_fl", 14)])
 def test_missing_optional_channels_omit_only_dependent_outputs(tmp_path, missing, expected_charts):
     profile = load_reporting_profile(PROFILE_PATH)
     omitted = [c.semantic_name for c in profile.raw_channels if not c.required] if missing == "all" else [missing, "track_height"]
@@ -208,7 +210,7 @@ def test_optional_height_is_exported_when_available(tmp_path):
     profile = load_reporting_profile(PROFILE_PATH)
     result = generate_profile_excel_report(_source(tmp_path, profile), PROFILE_PATH, tmp_path / "report")
     assert result.statistic_count == 52 and "track_height" in _columns(result)
-    assert result.plot_count == 17
+    assert result.plot_count == 15
 
 
 def test_powerpoint_reuses_and_preserves_the_excel_workbook(diesel_report, tmp_path):

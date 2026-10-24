@@ -56,7 +56,8 @@ def test_latest_sources_without_manual_confirmation(kind,pattern,samples,expecte
     result = calculate_profile_statistics(load_data_file(source,ImportOptions(strict=False)),selected)
     assert result.dataset.quality.sample_count == samples
     metadata = resolve_report_metadata(source,selected)
-    assert metadata.reporting_inputs.hitch_force_is_remaining_agro_mass
+    assert not metadata.reporting_inputs.hitch_force_is_remaining_agro_mass
+    assert metadata.reporting_inputs.agro_mass_source_policy == 'force_inference'
     agro = calculate_reporting_kpis(result,metadata)
     assert agro.capacity.value > 0 and agro.capacity.status == 'inferred'
     assert 'not nominal' in agro.capacity.definition
@@ -72,7 +73,7 @@ def test_latest_sources_without_manual_confirmation(kind,pattern,samples,expecte
 
 
 def test_multiple_spraying_phases_use_full_distance_not_only_active_samples():
-    result = calculate_agro_kpis([100,200,300,400,500], 'm',force_N=-9.81*np.array([500,450,450,400,400]),force_unit='N',inputs=ReportingInputs(hitch_force_is_remaining_agro_mass=True,density_kg_per_L=1.25,density_provenance='explicit hypothetical test'))
+    result = calculate_agro_kpis([100,200,300,400,500], 'm',force_N=-9.81*np.array([500,450,450,400,400]),force_unit='N',inputs=ReportingInputs(agro_mass_source_policy='force_inference', agro_mass_source='Test force', agro_mass_source_provenance='Explicit synthetic mapping',density_kg_per_L=1.25,density_provenance='explicit hypothetical test'))
     assert result.rate.value == .2
     assert result.mass_rate.value == .25
     assert result.capacity.status == result.rate.status == 'inferred'
@@ -82,7 +83,7 @@ def test_multiple_spraying_phases_use_full_distance_not_only_active_samples():
     ([0,1,2,3,4,5,6],[500,499,498,497,496,495,100]),
 ])
 def test_discontinuities_reject_mass_and_volume_rate(distance,mass):
-    result = calculate_agro_kpis(distance,'m',force_N=-9.81*np.array(mass),force_unit='N',inputs=ReportingInputs(hitch_force_is_remaining_agro_mass=True))
+    result = calculate_agro_kpis(distance,'m',force_N=-9.81*np.array(mass),force_unit='N',inputs=ReportingInputs(agro_mass_source_policy='force_inference', agro_mass_source='Test force', agro_mass_source_provenance='Explicit synthetic mapping'))
     assert result.mass_rate.value is result.rate.value is None
     assert 'discontinuity' in result.rate.reason
 

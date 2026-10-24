@@ -121,8 +121,7 @@ def _remove(shape):
 
 def _metadata_pills(shapes, page, result):
     indices = (6, 8, 10, 12, 14) if page == 1 else (5, 7, 9, 11, 13)
-    texts = (f"Machine {result.report_metadata.machine_name}", "Powertrain Diesel", "Source VSM simulation",
-             f"Samples {result.sample_count:,}", f"Tool v{ppt.__version__}")
+    texts = ppt._cover_metadata_items(result)
     left = Inches(.6)
     for index, width, text in zip(indices, (3.2, 1.9, 2.8, 1.8, 1.79), texts):
         for shape in (shapes[index - 1], shapes[index]):
@@ -132,12 +131,9 @@ def _metadata_pills(shapes, page, result):
 
 
 def _overview(shapes, result):
-    ppt._set_shape_text(shapes[17], "Source & Drive Cycle")
+    ppt._set_shape_text(shapes[17], "Machine Specifications")
     ppt._set_overview_card_body(shapes[18], "\n".join((
-        # Zero-width spaces allow wrapping at separators without changing the filename.
-        "Source: " + result.report_metadata.source_filename.replace("_", "_\u200b"),
-        f"Profile: {result.profile.metadata.name}",
-        f"Imported samples: {result.sample_count:,}; source channels: {result.source_raw_channel_count:,}.",
+        *ppt.machine_overview_lines(result.report_metadata),
     )))
     ppt._set_shape_text(shapes[22], "Diesel Data Context")
     height = "Road height available." if "track_height" in result.resolution.resolved else "Road height unavailable; gradient is measured."
@@ -145,6 +141,7 @@ def _overview(shapes, result):
     ppt._set_overview_card_body(shapes[23], "\n".join((
         "Engine speed, torque and cumulative fuel mass resolved.", flow, height,
         f"Optional raw channels unavailable: {len(result.resolution.missing_optional)}.",
+        *result.report_metadata.warnings,
     )))
 
 
@@ -226,7 +223,8 @@ def build_diesel_powerpoint(
         _replace_plots(slide, shapes, page, definition.plot_ids, plots, assets, prs.slide_width)
         if page == 3:
             agro = excel_result.statistics_result.reporting_agro
-            text = 'Capacity: observed maximum inferred load [kg], not nominal tank capacity.'
+            text = ('Capacity: observed ' + agro.capacity.status + ' mass [kg]; not nominal tank capacity. See source policy and quality warnings.'
+                    if agro and agro.capacity.value is not None else 'Agro mass unavailable: ' + (agro.capacity.reason if agro else 'source not configured'))
             if agro and agro.net_mass_rate and agro.net_mass_rate.value is None:
                 text += '\nAgro discharge rate unavailable: ' + agro.net_mass_rate.reason + '.'
             _remove(shapes[37])
@@ -270,6 +268,7 @@ def build_diesel_powerpoint(
     prs.core_properties.keywords = config.keywords
     prs.core_properties.comments = config.comments
     path = Path(output_dir) / config.output_filename
+    ppt._write_machine_notes(prs, excel_result, config)
     try:
         prs.save(path)
     except Exception as exc:

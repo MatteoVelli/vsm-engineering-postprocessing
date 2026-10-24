@@ -16,6 +16,9 @@ class ReportingInputs:
     density_provenance: str | None = None
     hitch_force_is_remaining_agro_mass: bool = False
     agro_mass_provenance: str | None = None
+    agro_mass_source_policy: str = 'unconfigured'
+    agro_mass_source: str | None = None
+    agro_mass_source_provenance: str | None = None
     agro_volume_source: str | None = None
     agro_volume_provenance: str | None = None
     agro_flow_source: str | None = None
@@ -36,6 +39,10 @@ class ReportingInputs:
             raise ConfigurationError('Agrochemical density requires provenance in kg/L')
         if not isinstance(self.hitch_force_is_remaining_agro_mass, bool):
             raise ConfigurationError('hitch_force_is_remaining_agro_mass must be boolean')
+        if self.agro_mass_source_policy not in {'unconfigured', 'force_inference', 'direct_mass'}:
+            raise ConfigurationError('agro_mass_source_policy must be unconfigured, force_inference or direct_mass')
+        if self.agro_mass_source_policy != 'unconfigured' and (not self.agro_mass_source or not self.agro_mass_source_provenance):
+            raise ConfigurationError('Configured agro mass requires a source mapping and policy provenance')
         for item in fields(self):
             if item.name in {'battery_mass_kg', 'density_kg_per_L', 'hitch_force_is_remaining_agro_mass'}:
                 continue

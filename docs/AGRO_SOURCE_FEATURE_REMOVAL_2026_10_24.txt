@@ -1,0 +1,136 @@
+Complete removal of the client-facing Agro Mass Source feature - 24 October 2026
+===============================================================================
+
+This supersedes the partial removal described in
+archive/2026-10-agro/TEMPLATE_AGRO_WORKFLOW_2026_10_24.txt.
+The earlier numerical/source-policy corrections remain intact.
+
+Final targeted changes
+-----------------------
+src/vsm_postprocessing/ui_app.py:
+  Deleted the optional agrochemical source-configuration block entirely, including
+  source-policy selection, source/header/provenance fields, physical-interpretation
+  controls and its direct-volume/flow source overrides. None remains in Advanced
+  Configuration. Battery Pack Mass, density and machine-specification controls
+  retain their previous behavior. Source settings remain profile/API configuration,
+  not client UI inputs. Supported profiles still resolve automatically.
+
+src/vsm_postprocessing/excel_report_engine.py:
+  Replaced _write_agro_source_sheet() with _bind_agro_excel_sources(). The main
+  raw/MATH channel reuse rules are unchanged. The fallback no longer creates ANY
+  worksheet. Only missing dependencies are placed in unused, hidden columns D:F
+  of the Metadata worksheet which already existed before the agro feature.
+    D: configured raw force or direct mass, only if it is not exported.
+    E: canonical remaining-mass formula, only if main MATH cannot be reused.
+    F: cumulative distance, only if it is not exported.
+  Existing A:B metadata fields are preserved. No helper vectors duplicate an
+  already-bound main input. Columns D:F and the Metadata sheet are hidden.
+  Raw/MATH columns, independent export choices and Sergio's visible layout are
+  unchanged. No replacement auxiliary worksheet is introduced under another name.
+
+  Diesel's legacy 9.80665 MATH remains untouched; qualified reporting still uses
+  9.81 in Metadata E when necessary. Direct kg values use an identity formula,
+  without a force conversion. Formula/chart bindings and source coordinates in
+  manifests now point to the actual existing main or Metadata columns.
+
+No changes to agro_reporting.py, agro_mass.py, the validated numerical engine,
+profile configuration, PowerPoint design or the shared formula compiler were
+needed for this final removal. The existing four-metric formula writer already
+accepts worksheet/column bindings and therefore follows the new locations.
+No numerical or export-selection constraint prevented complete removal.
+
+Safeguards and Excel behavior preserved
+---------------------------------------
+Capacity, L/m, kg/m and net kg/km Value cells remain real Excel formulas, including
+formula-valued N/A cases. Available values depend on raw worksheet data, density
+and dynamic analysis-window ranges, not copied final Python results. Canonical
+mass uses -Fz/9.81 or the configured direct kg source. Full-recalculation flags
+and deterministic initial formula caches remain in place.
+
+Source mapping, units, missing/nonfinite values, force sign, zero signals,
+negative contents, refills, discontinuities, density requirements and provenance
+retain the established policy. Observed inferred mass is not nominal tank
+capacity, measured contents or physically validated spraying. Questionable Caiman
+and all-zero Diesel behavior are preserved. Internal configuration-driven sources
+are retained; arbitrary forces are never guessed to be chemical contents.
+
+Regression updates
+-------------------
+tests/test_agro_excel_formulas.py: existing Metadata columns and genuine formulas
+  for all four metrics; caches, units, sample lengths and source-quality cases.
+tests/test_agro_source_policy.py: dedicated worksheet is forbidden in all six
+  cross-format source/profile generation cases, including unexported direct kg.
+tests/test_template_agro_workflow.py: exact ordinary worksheet inventory, no
+  replacement auxiliary sheet; Metadata fallback for independent exports and
+  Diesel gravity; direct-source and unknown-machine behavior; no source controls
+  even with Advanced Configuration/density enabled.
+tests/test_machine_specifications.py: UI reset test uses no removed controls;
+  preserves manual-input isolation between sources and profiles.
+scripts/validate_template_agro_workflow.py: all regenerated reference workbooks
+  must have no Agro Mass Source worksheet, regardless of visibility.
+This document is new; the preceding partial-removal document links here.
+
+Focused verification
+---------------------
+91 targeted source-policy, Excel-formula and workflow tests passed in 41.25s.
+  outputs/agro_removal_contract.log
+Complete suite: 868 passed, 1 existing skip, no failures, in 1147.73s (19m07s).
+  .venv\Scripts\python.exe -u -m pytest -ra -p no:cacheprovider
+    --basetemp outputs/agro_removal_all_tmp
+  outputs/agro_removal_all.log
+The skip remains tests/test_sergio_october_15.py:338: soil plots apply to Electric
+and Hybrid profiles, not Diesel. Focused counts overlap the complete suite.
+
+58 cache-free test workbooks passed 312 native Excel formula/value checks,
+including 80 checks after edits to density, underlying force/direct kg, refills,
+missing source cells and zero signals. Both MAIN and METADATA source locations
+were exercised for both source policies. Six native chart-series checks passed,
+including valid Diesel and unexported direct-mass sources using hidden Metadata.
+  outputs/agro_source_removal_native/audit.json
+  outputs/agro_source_removal_native/native_excel/results.json
+  outputs/agro_removal_native_synthetic.log
+
+Reviewable reference/changed-load reports
+-----------------------------------------
+outputs/agro_source_removal_2026_10_24/audit.json indexes the regenerated Electric
+3500/8500, Caiman Hybrid and Diesel Excel/PowerPoint report sets. All report
+values/statuses/assumptions/provenance match the preceding engineering audit.
+The existing regeneration script was run with OUTPUT set to this new directory,
+preserving the earlier evidence folders and original comparison artifacts.
+
+3500 UoL: observed inferred maximum 498.1569826707441 kg; net 45.33840184907765 kg/km.
+8500 UoL: observed inferred maximum 3996.788990825688 kg; net 363.1218540582613 kg/km.
+Mass diagnostics and missing-density volumetric results are unchanged.
+Caiman keeps its questionable positive maximum and unavailable discharge rates.
+The zero-force Diesel reference remains unavailable.
+
+future_machine_proof.json records an explicitly derived unknown-filename fixture
+with halved 8500 force samples, yielding 1998.394495412844 kg and
+181.56092702913065 kg/km automatically. It is a regression fixture, not a new
+physical simulation. Independent tests also cover 2000/4000 kg synthetic loads.
+
+legacy_engine_comparison.json confirms exact equality of 110 legacy math arrays,
+161 statistics and 39 KPIs with the saved HEAD baseline. No numerical engine was
+redesigned. The five cache-free reference/fixture workbooks passed 20 additional
+native formula checks and eight additional chart-series checks. Totals: 63 native
+workbooks, 332 formula/value checks (80 after edits), and 14 chart-series checks.
+All 20 saved native reference Value caches match the Python reporting engine.
+  outputs/agro_removal_native_references.log
+  outputs/agro_source_removal_2026_10_24/native_excel/results.json
+  outputs/agro_source_removal_2026_10_24/worksheet_inventory.json
+The final OOXML inventory checked 308 newly generated workbooks/copies, including
+the available profile reports from the complete regression suite:
+  Dedicated Agro Mass Source worksheets, visible or hidden: 0.
+  Replacement auxiliary worksheets: 0.
+It verifies ordinary client reports retain exactly the pre-existing main report,
+Rename From VSM to Astauto, Metadata, Statistics and Formula Support worksheets.
+Metadata/Formula Support are the existing hidden sheets, not new replacements.
+  outputs/agro_removal_inventory_final.log
+  outputs/agro_source_removal_2026_10_24/worksheet_inventory.json
+All four original source CSV hashes and both original Electric XLSX/PPTX
+comparison-set hashes remain unchanged. git diff --check reports no whitespace
+errors. HEAD remains 6112f34fd6857f42c3bf78a3114c3bc80ea5b6cc.
+
+Original reports and historical evidence are retained read-only. The absence
+requirement applies to newly generated reports; original archived workbooks are
+not silently rewritten. No commit or push is performed.

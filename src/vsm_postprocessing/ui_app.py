@@ -395,8 +395,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
             else:
                 st.info("Legacy reporting uses the previous source mappings and sample-energy convention. The legacy high-voltage auxiliary definition is a constant zero, not a measured high-voltage source.")
             reporting_inputs = _render_reporting_metadata_inputs(st, profile_definition, source_path)
-            verified_identity = machine_name_override if reporting_inputs.get('machine_configuration_id') == 'robosprayer_v5_3500kg' else None
-            settings = repr((profile_definition.profile_path, selection, report_import_options, reporting_inputs, verified_identity))
+            settings = repr((profile_definition.profile_path, selection, report_import_options, reporting_inputs, machine_name_override))
             validation_key += ":" + hashlib.sha256(settings.encode()).hexdigest()
 
     if st.session_state.get("profile_input_key") != validation_key:
@@ -483,9 +482,15 @@ def _render_reporting_metadata_inputs(st, definition, source_path=None):
     profile = load_reporting_profile(definition.profile_path)
     detected = resolve_report_metadata(source_path or 'Unknown.csv', profile)
     defaults = asdict(detected.reporting_inputs)
+    source = Path(source_path) if source_path else None
+    revision = (source.stat().st_size, source.stat().st_mtime_ns) if source and source.is_file() else None
+    scope = hashlib.sha256(repr((str(source.resolve()) if source else None, revision,
+                                 str(definition.profile_path.resolve()))).encode()).hexdigest()[:16]
+    def widget_key(name):
+        return 'report_metadata_' + scope + '_' + name
     if definition.powertrain in {'electric', 'hybrid'}:
         mass_text = st.text_input('Battery pack mass (kg)', value='',
-                                  key='report_battery_mass_' + definition.powertrain,
+                                  key=widget_key('battery_mass'),
                                   help='Optional manual engineering input. Leave blank to show N/A.')
         try:
             mass = float(mass_text) if mass_text.strip() else None
@@ -495,38 +500,31 @@ def _render_reporting_metadata_inputs(st, definition, source_path=None):
                         battery_mass_status='user_provided' if mass is not None else 'not_provided',
                         battery_mass_provenance='Manual report input' if mass is not None else None)
     manual = {key: value for key, value in defaults.items() if value != getattr(detected.reporting_inputs, key)}
-    st.caption('Agro discharge rate uses net remaining mass loss [kg] / final cumulative distance [km].')
-    with st.expander('Advanced reporting overrides'):
-        if not st.checkbox('Override automatically detected reporting information'):
+    st.caption('Agrochemical mass is calculated automatically using the selected reporting profile.')
+    with st.expander('Advanced Configuration'):
+        if not st.checkbox('Override automatically detected reporting information', key=widget_key('advanced')):
             return manual
         st.caption('Overrides affect reporting only. Chemical density has no assumed default.')
         identifiers = [None, *[item['configuration_id'] for item in profile.metadata.machine_configurations
                               if definition.powertrain in item['powertrains']]]
         selected = st.selectbox('Machine configuration override', identifiers,
+                                key=widget_key('configuration'),
                                 index=identifiers.index(defaults['machine_configuration_id']) if defaults['machine_configuration_id'] in identifiers else 0,
                                 format_func=lambda value: value or 'Automatic / unspecified')
         if selected and selected != defaults['machine_configuration_id']:
             record = next(item for item in profile.metadata.machine_configurations if item['configuration_id'] == selected)
             defaults.update(record['reporting_inputs'])
             defaults['machine_configuration_id'] = selected
-        density = st.checkbox('Specify agrochemical density [kg/L]', value=defaults['density_kg_per_L'] is not None)
+        density = st.checkbox('Specify agrochemical density [kg/L]', value=defaults['density_kg_per_L'] is not None, key=widget_key('density_enabled'))
         if density:
-            density_text = st.text_input('Agrochemical density [kg/L] (strictly positive)', value=str(defaults['density_kg_per_L'] or ''))
+            density_text = st.text_input('Agrochemical density [kg/L] (strictly positive)', value=str(defaults['density_kg_per_L'] or ''), key=widget_key('density'))
             try:
                 defaults['density_kg_per_L'] = float(density_text) if density_text.strip() else None
             except ValueError:
                 defaults['density_kg_per_L'] = density_text  # validated by ReportingInputs before generation
-            defaults['density_provenance'] = st.text_input('Density source / assumption', value=defaults['density_provenance'] or '') or None
+            defaults['density_provenance'] = st.text_input('Density source / assumption', value=defaults['density_provenance'] or '', key=widget_key('density_provenance')) or None
         else:
             defaults.update(density_kg_per_L=None, density_provenance=None)
-        if st.checkbox('Override remaining-load interpretation'):
-            defaults['hitch_force_is_remaining_agro_mass'] = st.checkbox('Rear hitch represents remaining chemical load', value=defaults['hitch_force_is_remaining_agro_mass'])
-            defaults['agro_mass_provenance'] = st.text_input('Load interpretation source', value=defaults['agro_mass_provenance'] or '')
-        st.caption('Force inference uses -Fz/9.81. Negative contents, refills and discontinuities make the full-window rate unavailable.')
-        for prefix, label in [('agro_volume', 'Trusted cumulative discharged volume [L]'), ('agro_flow', 'Trusted discharged flow [L/s, L/min or L/h]')]:
-            defaults[prefix + '_source'] = st.text_input(label + ' — exact source header (optional)', value=defaults[prefix + '_source'] or '') or None
-            defaults[prefix + '_provenance'] = st.text_input(label + ' — source provenance', value=defaults[prefix + '_provenance'] or '') or None
-        st.caption('Direct cumulative volume takes priority over flow and force. An invalid configured direct source is reported as unavailable.')
     return {key: value for key, value in defaults.items() if value != getattr(detected.reporting_inputs, key)}
 
 

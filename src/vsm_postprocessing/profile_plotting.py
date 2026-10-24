@@ -99,6 +99,8 @@ def render_profile_plots(
     resolution: ProfileResolutionResult | None = None,
     math_result: ProfileMathResult | None = None,
     defaults: PlotDefaults | None = None,
+    *,
+    reporting_agro=None,
 ) -> ProfilePlottingResult:
     if resolution is None:
         resolution = resolve_profile(dataset, profile)
@@ -106,6 +108,24 @@ def render_profile_plots(
         math_result = calculate_profile_math_channels(dataset, profile, resolution)
 
     channels_by_name, values_by_name = _build_semantic_maps(dataset, resolution, math_result)
+    if reporting_agro is not None:
+        # A reporting view, not a mutation of the validated legacy MATH arrays.
+        name = 'reporting_agro_mass'
+        mass_label = 'Remaining Mass (' + reporting_agro.capacity.status + ')'
+        if reporting_agro.mass_values is not None:
+            prototype = next(iter(channels_by_name.values()))
+            channels_by_name[name] = replace(prototype, channel_id=name, unit='kg', kind='reporting',
+                source_name=reporting_agro.capacity.source, display_name=mass_label,
+                provenance=reporting_agro.capacity.provenance)
+            values_by_name[name] = reporting_agro.mass_values
+        plots = []
+        for plot in profile.plots:
+            if any(s.semantic_name == 'agrochemical_discharge' for s in plot.series):
+                plot = replace(plot, series=tuple(replace(s, semantic_name=name,
+                    label=mass_label) if s.semantic_name == 'agrochemical_discharge' else s
+                    for s in plot.series), primary_y_label=mass_label + ' [kg]')
+            plots.append(plot)
+        profile = replace(profile, plots=tuple(plots))
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
     defaults = defaults or PlotDefaults()

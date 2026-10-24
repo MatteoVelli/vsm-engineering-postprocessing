@@ -63,7 +63,8 @@ def test_profile_excel_report_generates_reopenable_electric_workbook(electric_re
     assert electric_report.math_count == 33
     assert electric_report.statistic_count == 33
     assert electric_report.kpi_count == 11
-    assert electric_report.plot_count == 15
+    assert electric_report.plot_count == 13
+    assert 'all-zero' in electric_report.statistics_result.reporting_agro.capacity.reason
     assert electric_workbook.sheetnames == [
         "RoboSprayer Electric",
         "Rename From VSM to Astauto",
@@ -147,14 +148,14 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
     metadata_sheet = electric_workbook["Metadata"]
 
     assert "Plot Templates" not in electric_workbook.sheetnames
-    assert len(report_sheet._charts) == 15
+    assert len(report_sheet._charts) == 13
     anchors = [(chart.anchor._from.col + 1, chart.anchor._from.row + 1) for chart in report_sheet._charts]
-    assert anchors == [(electric_report.report_channel_count + 2 + (i % 2) * 8, 6 + (i // 2) * 20) for i in range(15)]
+    assert anchors == [(electric_report.report_channel_count + 2 + (i % 2) * 8, 6 + (i // 2) * 20) for i in range(13)]
     def title_text(chart):
         return "".join(run.t for paragraph in chart.title.tx.rich.p for run in paragraph.r)
     assert title_text(report_sheet._charts[0]) == "Speed Vs Distance"
     assert title_text(report_sheet._charts[2]) == "Road Profile"
-    assert title_text(report_sheet._charts[12]) == "Remaining Agrochemical Mass and Battery SOC Vs Time"
+    assert not any('Agrochemical Mass' in title_text(chart) for chart in report_sheet._charts)
     assert report_sheet.cell(6, electric_report.report_channel_count + 2).value is None
     assert report_sheet._charts[0].anchor.ext.cx == 637 * 9525
     assert report_sheet._charts[0].anchor.ext.cy == 3.75 * 914400
@@ -168,6 +169,10 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
             assert len(component.series) == len(channel_ids)
             for series, channel_id in zip(component.series, channel_ids):
                 def reference(name):
+                    if name == 'reporting_agro_mass':
+                        location = electric_report.workbook_structure['agro_source']['mass']
+                        col = location['column']
+                        return f"{quote_sheetname(location['sheet'])}!${col}$5:${col}${electric_report.sample_count + 4}"
                     col = get_column_letter(columns[name])
                     return f"{quote_sheetname(report_sheet.title)}!${col}$5:${col}${electric_report.sample_count + 4}"
                 assert series.xVal.numRef.f == reference(plot.x_channel_id)
@@ -179,7 +184,7 @@ def test_profile_excel_report_includes_plots_metadata_and_template_comparison(
     assert metadata["Workbook data start row"] == DATA_START_ROW
     assert metadata["Workbook data end row"] == DATA_START_ROW + 3853 - 1
     assert metadata["Exported report channels"] == 325
-    assert metadata["Rendered plots"] == 15
+    assert metadata["Rendered plots"] == electric_report.plot_count
     assert metadata["Resolved raw profile channels"] == (
         metadata["Exported VSM raw channels"] + metadata["Exported AVL raw channels"]
     )
@@ -219,11 +224,11 @@ def test_profile_excel_report_hybrid_dry_run_remains_profile_generic(tmp_path: P
     assert result.math_count == 36
     assert result.statistic_count == 42
     assert result.kpi_count == 11
-    assert result.plot_count == 21
+    assert result.plot_count == 19
     assert workbook["RoboSprayer Hybrid"].sheet_state == "visible"
     assert workbook["Rename From VSM to Astauto"].sheet_state == "visible"
     assert workbook["Metadata"].sheet_state == "hidden"
-    assert len(workbook["RoboSprayer Hybrid"]._charts) == 21
+    assert len(workbook["RoboSprayer Hybrid"]._charts) == 19
 
 
 def test_profile_excel_report_exports_latest_electric_road_height(tmp_path: Path) -> None:

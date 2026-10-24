@@ -5,6 +5,10 @@ profile:
   description: Semantic Electric reporting profile extracted from Sergio workbook templates. Runtime channel IDs are resolved
     from source names at import time.
   powertrain: electric
+  reporting_inputs:
+    agro_mass_source_policy: force_inference
+    agro_mass_source: agrochemical_discharge_force
+    agro_mass_source_provenance: 'Explicit reporting policy: resolved rear vertical hitch force is mapped to inferred remaining load using -Fz/9.81; agrochemical attribution is an assumption requiring engineering confirmation, not proof from a channel name or trend.'
   machine_configurations:
   - configuration_id: robosprayer_v5_3500kg
     machine_names:
@@ -14,10 +18,7 @@ profile:
     - 3500kg
     powertrains:
     - electric
-    reporting_inputs:
-      hitch_force_is_remaining_agro_mass: true
-      agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
-        inferred load, not measured or nominal tank capacity
+    reporting_inputs: {}
   - configuration_id: full_size_sprayer_8500kg
     machine_names:
     - Full Size
@@ -27,10 +28,7 @@ profile:
     powertrains:
     - electric
     - hybrid
-    reporting_inputs:
-      hitch_force_is_remaining_agro_mass: true
-      agro_mass_provenance: Sergio workbook rear-hitch mapping and historical force-to-load calculation; supported
-        inferred load, not measured or nominal tank capacity
+    reporting_inputs: {}
 channels:
   raw:
   - semantic_name: track_time
@@ -3060,12 +3058,6 @@ presentation:
         label: EDU Mech Power RR
   footer: VSM Engineering Post-Processing Tool
   powerpoint_template: reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx
-  metadata_pills:
-    - GVW 3,500 kg
-    - Electric powertrain
-    - 12 kph field
-    - Battery 50 kW
-    - Motor 63 rpm
   slides:
     - slide_id: cover
       statistics:

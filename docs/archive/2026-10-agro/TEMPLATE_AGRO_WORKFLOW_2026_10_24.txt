@@ -1,0 +1,180 @@
+Template-driven agrochemical reporting simplification - 24 October 2026
+======================================================================
+
+Historical partial-removal record. The final removal of source controls and all
+dedicated source worksheets is documented in AGRO_SOURCE_FEATURE_REMOVAL_2026_10_24.txt.
+
+Scope and findings before editing
+---------------------------------
+The supported profiles already selected force_inference automatically, through
+the configured agrochemical_discharge_force semantic mapping to
+HitchRear_Force_Z_VehicleCoordinates [N]. Hybrid inherits the common Electric
+mapping; Diesel has its own explicit reporting mapping. No new machine matching
+or filename-based exception was needed. Direct kg sources still require an
+appropriate profile/API configuration with provenance; arbitrary forces are not
+guessed to be chemical mass.
+
+The unnecessary exposure was in two places:
+1. Accessing general advanced settings/density also displayed the source-policy
+   selector, semantic/raw-header source field and policy provenance. Confidence
+   and volumetric-source controls were mixed into those general settings.
+2. Every numerically available mass source produced a visible Agro Mass Source
+   worksheet duplicating raw force and calculated mass, even when the main
+   report already held the correct live source/MATH columns.
+
+Original templates inspected first
+----------------------------------
+Robo_Sprayer_Electrification_Tamplate_Electric.xlsx:
+  BU [N] -> BV [Kg], BV5 = -1*BU5/9.81.
+Robo_Sprayer_Electrification_Tamplate_Hybrid_04/_06/_07/_08.xlsx:
+  CC [N] -> CD [Kg], CD5 = -1*CC5/9.81.
+The original Hybrid.xlsx and Hybrid_02.xlsx instead use CB -> CC. This version
+variation reinforces why production references must resolve channels dynamically.
+Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx:
+  AK [N] -> AL [Kg], AL5 = -1*AK5/9.81.
+The supplied Caiman Gen80kW workbook explicitly labels AK as
+HitchRear_Force_Z_VehicleCoordinates [N], with the same AL formula.
+The raw/MATH profile definitions preserve this semantic mapping. Template column
+letters occur in evidence/tests only, never in the new source-binding decisions.
+
+Implemented behavior
+---------------------
+Normal workflow remains upload -> profile/output selection -> generate.
+Battery Pack Mass and density retain their previous behavior. Agro source policy
+and physical confidence now require a separate, optional 'Override agrochemical
+source configuration' checkbox inside Advanced Configuration. Density alone does
+not expose or change those fields. Profile defaults remain automatic; the user
+does not need to approve a physical interpretation to obtain qualified inference.
+
+Before writing workbook charts/formulas, the exporter resolves the actual source
+channel ID to exported semantic columns. It reuses the main calculated mass only
+when the source identity, expression (-Fz/9.81) and deterministic sample arrays
+match the selected reporting method. A directly configured kg source can be used
+directly from its exported main column. Statistics and charts share this binding.
+
+For the normal Electric/Hybrid force configuration with exported source, mass and
+distance, Agro Mass Source is removed entirely. Existing main raw/MATH columns,
+their formula caches, their order and the user's independent selections remain.
+When an input is not exported or the legacy MATH convention differs, the existing
+source helper is retained HIDDEN. It links to main inputs where possible. This
+supports direct kg channels omitted by a fixed template and minimal channel
+exports, without forcing columns into the main report. It also preserves the
+separate canonical 9.81 reporting calculation when legacy Diesel MATH uses
+9.80665. No validated legacy expression, array or statistic is rewritten.
+
+All four reporting Value cells are actual formulas, including unavailable kg/km:
+  agro_capacity_observed_kg
+  agro_discharge_rate_L_per_m
+  agro_mass_discharge_rate_kg_per_m
+  agro_discharge_rate_kg_per_km
+Rows, column references and sample extents are dynamic. The existing distinctions
+remain: kg/m and density-derived L/m use travelled distance; net kg/km uses the
+final cumulative distance and can retain a refill warning. Missing density is N/A.
+Monotonicity, missing/negative contents, nonfinite values and discontinuity checks
+retain their established meanings. Excel guards enforce those distinctions.
+
+No calculated observed maximum is labelled nominal tank capacity or measured
+chemical contents. Source policy, assumed interpretation, quality status and
+provenance remain in reporting metadata and notes. Visible/hidden sheet lists and
+new workbook-source coordinates now describe the actual generated workbook.
+PowerPoint templates/design and the plotting/numerical engines are unchanged.
+
+Files changed for this task
+---------------------------
+src/vsm_postprocessing/ui_app.py: separate optional source overrides from density
+  and general advanced settings; automatic, familiar normal workflow.
+src/vsm_postprocessing/excel_report_engine.py: source bindings reuse main report
+  data; hidden fallback only when needed; charts use that same binding; return
+  actual worksheet/source structure for manifests and workbook metadata.
+src/vsm_postprocessing/agro_excel_formulas.py: resolved source ranges; shared
+  four-metric writer, including formula-valued unavailable kg/km. The former
+  separate kg/km writer is removed to avoid a second source-selection path.
+tests/test_template_agro_workflow.py (new): 22 template/UI/future-load/export and
+  direct-source cases across Electric, Hybrid and Diesel.
+tests/test_agro_excel_formulas.py: all four formulas and hidden-fallback checks.
+tests/test_agro_source_policy.py: source/chart assertions follow main or hidden
+  bindings, and ordinary Electric/Hybrid force reports omit the duplicate sheet.
+tests/test_machine_specifications.py: UI scope/reset test follows the optional
+  expert source checkbox, retaining source/profile isolation.
+tests/test_profile_excel_report.py: chart-source assertions use resolved metadata.
+scripts/validate_template_agro_workflow.py (new): regenerate reference Excel/PPTX,
+  check previous metadata/numerics, compare legacy baselines and create an unknown
+  filename fixture with changed force magnitude; prepare cache-free native inputs.
+scripts/validate_agro_statistics_formulas_excel.ps1: additionally verify native
+  chart series sample counts/extrema. Existing formula-bar, cache-free calculation
+  and edited-input checks remain.
+This document is new. Other dirty files belong to the preceding tasks and have
+been preserved; they are not new changes made for this simplification.
+
+Regenerated engineering evidence
+--------------------------------
+outputs/template_agro_workflow_2026_10_24/audit.json indexes the four reference
+Excel and PowerPoint sets. Original CSVs and archived comparison reports remain
+read-only. Original manual battery inputs/selections were preserved for the two
+Electric comparisons; no source-policy or physical-confirmation setup was added.
+
+3500 UoL: inferred observed maximum 498.1569826707441 kg;
+  kg/m 0.04533840184907765; kg/km 45.33840184907765; L/m N/A (no density).
+8500 UoL: inferred observed maximum 3996.788990825688 kg;
+  kg/m 0.3631218540582613; kg/km 363.1218540582613; L/m N/A (no density).
+Caiman: positive inferred maximum 3998.6544342507646 kg remains questionable
+  because of negative contents; unsupported mass discharge rates remain N/A.
+Diesel reference: all-zero force remains unavailable, not an inferred empty tank.
+Reporting values/statuses/provenance/trace match the preceding audit exactly.
+
+legacy_engine_comparison.json confirms exact equality to saved HEAD snapshots
+for all 110 legacy math arrays, 161 statistics and 39 KPIs in the four cases.
+Excel legacy Statistics/KPIs also match the original archived workbook caches to
+the existing 1e-12 serialization tolerance.
+
+future_machine_proof.json records a deliberately derived fixture: the 8500 raw
+CSV force samples were halved, the file renamed to an unknown carrier/cycle, and
+reports generated with automatic defaults and no matched machine configuration.
+It yields 1998.394495412844 kg and 181.56092702913065 kg/km, exactly half the
+original observed quantities. This is a regression fixture, not a claim to have
+performed a new physical simulation. Independent synthetic tests explicitly vary
+initial loads 2000/4000 kg across all three profiles and preserve legacy arrays.
+
+Validation
+-----------
+59 formula/workflow tests passed (including 22 new workflow cases):
+  outputs/agro_simplify_contract.log
+52 cache-free generated test workbooks passed 248 native Excel formula/value
+checks, including 40 after changing density and the MAIN raw source (both force
+and direct kg), introducing refills, clearing source samples and zeroing sources.
+  outputs/template_agro_native_synthetic/native_excel/results.json
+  outputs/agro_simplify_native_synthetic.log
+The five reference/changed-load workbooks passed 20 more native formula checks
+and eight chart-series sample-count/extrema checks. All 20 saved native Value
+caches also match the Python results. Total: 57 workbooks, 268 formula/value
+checks (40 after edited inputs), plus eight native chart checks.
+  outputs/template_agro_workflow_2026_10_24/native_audit.json
+  outputs/template_agro_workflow_2026_10_24/native_excel/results.json
+  outputs/agro_simplify_native_references.log
+Complete suite: 868 passed, 1 existing skip, no failures, in 1143.36s (19m03s).
+  .venv\Scripts\python.exe -u -m pytest -ra -p no:cacheprovider
+    --basetemp outputs/agro_simplify_all_tmp
+  outputs/agro_simplify_all.log
+The existing skip is tests/test_sergio_october_15.py:338: soil plots apply to
+Electric and Hybrid profiles, not Diesel. Focused counts overlap the full suite.
+Earlier exploratory logs retain stale worksheet expectations and incomplete
+synthetic profile-fixture failures; those were corrected before the final clean
+contract and complete-suite runs. No failures remain.
+
+Final hash checks confirm all four reference CSVs and both original Electric
+XLSX/PPTX comparison sets are unchanged. git diff --check reports no whitespace
+errors. HEAD remains 6112f34fd6857f42c3bf78a3114c3bc80ea5b6cc.
+Excel runs outside the filesystem sandbox because its
+COM server cannot start inside that sandbox. All saved copies stay in outputs;
+original source and report files are not modified.
+
+Remaining engineering assumptions
+----------------------------------
+Sergio still needs to confirm chemical attribution of the mapped rear force,
+including implement tare, dynamics, gradients and sign convention. The template
+proves the intended conversion, not that every force sample is chemical weight
+or physically validated spraying. Nominal tank capacity and fluid density remain
+separate inputs; neither is invented. Direct kg sources require their simulation
+definition/provenance. Existing Caiman and Diesel quality restrictions are kept.
+
+No commit or push is performed.

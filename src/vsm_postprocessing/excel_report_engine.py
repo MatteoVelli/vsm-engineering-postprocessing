@@ -37,6 +37,7 @@ from .profile_plotting import ProfilePlottingResult, render_profile_plots, _prep
 from .profile_statistics import ProfileStatisticsResult, build_canonical_report_metrics, calculate_profile_statistics
 from .report_metadata import ReportMetadata, resolve_report_metadata
 from .agro_reporting import calculate_reporting_kpis, reporting_metric_rows
+from .agro_excel_formulas import write_agro_statistics_formulas
 from .report_profile import ProfileResolutionResult, ReportingProfile, load_reporting_profile, resolve_profile
 from .report_selection import ProfileReportSelection, select_profile
 from .statistics_engine import StatisticResult, StatisticsResult, calculate_statistics, compute_statistic
@@ -133,6 +134,7 @@ class ProfileExcelReportResult:
     template_comparison: list[dict[str, str]]
     report_metadata: ReportMetadata
     selection: ProfileReportSelection | None = None
+    workbook_structure: dict[str, Any] | None = None
 
     @property
     def sample_count(self) -> int:
@@ -538,6 +540,7 @@ def generate_profile_excel_report(
     statistics_result = calculate_profile_statistics(dataset, profile, resolution, math_result)
     statistics_result.reporting_agro = calculate_reporting_kpis(statistics_result, report_metadata)
     statistics_result.diagnostics.extend(statistics_result.reporting_agro.trace['warnings'])
+    statistics_result.diagnostics.extend(report_metadata.warnings)
     if report_metadata.reporting_inputs.battery_mass_kg is None and profile.metadata.powertrain in {'electric', 'hybrid'}:
         statistics_result.diagnostics.append('Battery pack mass not specified; enter Battery pack mass (kg) to include it in the report')
     if not statistics_result.is_complete:
@@ -551,7 +554,8 @@ def generate_profile_excel_report(
     destination = Path(output_dir).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
     plot_assets_dir = destination / "profile_plot_assets"
-    plotting_result = render_profile_plots(dataset, profile, plot_assets_dir, resolution, math_result)
+    plotting_result = render_profile_plots(dataset, profile, plot_assets_dir, resolution, math_result,
+                                           reporting_agro=statistics_result.reporting_agro)
     required_channels = {
         channel.semantic_name for channel in (*profile.raw_channels, *profile.math_channels) if channel.required
     }
@@ -581,7 +585,7 @@ def generate_profile_excel_report(
     summary_path = destination / "profile_excel_report_summary.txt"
     report_type = report_type or (profile.metadata.powertrain or profile.profile_id)
 
-    _write_profile_workbook(
+    workbook_structure = _write_profile_workbook(
         report_path,
         source_path=source_path,
         profile_path=profile_path,
@@ -615,6 +619,7 @@ def generate_profile_excel_report(
         template_comparison=comparison,
         report_metadata=report_metadata,
         selection=selection,
+        workbook_structure=workbook_structure,
     )
     manifest_path.write_text(
         json.dumps(_profile_manifest(result, source_path, profile_path, report_type), indent=2),
@@ -891,13 +896,14 @@ def _write_profile_workbook(
     template_comparison: list[dict[str, str]],
     excel_plot_ids: tuple[str, ...] | None = None,
     bottom_operations: tuple[str, ...] | None = None,
-) -> None:
+) -> dict[str, Any]:
     workbook = Workbook()
     report = workbook.active
     report.title = _profile_sheet_name(profile, report_metadata)
     mapping_sheet = workbook.create_sheet("Rename From VSM to Astauto")
     metadata_sheet = workbook.create_sheet("Metadata")
     metadata_sheet.sheet_state = "hidden"
+    _bind_agro_excel_sources(workbook, statistics_result, report, report_channels)
 
     thin = Side(style="thin", color="B7C9D6")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -985,37 +991,93 @@ def _write_profile_workbook(
 
     from .profile_kpi_formulas import write_profile_kpi_formulas
     write_profile_kpi_formulas(workbook, report, statistics_result, report_channels)
-    _write_net_mass_rate_formula(workbook, report, statistics_result, report_channels, report_metadata)
+    write_agro_statistics_formulas(workbook, statistics_result, report_metadata)
+
+    structure = {
+        'visible_sheet_names': [s.title for s in workbook if s.sheet_state == 'visible'],
+        'hidden_sheet_names': [s.title for s in workbook if s.sheet_state != 'visible'],
+        'agro_source': {key: {'sheet': location[0].title, 'column': get_column_letter(location[1])}
+                        for key, location in getattr(workbook, '_report_agro_source', {}).items()
+                        if key != 'reason'},
+        'agro_source_note': getattr(workbook, '_report_agro_source', {}).get('reason', 'Source unavailable'),
+    }
+    for cells in metadata_sheet:
+        if cells[0].value in {'Visible sheets', 'Hidden sheets'}:
+            key = 'visible_sheet_names' if cells[0].value == 'Visible sheets' else 'hidden_sheet_names'
+            cells[1].value = ', '.join(structure[key])
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     save_report_workbook(workbook, output_path)
+    return structure
 
 
-def _write_net_mass_rate_formula(workbook, report, result, report_channels, metadata):
-    """Keep the shared net-mass KPI live using current semantic column mappings."""
-    metric = result.reporting_agro.net_mass_rate if result.reporting_agro else None
-    columns = {channel.channel_id: i for i, channel in enumerate(report_channels, 1)}
-    if (metric is None or metric.value is None
-            or not {'agrochemical_discharge', 'track_distance'} <= columns.keys()):
+def _bind_agro_excel_sources(workbook, result, report=None, report_channels=()):
+    """Reuse report channels; put missing dependencies in existing Metadata columns."""
+    agro = result.reporting_agro
+    if agro is None or agro.mass_values is None:
         return
-    mass = get_column_letter(columns['agrochemical_discharge'])
-    distance = get_column_letter(columns['track_distance'])
-    last = result.dataset.quality.sample_count + 4
-    prefix = quote_sheetname(report.title) + '!'
-    masses = f'{prefix}{mass}5:{mass}{last}'
-    distances = f'{prefix}{distance}5:{distance}{last}'
-    first_mass, last_mass = f'{prefix}{mass}5', f'{prefix}{mass}{last}'
-    final_distance = f'{prefix}{distance}{last}'
-    divisor = 1000 if result.resolution.resolved['track_distance'].effective_unit == 'm' else 1
-    formula = (f'=IFERROR(IF(AND(COUNT({masses})=ROWS({masses}),'
-               f'COUNT({distances})=ROWS({distances}),MIN({masses})>=0,'
-               f'MIN({distances})>=0,{first_mass}>={last_mass},{final_distance}>0),'
-               f'({first_mass}-{last_mass})/({final_distance}/{divisor}),"N/A"),"N/A")')
-    extra_start = len(result.statistics) + len(result.kpis) + 8
-    for index, row in enumerate(reporting_metric_rows(result, metadata)):
-        if row['metric_id'] == metric.metric_id:
-            write_formula(workbook['Statistics'].cell(extra_start + index, 3), formula, metric.value)
-            break
+    trace = agro.trace['mass_source']
+    columns = {c.channel_id: i for i, c in enumerate(report_channels, 1)}
+    selected = next(((name, item) for name, item in result.resolution.resolved.items()
+                     if item.channel.channel_id == trace.get('raw_channel_id') and name in columns), None)
+    raw_location = (report, columns[selected[0]]) if report is not None and selected else None
+    distance_location = (report, columns['track_distance']) if report is not None and 'track_distance' in columns else None
+    mass_location = None
+    if raw_location and trace['policy'] == 'direct_mass':
+        mass_location = raw_location
+    elif raw_location and 'agrochemical_discharge' in columns:
+        definition = result.profile.math_by_semantic_name().get('agrochemical_discharge')
+        # Formula identity and source identity both matter: equal samples alone
+        # cannot establish that a different mass channel is interchangeable.
+        if definition and definition.expression and definition.dependencies == (selected[0],):
+            expected = [f'-1 * {selected[0]} / 9.81', f'-{selected[0]} / 9.81', f'{selected[0]} / -9.81']
+            expression = ast.dump(ast.parse(definition.expression, mode='eval'))
+            if (expression in {ast.dump(ast.parse(e, mode='eval')) for e in expected}
+                    and np.array_equal(result.math_result.values_by_semantic_name.get('agrochemical_discharge'), agro.mass_values)):
+                mass_location = (report, columns['agrochemical_discharge'])
+    if mass_location and distance_location:
+        workbook._report_agro_source = {'raw': raw_location, 'mass': mass_location, 'distance': distance_location,
+            'reason': 'Existing main-report source and canonical mass channels; no duplicate worksheet'}
+        return
+    # Respect independent exports and preserve legacy Diesel 9.80665 MATH values.
+    # The reporting convention remains 9.81; never reuse an incompatible column.
+    # Metadata already exists in every report. Reserve only its unused D:F
+    # columns; A:B keep the original metadata layout. No auxiliary sheet or
+    # visible report column is created, and independent export choices stand.
+    source_sheet = workbook['Metadata']
+    source_sheet.cell(3, 4, 'Configured raw mass source')
+    source_sheet.cell(3, 5, 'Reporting remaining mass [kg]')
+    source_sheet.cell(3, 6, 'Cumulative distance')
+    source_sheet.cell(1, 4, str(trace.get('raw_header')) + ' | ' + trace['policy'] + ' | ' + trace['assumption'])
+    source_sheet.cell(2, 4, trace['provenance'])
+    for row in (1, 2):
+        source_sheet.merge_cells(start_row=row, start_column=4, end_row=row, end_column=6)
+        source_sheet.cell(row, 4).alignment = Alignment(wrap_text=True, vertical='top')
+    source_sheet.cell(4, 4, trace.get('effective_unit'))
+    source_sheet.cell(4, 5, 'kg')
+    raw_id = trace.get('raw_channel_id')
+    raw = result.dataset.values[:, result.dataset.channel_index(raw_id)] if raw_id else None
+    d_item = result.resolution.resolved.get('track_distance')
+    if d_item:
+        source_sheet.cell(4, 6, d_item.effective_unit)
+    distances_data = result.dataset.values[:, result.dataset.channel_index(d_item.channel.channel_id)] if d_item else None
+    for index, value in enumerate(agro.mass_values, 5):
+        if raw is not None and raw_location is None:
+            source_sheet.cell(index, 4, float(raw[index - 5]))
+        if mass_location is None:
+            raw_sheet, raw_column = raw_location or (source_sheet, 4)
+            reference = f'{quote_sheetname(raw_sheet.title)}!{get_column_letter(raw_column)}{index}'
+            expression = f'=-{reference}/9.81' if trace['policy'] == 'force_inference' else f'={reference}'
+            write_formula(source_sheet.cell(index, 5), expression, float(value))
+        if distances_data is not None and distance_location is None:
+            d_value = float(distances_data[index - 5])
+            if math.isfinite(d_value):
+                source_sheet.cell(index, 6, d_value)
+    for col in ('D', 'E', 'F'):
+        source_sheet.column_dimensions[col].hidden = True
+    workbook._report_agro_source = {'raw': raw_location or (source_sheet, 4),
+        'mass': mass_location or (source_sheet, 5), 'distance': distance_location or (source_sheet, 6),
+        'reason': 'Existing Metadata helper columns: selected dependencies are unexported or legacy MATH uses a different source/gravity'}
 
 
 def _write_profile_report_sheet(
@@ -1503,6 +1565,10 @@ def _write_profile_plots_on_report_sheet(
     white_bold: Font,
     selected_ids: tuple[str, ...] | None = None,
 ) -> None:
+    channel_columns = dict(channel_columns)
+    binding = getattr(sheet.parent, '_report_agro_source', {})
+    if 'mass' in binding:
+        channel_columns['reporting_agro_mass'] = binding['mass']
     rendered = _ordered_profile_plots(plotting_result.rendered_plots)
     if selected_ids is not None:
         rendered = [plot for plot in rendered if plot.plot_id in selected_ids]
@@ -1721,7 +1787,7 @@ def _write_profile_statistics_sheet(
             item.definition.statistic_id,
             item.target_channel,
             item.definition.operation,
-            'Agro Capacity (observed maximum inferred load)' if item.definition.statistic_id == 'agrochemical_discharge_max' else item.definition.display_name or item.channel_display_name,
+            'Legacy profile inferred mass maximum' if item.definition.statistic_id == 'agrochemical_discharge_max' else item.definition.display_name or item.channel_display_name,
             item.value,
             item.channel_unit or "-",
             item.definition.placement_group or "-",
@@ -1901,6 +1967,9 @@ def _write_profile_metadata_sheet(
         cell.border = border
     metadata.extend([
         ('Reporting inputs', json.dumps(asdict(report_metadata.reporting_inputs))),
+        ('Machine configuration detection', report_metadata.configuration_detection),
+        ('Machine specifications', json.dumps(report_metadata.machine_specifications)),
+        ('Machine metadata warnings', '; '.join(report_metadata.warnings)),
         ('Battery pack mass', report_metadata.reporting_inputs.battery_display),
         ('Agro reporting diagnostics', json.dumps(statistics_result.reporting_agro.to_dict()) if statistics_result.reporting_agro else 'Unavailable'),
     ])
@@ -2051,6 +2120,9 @@ def _profile_manifest(
         "safe_output_stem": result.report_path.stem,
         "machine_detection_source": result.report_metadata.detection_source,
         "reporting_inputs": asdict(result.report_metadata.reporting_inputs),
+        "configuration_detection": result.report_metadata.configuration_detection,
+        "machine_specifications": result.report_metadata.machine_specifications,
+        "metadata_warnings": result.report_metadata.warnings,
         "reporting_metrics": reporting_metric_rows(result.statistics_result, result.report_metadata),
         "agro_reporting": result.statistics_result.reporting_agro.to_dict() if result.statistics_result.reporting_agro else None,
         "source_file": str(source_path),
@@ -2085,8 +2157,7 @@ def _profile_manifest(
         "plot_series_count": result.plotting_result.series_count,
         "report_channel_ids": [channel.channel_id for channel in result.report_channels],
         "plot_ids": [plot.plot_id for plot in result.plotting_result.rendered_plots],
-        "visible_sheet_names": [_profile_sheet_name(result.profile, result.report_metadata), "Rename From VSM to Astauto", "Statistics"],
-        "hidden_sheet_names": ["Metadata"],
+        **(result.workbook_structure or {}),
     }
 
 

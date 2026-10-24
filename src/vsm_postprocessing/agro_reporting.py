@@ -1,11 +1,12 @@
 """Conservative agro reporting independent of the validated legacy KPI arrays."""
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import math
 from typing import Any
 
 import numpy as np
 
 from .reporting_inputs import ReportingInputs
+from .agro_mass import resolve_mass_values
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,9 @@ class ReportingMetric:
     source: str = ''
     definition: str = ''
     status: str = 'unavailable'
+    interpretation_status: str = 'unconfirmed'
+    quality_status: str = 'unavailable'
+    provenance: str = ''
 
 
 @dataclass(frozen=True)
@@ -26,18 +30,23 @@ class AgroReport:
     rate: ReportingMetric
     trace: dict[str, Any]
     net_mass_rate: ReportingMetric | None = None
+    mass_values: np.ndarray | None = field(default=None, repr=False, compare=False)
 
     @property
     def mass_rate(self):
         return ReportingMetric('agro_mass_discharge_rate_kg_per_m', 'Agro Mass Discharge Diagnostic',
                                self.trace.get('mass_rate_kg_per_m'), 'kg/m',
-                               reason='' if self.trace.get('mass_rate_kg_per_m') is not None else self.rate.reason,
-                               source=self.trace.get('mass_source', 'HitchRear_Force_Z_VehicleCoordinates'),
-                               definition='Initial minus final inferred remaining mass / full-window travelled distance; not volumetric discharge',
-                               status='inferred' if self.trace.get('mass_rate_kg_per_m') is not None else 'unavailable')
+                               reason='' if self.trace.get('mass_rate_kg_per_m') is not None else (
+                                   self.capacity.reason or self.rate.reason or 'Selected mass/window does not support a monotonic mass-loss diagnostic; inspect quality and refill warnings'),
+                               source=self.capacity.source,
+                               interpretation_status=self.capacity.interpretation_status,
+                               quality_status=self.capacity.quality_status, provenance=self.capacity.provenance,
+                               definition='Initial minus final selected remaining mass / full-window travelled distance; not volumetric discharge',
+                               status=self.capacity.status if self.trace.get('mass_rate_kg_per_m') is not None else 'unavailable')
 
     def to_dict(self):
-        return {**asdict(self), 'mass_rate': asdict(self.mass_rate)}
+        return {'capacity': asdict(self.capacity), 'rate': asdict(self.rate), 'trace': self.trace,
+                'net_mass_rate': asdict(self.net_mass_rate) if self.net_mass_rate else None, 'mass_rate': asdict(self.mass_rate)}
 
 
 def calculate_net_mass_discharge_rate(mass_kg, mass_unit, distance, distance_unit):
@@ -91,7 +100,8 @@ def calculate_net_mass_discharge_rate(mass_kg, mass_unit, distance, distance_uni
 
 def calculate_agro_kpis(distance, distance_unit, *, inputs: ReportingInputs,
                         force_N=None, force_unit=None, volume_L=None, volume_unit=None,
-                        flow=None, flow_unit=None, time_s=None, time_unit='s'):
+                        flow=None, flow_unit=None, time_s=None, time_unit='s',
+                        mass_kg=None, mass_unit=None):
     trace = {'analysis_window': 'entire report sample window', 'sample_count': len(distance) if distance is not None else 0,
              'density_kg_per_L': inputs.density_kg_per_L, 'density_provenance': inputs.density_provenance,
              'method': None, 'status': 'unavailable', 'warnings': [], 'gravity_m_per_s2': 9.81,
@@ -105,34 +115,34 @@ def calculate_agro_kpis(distance, distance_unit, *, inputs: ReportingInputs,
     def unavailable(reason):
         if reason not in trace['warnings']:
             trace['warnings'].append(reason)
-        return AgroReport(capacity, ReportingMetric(**{**asdict(rate), 'reason': reason}), trace)
+        return AgroReport(capacity, ReportingMetric(**{**asdict(rate), 'reason': reason,
+            'source': trace.get('source') or capacity.source, 'provenance': trace.get('source_provenance') or capacity.provenance,
+            'interpretation_status': capacity.interpretation_status}), trace, mass_values=mass)
 
-    # Profile-supported physical interpretation is distinct from numerical validity.
-    mass = None
-    mass_problem = None
-    if force_N is not None and inputs.hitch_force_is_remaining_agro_mass:
-        trace['capacity_method'] = 'inferred from force: -HitchRear_Force_Z_VehicleCoordinates / 9.81'
-        if force_unit != 'N':
-            mass_problem = 'hitch force unit mismatch (N required)'
-        else:
-            mass = -np.asarray(force_N, dtype=float) / 9.81
-            if len(mass) < 2 or not np.isfinite(mass).all():
-                mass_problem = 'nonfinite or insufficient remaining-mass data'
-            elif np.all(mass == 0):
-                mass_problem = 'all-zero hitch force: no inferable payload'
-            else:
-                if np.any(mass < 0):
-                    mass_problem = 'nonphysical negative inferred contents; verify source model and operating phases'
-                # A valid observed maximum remains a loading estimate even if later contents are invalid.
-                if np.max(mass) > 0:
-                    capacity = ReportingMetric(**{**asdict(capacity), 'value': float(np.max(mass)), 'reason': '',
-                                                  'source': 'HitchRear_Force_Z_VehicleCoordinates [N] / -9.81', 'status': 'inferred'})
-        if mass_problem:
-            trace['warnings'].append(mass_problem)
-            if capacity.value is None:
-                capacity = ReportingMetric(**{**asdict(capacity), 'reason': mass_problem})
-    elif force_N is not None:
-        capacity = ReportingMetric(**{**asdict(capacity), 'reason': 'hitch-force remaining-mass interpretation not confirmed'})
+    # Resolve one explicitly mapped source, irrespective of machine identity.
+    mass, mass_trace = resolve_mass_values(inputs, force=force_N, force_unit=force_unit,
+                                          mass=mass_kg, mass_unit=mass_unit)
+    trace['mass_source'] = mass_trace
+    trace['gravity_m_per_s2'] = mass_trace['gravity_m_per_s2']
+    trace['warnings'].extend(mass_trace['warnings'])
+    trace['capacity_method'] = mass_trace['formula']
+    source = inputs.agro_mass_source or 'Explicit manual rear-hitch force mapping'
+    trace['mass_source_name'] = source
+    mass_problem = mass_trace.get('reason')
+    if mass is not None:
+        trace.update(initial_remaining_mass_kg=float(mass[0]), final_remaining_mass_kg=float(mass[-1]))
+        kind = 'inferred' if mass_trace['policy'] == 'force_inference' else 'simulated'
+        capacity = ReportingMetric(**{**asdict(capacity), 'value': float(np.max(mass)), 'reason': '',
+            'label': 'Agro Capacity (' + kind + ')', 'status': kind, 'source': source,
+            'interpretation_status': mass_trace['interpretation_status'],
+            'quality_status': mass_trace['quality_status'], 'provenance': mass_trace['provenance'] or '',
+            'definition': 'Observed maximum ' + kind + ' remaining mass; not nominal tank capacity; ' + mass_trace['assumption']})
+        if np.any(mass < 0):
+            mass_problem = 'nonphysical negative inferred contents; verify source model and operating phases'
+    else:
+        capacity = ReportingMetric(**{**asdict(capacity), 'reason': mass_problem or 'remaining mass unavailable',
+            'source': source, 'interpretation_status': mass_trace['interpretation_status'],
+            'provenance': mass_trace['provenance'] or ''})
 
     if distance_unit not in {'m', 'km'}:
         return unavailable('distance unit mismatch (m or km required)')
@@ -194,10 +204,8 @@ def calculate_agro_kpis(distance, distance_unit, *, inputs: ReportingInputs,
         divisor = 60 if flow_unit.lower().endswith('/min') else 3600 if flow_unit.lower().endswith('/h') else 1
         volume = float(np.sum((f[1:] + f[:-1]) / 2 * np.diff(t)) / divisor)
     else:
-        trace.update(method='inferred from force', source='HitchRear_Force_Z_VehicleCoordinates',
-                     formula='remaining_mass_kg = -force_N / 9.81; volume_L = (mass_first - mass_last) / density_kg_per_L')
-        if not inputs.hitch_force_is_remaining_agro_mass:
-            return unavailable('hitch-force remaining-mass interpretation not confirmed; no direct volume source configured')
+        trace.update(method=mass_trace['policy'], source=source,
+                     formula=mass_trace['formula'] + '; volume_L = (mass_first - mass_last) / density_kg_per_L')
         if mass_problem:
             return unavailable(mass_problem)
         if mass is None or len(mass) != len(d):
@@ -216,8 +224,10 @@ def calculate_agro_kpis(distance, distance_unit, *, inputs: ReportingInputs,
         return unavailable('nonfinite or negative discharge volume/rate')
     trace.update(discharged_volume_L=volume, status='available')
     rate = ReportingMetric(**{**asdict(rate), 'value': volume / travelled, 'source': trace['source'],
-                              'status': 'inferred' if trace['method'] == 'inferred from force' else 'confirmed'})
-    return AgroReport(capacity, rate, trace)
+                              'status': capacity.status if trace['method'] in {'force_inference', 'direct_mass'} else 'confirmed',
+                              'interpretation_status': capacity.interpretation_status if trace['method'] in {'force_inference', 'direct_mass'} else 'configured_volume_source',
+                              'quality_status': 'valid', 'provenance': trace.get('source_provenance') or capacity.provenance})
+    return AgroReport(capacity, rate, trace, mass_values=mass)
 
 
 def calculate_reporting_kpis(statistics_result, metadata):
@@ -242,28 +252,44 @@ def calculate_reporting_kpis(statistics_result, metadata):
 
     inputs = metadata.reporting_inputs
     d, du = semantic('track_distance')
-    force, fu = semantic('agrochemical_discharge_force')
+    t, tu = semantic('track_time')
+    source = inputs.agro_mass_source
+    source_item = resolved.get(source) if source else None
+    if source_item is not None:
+        selected, selected_unit = semantic(source)
+    else:
+        selected, selected_unit = direct(source) if source else (None, None)
+    inferred = inputs.agro_mass_source_policy == 'force_inference'
     v, vu = direct(inputs.agro_volume_source) if inputs.agro_volume_source else (None, None)
     f, f_unit = direct(inputs.agro_flow_source) if inputs.agro_flow_source else (None, None)
-    t, tu = semantic('track_time')
-    report = calculate_agro_kpis(d, du, inputs=inputs, force_N=force, force_unit=fu,
-                                 volume_L=v, volume_unit=vu, flow=f, flow_unit=f_unit, time_s=t, time_unit=tu)
-    mass = statistics_result.math_result.values_by_semantic_name.get('agrochemical_discharge')
-    mass_definition = statistics_result.profile.math_by_semantic_name().get('agrochemical_discharge')
-    mass_unit = mass_definition.unit if mass_definition else None
-    if mass_definition and mass is None:
-        identities = {mass_definition.source_name.casefold(), mass_definition.report_name.casefold()}
-        matches = [c for c in dataset.channels if c.source_name.casefold() in identities
-                   and str(c.unit).casefold() == 'kg']
-        if len(matches) == 1:
-            mass = dataset.values[:, dataset.channel_index(matches[0].channel_id)]
-            mass_unit = matches[0].unit
-    metric, net_trace = calculate_net_mass_discharge_rate(
-        mass, mass_unit, d, du)
-    net_trace['mass_expression'] = mass_definition.expression if mass_definition else None
-    report = AgroReport(report.capacity, report.rate, report.trace, metric)
+    report = calculate_agro_kpis(d, du, inputs=inputs,
+        force_N=selected if inferred else None, force_unit=selected_unit if inferred else None,
+        mass_kg=None if inferred else selected, mass_unit=None if inferred else selected_unit,
+        volume_L=v, volume_unit=vu, flow=f, flow_unit=f_unit, time_s=t, time_unit=tu)
+    # The endpoint calculation itself is unchanged; only its source is unified.
+    metric, net_trace = calculate_net_mass_discharge_rate(report.mass_values, 'kg', d, du)
+    mass_trace = report.trace['mass_source']
+    metric = ReportingMetric(**{**asdict(metric), 'source': report.capacity.source,
+        'status': report.capacity.status if metric.value is not None else 'unavailable',
+        'interpretation_status': report.capacity.interpretation_status,
+        'quality_status': report.capacity.quality_status if metric.value is not None else 'unavailable',
+        'provenance': report.capacity.provenance,
+        'definition': metric.definition + '; net mass loss, not cumulative sprayed mass; ' + mass_trace['assumption']})
+    if metric.value is None and report.mass_values is None:
+        metric = ReportingMetric(**{**asdict(metric), 'reason': report.capacity.reason})
+    net_trace.update(mass_expression=mass_trace['formula'], source=report.capacity.source,
+                     interpretation_status=mass_trace['interpretation_status'], provenance=mass_trace['provenance'])
+    net_trace['warnings'].append(mass_trace['assumption'])
+    report = AgroReport(report.capacity, report.rate, report.trace, metric, report.mass_values)
     report.trace['net_mass_discharge'] = net_trace
     report.trace['warnings'].extend(net_trace['warnings'])
+    matches = ([source_item.channel] if source_item else [c for c in dataset.channels if c.source_name == source])
+    report.trace['mass_source'].update(
+        raw_header=matches[0].source_name if len(matches) == 1 else source,
+        raw_unit=matches[0].unit if len(matches) == 1 else None,
+        effective_unit=selected_unit,
+        raw_channel_id=matches[0].channel_id if len(matches) == 1 else None,
+        resolution='resolved' if selected is not None else 'missing, ambiguous or unit-incompatible')
     report.trace['analysis_window'] = {'first_sample': 0, 'last_sample': dataset.quality.sample_count - 1,
                                       'time_start': dataset.quality.time_start, 'time_end': dataset.quality.time_end,
                                       'time_unit': dataset.quality.time_unit, 'selection': 'entire report source window'}

@@ -1,0 +1,135 @@
+Targeted Excel Statistics Value formulas - 23 October 2026
+=========================================================
+
+This change adds actual Excel formulas in the Value column, not mathematical
+descriptions in Definition cells. It preserves the preceding general source
+policy and machine-specification corrections already in this working tree.
+
+Finding
+-------
+The preceding shared _write_net_mass_rate_formula() already replaced available
+Capacity values with MAX('Agro Mass Source'!B5:B<last>) and available kg/km with
+a live endpoint formula. L/m and kg/m still contained static Python results.
+Unavailable Capacity/L/m/kg/m cells were static N/A text. The new shared writer
+handles all three requested Value cells, including formula-valued N/A cases.
+Existing kg/km formulas and Python numerical calculations are unchanged.
+
+Implementation
+--------------
+src/vsm_postprocessing/agro_excel_formulas.py (new):
+  write_agro_statistics_formulas() writes the three Statistics Value formulas
+  using the dynamic reporting-metric row registry. It references the canonical
+  Agro Mass Source worksheet, whose B column already contains either =-Arow/9.81
+  or =Arow for the configured force/direct source. Capacity is a guarded MAX.
+  The mass diagnostic is initial minus final mass / (last minus first distance).
+  The volumetric inference additionally divides by a referenced density parameter
+  initialized from ReportingInputs with its existing provenance. No density is
+  assumed. Missing density yields N/A inside an actual formula.
+
+  Helpers append to the existing hidden Formula Support sheet, without moving
+  existing columns or parameter cells. Distances convert to meters as required.
+  COUNT/ROWS, MIN and SUMPRODUCT guards check aligned numeric samples, valid sign,
+  nonnegative and monotonic cumulative distance, positive travelled distance and
+  nonincreasing mass. Nonzero absolute step helpers implement the existing >=5
+  steps and >20 times median discontinuity rule; zeros become text blanks that
+  MEDIAN ignores. IF prevents evaluation of an empty median. IFERROR catches
+  missing/error cells and numerical errors. Inferred all-zero force is unavailable;
+  explicitly configured direct kg zero contents remain valid.
+
+  A missing or unsupported configured mass source produces ="N/A"; it never
+  fabricates a source or number. Existing configured direct cumulative volume and
+  integrated volumetric flow modes retain their source selection and formulas
+  over their actual samples. An invalid selected volumetric source cannot fall
+  back silently to a mass/density inference.
+
+src/vsm_postprocessing/excel_report_engine.py:
+  Calls the new shared writer after the existing profile KPI formula compiler.
+  Removes the duplicate capacity assignment from the kg/km writer. The existing
+  kg/km calculation/writer otherwise remains unchanged. Main report layout,
+  Statistics row positions, borders, number formats, metadata and provenance are
+  retained. No change to agro_reporting.py or validated math is part of this task.
+
+tests/test_agro_excel_formulas.py (new):
+  37 regressions: three profiles, force/direct sources, sample counts 2/7/31,
+  meter/kilometer distances, nonzero origins, missing density, zero/reversed/
+  negative/discontinuous distance, refills, mass jumps, negative contents,
+  missing/zero/nonfinite/wrong-unit force, missing distance, direct volumetric
+  modes and unavailable configured volume. Integration cases select only Time
+  for visible raw export, verifying source independence from export selection.
+  Assertions cover real formula types, dynamic ranges, cached values, formats,
+  hidden helpers, full-recalculation flags and unchanged metadata.
+
+scripts/validate_agro_statistics_formulas.py (new):
+  Regenerates the four reference workbooks using the previous audit's sources,
+  profile paths, report selections and explicit inputs. Records metric cell
+  coordinates, formula strings, types, cache values and source hashes. Also makes
+  disposable cache-free copies for independent Excel evaluation.
+
+scripts/validate_agro_statistics_formulas_excel.ps1 (new):
+  Opens disposable copies read-only in desktop Excel, runs CalculateFullRebuild,
+  checks HasFormula, Formula (formula-bar expression) and Value2, and saves
+  independent recalculated copies under outputs. An optional mutations list
+  checks edited inputs in memory without changing original workbooks.
+
+This document is also new. Existing files changed by earlier tasks remain in the
+working tree; they are not additional changes introduced by this targeted task.
+
+Recalculation and cache behavior
+-------------------------------
+The unchanged write_formula()/save_report_workbook() architecture writes genuine
+OOXML <f> elements and deterministic Python-derived numeric or string caches.
+data_only=True readers therefore receive initial values, including N/A text.
+openpyxl does not calculate formulas. Workbooks request auto calculation,
+fullCalcOnLoad and forceFullCalc. Desktop Excel recomputes the dependencies and
+writes its own caches when saved. A third-party openpyxl load/save can discard
+formula caches; such a reader must recalculate in Excel or use this repository's
+cache-writing path. Cached agreement alone is not claimed as Excel evaluation.
+
+Native Excel evidence
+---------------------
+Excel COM initially failed inside the filesystem sandbox (0x80080005). Starting
+the registered Excel application outside that sandbox succeeded (Excel 16.0).
+Only workspace-generated files were opened; originals were read-only.
+
+37 cache-free synthetic/regression workbooks passed 141 native formula/value
+checks. This includes 30 checks after changing density, configured raw force or
+mass, introducing a refill, clearing a source sample and setting the entire
+source to zero. Both direct and force sources were exercised. Formula-bar text
+and HasFormula are recorded, not inferred from cell display text.
+  outputs/agro_formula_native_synthetic/native_excel/results.json
+  outputs/agro_formula_native_synthetic.log
+
+The four real reference workbooks passed all 14 applicable native formula/value
+checks. The two pre-existing unavailable Hybrid/Diesel kg/km text cells remain
+unchanged. All 16 reporting caches in the saved native copies match the Python
+reference, and agro reporting manifest metadata matches the preceding audit.
+  outputs/agro_statistics_formulas_2026_10_23/audit.json
+  outputs/agro_statistics_formulas_2026_10_23/native_excel/results.json
+  outputs/agro_formula_native_references.log
+
+Electric 3500: C56=498.1569826707441 kg, C57=N/A, C58=0.04533840184907765 kg/m.
+Electric 8500: C56=3996.788990825688 kg, C57=N/A, C58=0.3631218540582613 kg/m.
+All six cells are formulas. C57 is unavailable because no density was supplied.
+Hybrid: C58 is the qualified observed maximum; C59/C60 formula results are N/A
+because of source-quality restrictions. Diesel: C65/C66/C67 are genuine N/A
+formulas because its reference hitch-force signal is all zero.
+
+Python test results
+-------------------
+New tests: 37 passed in 7.78s (outputs/agro_formula_new_fixed.log).
+Affected reporting regressions: 209 passed in 415.93s
+  (outputs/agro_formula_regression.log).
+Complete suite: 846 passed, 1 existing skip in 1207.79s (20m07s), no failures.
+  Command: .venv\Scripts\python.exe -u -m pytest -ra -p no:cacheprovider
+    --basetemp outputs/agro_formula_all_tmp
+  Log: outputs/agro_formula_all.log
+The existing skip is tests/test_sergio_october_15.py:338: soil plots apply to
+Electric and Hybrid profiles, not Diesel. The full run completed after midnight
+on 24 October. Focused counts overlap the complete suite and are not additive.
+
+Final source-hash checks confirm all four reference CSVs are unchanged, as are
+both original Electric XLSX and both original Electric PPTX comparison files.
+git diff --check reports no whitespace errors. Repository HEAD remains
+6112f34fd6857f42c3bf78a3114c3bc80ea5b6cc.
+
+No commit or push is performed. No new physical assumption or density is added.

@@ -9,6 +9,7 @@ from .report_profile import ReportingProfile
 from .utils import client_display_filename
 from .reporting_inputs import ReportingInputs
 from .errors import ConfigurationError
+from .machine_specifications import resolve_machine_specifications
 
 _SEPARATOR_PATTERN = re.compile(r"[_\-\s]+")
 _INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]+')
@@ -62,6 +63,8 @@ class ReportMetadata:
     simulation_description: str | None = None
     reporting_inputs: ReportingInputs = field(default_factory=ReportingInputs)
     configuration_detection: str = 'unmatched'
+    machine_specifications: dict = field(default_factory=dict)
+    warnings: tuple[str, ...] = ()
 
 
 def resolve_report_metadata(
@@ -87,7 +90,10 @@ def resolve_report_metadata(
             raise ConfigurationError('Specify density only once')
         overrides['density_kg_per_L'] = overrides.pop('agro_density_kg_per_L')
     configurations = getattr(getattr(profile, 'metadata', None), 'machine_configurations', ())
-    tokens = {token.casefold() for token in _filename_tokens(Path(source_filename).stem)}
+    ordered_tokens = [token.casefold() for token in _filename_tokens(Path(source_filename).stem)]
+    tokens = set(ordered_tokens)
+    identity_end = next((i for i, token in enumerate(ordered_tokens) if token in _POWERTRAIN_ALIASES), len(ordered_tokens))
+    identity_tokens = set(ordered_tokens[:identity_end])
     source_powertrains = tokens & set(_POWERTRAIN_ALIASES)
     requested = overrides.get('machine_configuration_id',
                               (source_metadata or {}).get('machine_configuration_id', defaults.machine_configuration_id))
@@ -99,15 +105,26 @@ def resolve_report_metadata(
                       and powertrain_name.casefold() in item['powertrains']
                       and (not source_powertrains or source_powertrains == {powertrain_name.casefold()}))
         if compatible and ((requested and requested == item['configuration_id']) or
-                           (not requested and set(map(str.casefold, item['identity_tokens'])) <= tokens)):
+                           (not requested and set(map(str.casefold, item['identity_tokens'])) <= identity_tokens)):
             matches.append(item)
     if requested and not matches:
         raise ConfigurationError('Machine configuration conflicts with machine name or powertrain, or is not defined in this profile')
+    if requested and matches:
+        expected = set(map(str.casefold, matches[0]['identity_tokens']))
+        source_weights = {token for token in identity_tokens if _WEIGHT_PATTERN.match(token)}
+        expected_weights = {token for token in expected if _WEIGHT_PATTERN.match(token)}
+        if source_weights and expected_weights and not expected_weights <= source_weights:
+            raise ConfigurationError('Machine configuration conflicts with source filename mass')
     if len(matches) > 1:
         raise ConfigurationError('Ambiguous machine configuration; select an advanced override')
     automatic = dict(matches[0]['reporting_inputs']) if matches else {}
     # Pack mass is an external input for this report, never a filename inference.
     for key in ('battery_mass_kg', 'battery_mass_status', 'battery_mass_provenance'):
+        automatic.pop(key, None)
+    # Mass mapping and physical confidence are source/report policies, never
+    # automatic consequences of a filename's machine identity.
+    for key in ('hitch_force_is_remaining_agro_mass', 'agro_mass_provenance',
+                'agro_mass_source_policy', 'agro_mass_source', 'agro_mass_source_provenance'):
         automatic.pop(key, None)
     if matches:
         automatic['machine_configuration_id'] = matches[0]['configuration_id']
@@ -117,6 +134,16 @@ def resolve_report_metadata(
     settings = ReportingInputs.from_mapping({**asdict(defaults), **automatic, **overrides})
     if powertrain_name == 'Diesel' and settings.battery_mass_kg is not None:
         raise ConfigurationError('Diesel reporting cannot use an electric battery pack specification')
+    warnings = []
+    source_identity = _resolve_machine_name(source_filename, machine_name_override=None,
+                                             source_metadata=source_metadata)[0]
+    if machine_name_override and machine_name.casefold() != source_identity.casefold():
+        warnings.append('Display name differs from source machine ' + source_identity
+                        + '; specifications remain tied to the source CSV; confirm identity')
+    if source_powertrains and source_powertrains != {powertrain_name.casefold()}:
+        warnings.append('Source filename powertrain differs from selected reporting profile; confirm selection')
+    if not matches:
+        warnings.append('No matching machine configuration; machine specifications and hitch interpretation require confirmation')
     return ReportMetadata(
         machine_name=machine_name,
         powertrain_name=powertrain_name,
@@ -127,6 +154,8 @@ def resolve_report_metadata(
         simulation_description=_simulation_description(source_filename, machine_name, powertrain_name),
         reporting_inputs=settings,
         configuration_detection=('explicit profile configuration' if requested else 'profile model/configuration/powertrain mapping') if matches else 'unmatched',
+        machine_specifications=resolve_machine_specifications(source_filename, matches[0] if matches else None),
+        warnings=tuple(warnings),
     )
 
 

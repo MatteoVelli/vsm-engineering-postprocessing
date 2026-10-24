@@ -10,7 +10,9 @@ from vsm_postprocessing.report_metadata import resolve_report_metadata
 
 
 def agro(mass=(500, 250, 0), distance=(0, 500, 1000), **kwargs):
-    options = dict(density_kg_per_L=1.0, density_provenance='Hypothetical unit test', hitch_force_is_remaining_agro_mass=True)
+    options = dict(density_kg_per_L=1.0, density_provenance='Hypothetical unit test', hitch_force_is_remaining_agro_mass=True,
+                   agro_mass_source_policy='force_inference', agro_mass_source='Test force',
+                   agro_mass_source_provenance='Explicit synthetic source mapping')
     options.update(kwargs.pop('options', {}))
     return calculate_agro_kpis(
         np.asarray(distance, dtype=float), 'm',
@@ -30,7 +32,7 @@ def test_missing_density_and_force_interpretation():
     result = agro(options={'density_kg_per_L': None})
     assert result.rate.value is None
     assert 'density required' in result.rate.reason
-    assert agro(options={'hitch_force_is_remaining_agro_mass': False}).rate.value is None
+    assert agro(options={'hitch_force_is_remaining_agro_mass': False}).rate.value == .5
 
 
 @pytest.mark.parametrize('mass,distance,reason', [

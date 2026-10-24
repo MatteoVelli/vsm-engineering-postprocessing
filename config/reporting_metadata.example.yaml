@@ -13,6 +13,9 @@ profile:
     battery_mass_provenance: null
     agro_density_kg_per_L: null
     density_provenance: null
+    agro_mass_source_policy: force_inference
+    agro_mass_source: agrochemical_discharge_force
+    agro_mass_source_provenance: 'Reporting assumption: map the resolved rear vertical hitch force to remaining load using -Fz/9.81; physical attribution requires confirmation.'
     hitch_force_is_remaining_agro_mass: false
     agro_volume_source: null
     agro_volume_provenance: null
@@ -22,7 +25,26 @@ profile:
 # Manual overrides containing only battery_mass_kg receive status user_provided and
 # provenance Manual report input. Explicit confirmed/estimated status is retained
 # only when deliberately supplied with provenance. Diesel needs no battery input.
-# Net agro discharge in kg/km reuses the profile mass calculation and final distance;
+# Net agro discharge in kg/km uses the selected reporting mass and final distance;
 # it does not require density. Density is only for the legacy volumetric diagnostic.
+# Direct kg input: use agro_mass_source_policy: direct_mass and set agro_mass_source
+# to its exact raw CSV header or an explicitly configured raw semantic mapping.
+# Supply agro_mass_source_provenance for either policy. Missing/invalid configured
+# sources never silently fall back to a different source. unconfigured disables
+# inference; the presence or trend of a force channel alone does not enable it.
+# The legacy hitch confirmation flag records confidence; no machine name supplies
+# it automatically. Force-derived capacity remains inferred even after confirmation.
+# Reporting samples use existing raw/MATH channels or hidden Metadata columns;
+# Statistics Value cells contain live formulas. No Agro Mass Source sheet exists.
 # Advanced overrides may explicitly select a compatible machine_configuration_id.
 # Never enter density 1 kg/L unless that value is explicitly justified.
+# Machine component specifications belong to a matched machine_configurations
+# record, never to presentation.metadata_pills or a shared profile default.
+# Each record may contain a specifications mapping with keys gvw_kg,
+# target_speed_kph, battery, motor, generator, engine. For each key provide
+# value, status (confirmed/user_provided/estimated), and nonempty provenance.
+# Mass and speed are positive numbers in kg and kph respectively; component
+# values are text with explicit units (include voltage, capacity, rated power,
+# motor count/type/speed, etc. only when supported by the cited source).
+# No component specifications are supplied by this example. Filename mass/speed
+# claims are displayed as TBC, and are never promoted to confirmed GVW/ratings.

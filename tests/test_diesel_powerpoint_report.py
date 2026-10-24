@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import posixpath
 from pathlib import Path
 from zipfile import ZipFile
@@ -72,7 +73,8 @@ def test_major_displayed_values_match_independent_d1_golden_results(report, metr
     assert matching_slides
     for slide in matching_slides:
         assert displayed in [shape.text for shape in slide.shapes if shape.has_text_frame]
-        assert f"{metric}: {actual.value!r}" in slide.notes_slide.notes_text_frame.text
+        notes = json.loads(slide.notes_slide.notes_text_frame.text)
+        assert notes['statistics'][metric]['value'] == actual.value
 
 
 def test_all_displayed_kpis_retain_canonical_values_and_units(report):
@@ -96,7 +98,7 @@ def test_diesel_terms_and_existing_plot_bytes_with_no_crop(report):
     text = "\n".join(_text(s) for s in prs.slides)
     for forbidden in ("battery", "soc", "edu", "range extender", "fuel economy", "hybrid", "electric"):
         assert forbidden not in text.lower()
-    assert "Powertrain Diesel" in text and "Engine Load" not in text
+    assert "Diesel powertrain" in text and "Engine Load" not in text
     assert "826.22 Nm" in text and "15.28 L/h" in text
     assert "Road height unavailable" in text and "identical in this run" in text
     plots = {p.plot_id: p for p in report.excel_result.plotting_result.rendered_plots}
@@ -192,7 +194,8 @@ def test_all_zero_optional_plots_are_omitted_without_changing_excel(tmp_path):
     with source.open("w", encoding="utf-8", newline="") as handle:
         csv.writer(handle).writerows(rows)
     result = generate_reporting_profile_engineering_report(source, PROFILE_PATH, tmp_path / "report")
-    assert result.excel_result.plot_count == 17
+    assert result.excel_result.plot_count == 15
+    assert result.excel_result.statistics_result.reporting_agro.capacity.value is None
     assert result.slide_count == 7 and result.powerpoint_result.plot_count == 4
     assert result.excel_result.report_channel_count == 67
 

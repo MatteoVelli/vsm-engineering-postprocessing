@@ -67,8 +67,8 @@ def test_reference_workbook_endpoints_and_profile_conversion(kind, expected_mass
     np.testing.assert_allclose(stats.math_result.values_by_semantic_name['agrochemical_discharge'],
                                samples[:, 3], rtol=1e-13, atol=1e-10)
     report = calculate_reporting_kpis(stats, resolve_report_metadata('Sample.csv', profile))
-    assert report.net_mass_rate.value == pytest.approx(expected_rate, rel=2e-14)
-    assert report.trace['net_mass_discharge']['discharged_mass_kg'] == pytest.approx(expected_mass, rel=2e-14)
+    assert report.net_mass_rate.value == pytest.approx(expected_rate * (9.80665/9.81 if kind == 'diesel' else 1), rel=2e-14)
+    assert report.trace['net_mass_discharge']['discharged_mass_kg'] == pytest.approx(expected_mass * (9.80665/9.81 if kind == 'diesel' else 1), rel=2e-14)
     assert report.net_mass_rate.unit == 'kg/km'
     assert _profile_template_file(profile, None).name.endswith('_04.xlsx' if kind == 'diesel' else '_08.xlsx')
     if kind == 'diesel':
@@ -118,7 +118,7 @@ def test_native_report_pipeline_and_battery_geometry(tmp_path, kind, mass):
         reporting_inputs=settings, selection=ProfileReportSelection(plots=()))
     prs = Presentation(report.presentation_path)
     text = '\n'.join(s.text for slide in prs.slides for s in slide.shapes if s.has_text_frame)
-    assert '1,666.67 kg/km' in text or '1666.67 kg/km' in text
+    assert f'{500 / .3 * gravity / 9.81:,.2f} kg/km' in text or f'{500 / .3 * gravity / 9.81:.2f} kg/km' in text
     if kind == 'diesel':
         assert 'BATTERY PACK MASS' not in text
     else:
@@ -139,7 +139,7 @@ def test_native_report_pipeline_and_battery_geometry(tmp_path, kind, mass):
     book = load_workbook(report.report_path, data_only=True)
     try:
         rows = {r[0]: r for r in book['Statistics'].values if r[0]}
-        assert rows['agro_discharge_rate_kg_per_km'][2] == pytest.approx(500 / .3)
+        assert rows['agro_discharge_rate_kg_per_km'][2] == pytest.approx(500 / .3 * gravity / 9.81)
         assert rows['agro_discharge_rate_kg_per_km'][3] == 'kg/km'
     finally:
         book.close()
@@ -192,13 +192,17 @@ def test_existing_mass_source_missing_force_and_optional_units(kind):
     stats = calculate_profile_statistics(data, profile)
     assert stats.resolution.is_valid
     assert 'agrochemical_discharge' not in stats.math_result.values_by_semantic_name
-    report = calculate_reporting_kpis(stats, resolve_report_metadata('Test.csv', profile))
+    report = calculate_reporting_kpis(stats, resolve_report_metadata('Test.csv', profile, reporting_inputs={
+        'agro_mass_source_policy': 'direct_mass', 'agro_mass_source': definition.source_name,
+        'agro_mass_source_provenance': 'Explicit synthetic simulation mass mapping'}))
     assert report.net_mass_rate.value == pytest.approx(500 / .3)
     # Optional unit mismatches never invalidate otherwise supported CSV data.
     data.channels[-1] = replace(data.channels[-1], unit='lb')
     stats = calculate_profile_statistics(data, profile)
     assert stats.resolution.is_valid
-    report = calculate_reporting_kpis(stats, resolve_report_metadata('Test.csv', profile))
+    report = calculate_reporting_kpis(stats, resolve_report_metadata('Test.csv', profile, reporting_inputs={
+        'agro_mass_source_policy': 'direct_mass', 'agro_mass_source': definition.source_name,
+        'agro_mass_source_provenance': 'Explicit synthetic simulation mass mapping'}))
     assert report.net_mass_rate.value is None
 
 

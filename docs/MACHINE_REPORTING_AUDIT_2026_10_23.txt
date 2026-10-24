@@ -1,0 +1,251 @@
+VSM Engineering Data Post-Processing: machine reporting audit
+23 October 2026
+
+Historical record: its machine-gated Agro Capacity availability decision is
+superseded by archive/2026-10-agro/AGRO_SOURCE_POLICY_2026_10_23.txt.
+The revised general source policy
+allows qualified numerical inference independently of machine matching.
+
+Scope and evidence
+------------------
+Independent repository audit; the user confirmed there is no separate audit
+attachment. No source simulations, reference Office files or original generated
+reports were edited. No commit, push or release was requested or performed.
+
+Primary CSVs in reference_files:
+1. RoboSprayer_3500Kg_Electric_UoL_Drive_Cycle_12kph_DriverPC_12-5pcGrad_01.csv
+2. RoboSprayer_8500Kg_Electric_02_UoL_Drive_Cycle_20kph_DriverPC_Flat_02.csv
+
+Original generated Office outputs selected by matching filenames:
+1. outputs/ui_runs/20261023_202309_023085/{profile_excel_report,profile_powerpoint_report}
+2. outputs/ui_runs/20261023_202617_048134/{profile_excel_report,profile_powerpoint_report}
+These are the latest matching runs found in the workspace. Both manifests name
+the October Electric profile, whose direct YAML hash matches the current file.
+Source hashes match the reference CSVs. Parent profiles are inherited, so a direct
+child-profile hash alone is not a complete fingerprint of effective configuration.
+
+The earlier 3500 run, 20261023_202149_582414, was also inspected. Its agro results
+and five fixed specification pills agree with the later run. Its battery mass
+is unspecified; the later run explicitly records 450 kg as user_provided. The
+8500 run records 1000 kg as user_provided. These are historical report inputs,
+not established battery design specifications. The reproduction script preserves
+the later runs' manual values, reporting selections and October profile revision.
+
+Additional source cases:
+Sprayer_Caiman_SP_9300Kg_Hybrid_12x1Km_4000Kg_Chem.csv (1770 samples)
+Full_Size_Sprayer_8500Kg_Diesel_Test_03_Crop_Field_MatLab_20kph_Gradient.csv
+(223 samples). Shipped Hybrid/Electric reference decks and all three profile
+definitions, including the October extensions, were inspected. The Diesel adapter
+deliberately uses the Electric Astauto deck as a visual template.
+
+Confirmed root causes (references refer to current files unless marked before)
+---------------------------------------------------------------------------
+1. Configuration matching, not missing rear-hitch data, suppresses 8500 capacity.
+   config/report_profiles/robosprayer_electric.yaml:9 defines the 3500 mapping,
+   with RoboSprayer/RoboSprayer V5 names and a supported inferred-load flag.
+   The 8500 entry at line 21 accepts Full Size/Full Size Sprayer, not RoboSprayer.
+   report_metadata.py:98-109 matches name AND powertrain AND identity tokens.
+   Consequently RoboSprayer_8500Kg_Electric remains unmatched, with default
+   hitch_force_is_remaining_agro_mass=False. A present channel does not establish
+   its physical meaning. No alias was added that would automatically confirm it.
+
+2. Agro Capacity and kg/km are separate reporting calculations by design.
+   agro_reporting.py:113 gates capacity on the physical-interpretation flag.
+   It computes the observed maximum -Fz/9.81 only when that flag is supported.
+   calculate_net_mass_discharge_rate(), line 43, checks numeric/unit/distance
+   validity but does not accept or require that interpretation flag.
+   calculate_reporting_kpis(), line 261, feeds it the preserved profile MATH
+   channel agrochemical_discharge and cumulative track distance.
+   excel_report_engine.py's summary registry substitutes the report-qualified
+   capacity for the legacy maximum; the PPT agro cards use that same registry.
+   This explains an N/A capacity alongside a nonzero calculated kg/km rate.
+
+   Exact 3500 case: 3769 imported samples; initial inferred mass
+   498.1569826707441 kg, final 11.25881753312946 kg, final distance 10.7392 km.
+   Observed capacity = 498.1569826707441 kg.
+   Net rate = 45.33840184907765 kg/km.
+
+   Exact 8500 case: 2197 imported samples; initial profile mass
+   3996.788990825688 kg, final 97.2960244648318 kg; final distance 10.7388 km.
+   (3996.788990825688 - 97.2960244648318) / 10.7388
+     = 363.1218540582613 kg/km, displayed as 363.12 kg/km.
+   The unqualified status 'calculated' previously did not explain that numeric
+   availability and physical validation are independent. The correction adds
+   this qualification in the shared registry, Excel diagnostics, PPT and notes.
+   No numeric expression or gravity constant was changed.
+
+3. Electric static specification override.
+   Before correction, robosprayer_electric.yaml:3063-3068 supplied metadata_pills:
+     GVW 3,500 kg / Electric powertrain / 12 kph field /
+     Battery 50 kW / Motor 63 rpm.
+   _cover_metadata_items() previously returned any five configured pills before
+   considering the current report. Both the cover and overview used that helper.
+   This is a profile-level hard-code rather than a CSV or Excel calculation.
+   The Astauto template contains the same strings, but the active renderer was
+   actively reapplying them from YAML. Removing template text alone would fail.
+
+4. Hybrid and Diesel findings.
+   Hybrid's own presentation replaces the Electric presentation object
+   (report_profile.py _merge_profiles: child.presentation or parent.presentation).
+   Its metadata_pills are empty, so the specific Electric five-pill leak was not
+   reproduced. Hybrid does inherit Electric/common numerical definitions and
+   compatible machine configuration records; matching still checks powertrain.
+   Diesel is independent and previously replaced the five pills with identity,
+   source and sample fields in its own adapter. It did not reproduce this exact
+   leak either. Both paths lacked a common representation of component ratings,
+   missing-specification status and provenance. Both now use the shared resolver.
+   Hybrid's observed generator maximum (80 kW) is a simulation statistic, not
+   evidence of its generator rating. The shared component rating remains unset.
+
+5. Manual UI state could cross source boundaries.
+   ui_app.py _render_reporting_metadata_inputs previously keyed battery mass
+   only by powertrain, and advanced override widgets had no source scope. A
+   manual value could survive switching to another CSV with the same profile.
+   All these widgets now include source path/revision and profile in their key.
+   The validation identity now always includes the machine display name.
+
+6. Explicit configuration and speaker-note gaps.
+   An explicitly requested configuration previously bypassed identity tokens,
+   permitting a 3500 configuration on an 8500 filename sharing the same name.
+   Explicit requests now reject a contradictory filename mass token.
+   Identity matching is restricted to tokens before the powertrain, preventing
+   a later chemical-payload token (e.g. 3500Kg) from selecting a different vehicle.
+   Electric/Hybrid previously rewrote notes on only the battery/agro pages;
+   Diesel notes contained source/profile and selected numeric values only.
+   Every generated slide now receives current source hash, machine, profile,
+   configuration detection, specifications/provenance, reporting inputs, agro
+   diagnostics, selected statistics and plot identifiers. Template notes cannot
+   silently survive on an unmodified page. Display-name aliases produce an
+   explicit source-identity warning; they do not rewrite simulation identity.
+
+Corrections and configuration contract
+-------------------------------------
+machine_specifications.py is a small shared reporting-only module. A matched
+machine_configurations record may have specifications for gvw_kg,
+target_speed_kph, battery, motor, generator and engine. Each entry requires
+value, status (confirmed/user_provided/estimated) and nonempty provenance.
+Mass/speed have fixed kg/kph units and positive finite numeric values. Component
+descriptions contain the supplied specification and its explicit units; no motor
+count, voltage, battery energy, rating or generator size is synthesized.
+
+Unconfigured components display Not specified. Filename mass/speed are retained
+as filename_claim records and visibly labelled TBC. A filename's mass is called
+Mass, not confirmed GVW: its physical meaning requires confirmation. Chemical
+payload mass tokens after the powertrain are not mistaken for vehicle GVW.
+Simulation maximum speed is still a measured KPI and is not used as target speed.
+Measured battery power/energy/SOC and generator power are not component ratings.
+
+The legacy metadata_pills schema is still readable for compatibility, but its
+free-form strings are no longer a specification authority for profile reports.
+Electric, Hybrid and Diesel covers/overviews all use the shared resolved metadata.
+Excel Metadata and both report manifests store the same specification records,
+configuration detection and warnings. Numerical channels, KPI expressions,
+plot arrays, canonical values, gravity conventions and existing layouts remain.
+
+Modified files
+--------------
+src/vsm_postprocessing/machine_specifications.py: shared schema, validation,
+  source claims, missing values and profile-appropriate display helpers.
+src/vsm_postprocessing/report_profile.py: validate configuration-scoped specs.
+src/vsm_postprocessing/report_metadata.py: resolve specs for the matched source;
+  reject explicit mass conflicts; surface unmatched, powertrain and alias warnings.
+src/vsm_postprocessing/agro_reporting.py: qualify unconfirmed numerical kg/km
+  results and record physical-interpretation status/provenance without recalculation.
+src/vsm_postprocessing/profile_powerpoint_report_engine.py: shared cover/overview,
+  explicit agro qualification, current provenance in every slide's notes/manifests.
+src/vsm_postprocessing/diesel_powerpoint_report.py: use the same metadata/notes;
+  keep Diesel's engine/generator fields and original numeric/plot adapter.
+src/vsm_postprocessing/excel_report_engine.py: expose shared specification records
+  and warnings in Metadata, diagnostics and the workbook manifest.
+src/vsm_postprocessing/ui_app.py: isolate report inputs per source/profile and
+  invalidate displayed results when machine display name changes.
+config/report_profiles/robosprayer_electric.yaml: remove fixed five specifications.
+config/reporting_metadata.example.yaml: explain configuration/provenance contract.
+tests/test_machine_specifications.py: exact source calculations; all-profile
+  generated slides/notes/workbook/manifest consistency; missing specs; configured
+  specs; conflicting explicit identity; static template/profile leakage; UI state.
+tests/test_profile_powerpoint_report.py: replace fixed-spec assertions with current
+  source claims and missing-spec assertions while retaining run/plot/style checks.
+tests/test_diesel_powerpoint_report.py: assert structured note values and shared
+  powertrain wording while retaining independent Diesel golden numbers.
+tests/test_diesel_finalization.py: select the display name before validation;
+  assert that changing it invalidates the previous validation and report.
+scripts/audit_machine_specifications.py: generate the four reviewable report sets,
+  reproduce original Electric selections/inputs, verify hashes and compare all
+  available original Statistics/KPI values with 1e-12 relative/absolute tolerance
+  for Office formula-cache serialization. This does not alter either original.
+docs/MACHINE_REPORTING_AUDIT_2026_10_23.txt: this audit and engineering handoff.
+
+Engineering assumptions requiring Sergio's confirmation
+------------------------------------------------------
+* Is RoboSprayer_8500Kg_Electric the same physical/model configuration as the
+  Full Size 8500 mapping? Supply evidence before adding any equivalence/flag.
+* For each source, does rear vertical hitch force isolate remaining agrochemical
+  weight across the full operating window, including dynamic hitch reactions,
+  implement tare, slopes, refills and sign conventions?
+* Does 3500/8500/9300 in the filename mean GVW, curb mass, laden mass or another
+  model parameter? Is 12/20 kph the approved target speed?
+* Confirm battery mass (450/1000 are manual report inputs), rated energy, voltage,
+  power, chemistry and pack configuration; motor number/type/rated power/speed;
+  generator and engine ratings for the exact machine/simulation revision.
+* No approved chemical density or calibrated volume/flow source was found.
+  Volumetric discharge remains unavailable without its own provenance.
+* An observed maximum inferred mass is not a nominal tank capacity. Tank volume,
+  usable contents, refill segmentation and actual spraying phases need evidence.
+* Caiman has negative inferred remaining contents; its full-window physical
+  discharge and net kg/km are unavailable. A positive observed maximum does not
+  repair that trace. The Diesel reference has all-zero hitch force: capacity is
+  unavailable and the independent numerical kg/km result is zero.
+* Electric/Hybrid's 85% usable-energy range convention and energy/SOC-derived
+  nominal capacity remain model assumptions, not confirmed battery specifications.
+  Diesel retains legacy g=9.80665 in the numerical mass channel while the separate
+  report-qualified inferred capacity uses g=9.81. Both are recorded, not unified.
+* October and legacy profiles intentionally use different auxiliary-energy and
+  related mappings. Compare the same revision/selection; do not call those
+  pre-existing differences numerical regressions from this reporting correction.
+
+Reproduced reports and independent numerical evidence
+----------------------------------------------------
+outputs/machine_audit_2026_10_23 contains Electric 3500/8500 (15 slides each),
+Hybrid (14 slides) and Diesel (10 slides), using October definitions. audit.json
+records paths, source hashes, original report hashes, manual inputs, configuration
+detection, component specifications, agro diagnostics and canonical Excel values.
+All Electric statistics/KPIs agree with the selected original workbook caches to
+1e-12 relative/absolute tolerance; no substantive numerical difference was found.
+
+An independent subprocess imported a clean archive of repository HEAD
+6112f34fd6857f42c3bf78a3114c3bc80ea5b6cc and evaluated all four October profiles.
+Every one of 110 math arrays, 161 statistics and 39 KPIs equals the working
+implementation exactly (corresponding NaNs accepted). Counts and per-case
+results are in head_numerical_comparison.json; the baseline arrays are retained
+as *_HEAD.npz. Every XML part of all four corrected PPTX packages was searched:
+none contains the old fixed GVW/12 kph/Battery 50 kW/Motor 63 rpm strings.
+
+Native PowerPoint visual rendering was attempted but its COM server could not
+start (CO_E_SERVER_EXEC_FAILURE, HRESULT 0x80080005). No native visual/text-bound
+validation is claimed. python-pptx reopening, XML inspection, numerical trace and
+cross-format metadata/plot/slide regression checks are independent of Office.
+
+Final regression results
+------------------------
+Final targeted run: 52 passed in 179.10 seconds. It includes the exact two
+RoboSprayer sources, representative Hybrid/Diesel generation, configuration-
+scoped and missing specifications, all-slide provenance, workbook/manifest
+consistency, leakage prevention and real Streamlit source/profile isolation.
+Log: outputs/machine_audit_final_target.log.
+
+Final complete available suite: 777 passed, 1 skipped, 0 failed in 1205.21 seconds
+(20 minutes 5 seconds). Command:
+.venv\Scripts\python.exe -u -m pytest -ra -p no:cacheprovider
+  --basetemp outputs/machine_audit_complete_tmp
+Log: outputs/machine_audit_complete.log.
+The sole skip is tests/test_sergio_october_15.py:338: soil plots apply to Electric
+and Hybrid profiles, so that case is inapplicable to Diesel. Private reference
+files used by the audit and regression runs are present.
+
+Earlier exploratory runs exposed obsolete fixed-spec/UI assertions and a field
+name error in a new test helper; those were corrected before the final complete
+run. No test failures remain. git diff --check passes (Git may print informational
+LF/CRLF notices). Native PowerPoint visual inspection remains unavailable for the
+COM-server reason above. No engineering specification requiring confirmation
+was filled in to make a test pass.

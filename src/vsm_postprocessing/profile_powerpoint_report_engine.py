@@ -33,6 +33,7 @@ from .profile_soil_kpis import build_soil_powerpoint_metrics, soil_kpi_cards
 from .profile_plotting import ProfilePlottingResult, render_profile_plots
 from .report_metadata import ReportMetadata
 from .agro_reporting import reporting_metric_rows
+from .machine_specifications import machine_metadata_pills, machine_overview_lines
 from .report_profile import ReportingProfile
 from .statistics_engine import (
     StatisticResult,
@@ -595,6 +596,7 @@ def _build_template_profile_powerpoint_report(
     _add_reusable_content_layout(prs)
 
     presentation_path = output_dir / config.output_filename
+    _write_machine_notes(prs, excel_result, config)
     try:
         prs.save(presentation_path)
     except Exception as exc:
@@ -670,6 +672,12 @@ def _render_template_slide(
     _replace_kpi_slots(shapes, template_slide_number, stats, layout, display_overrides={key: item['display'] for key, item in extra.items()})
     if template_slide_number == 8 and excel_result.profile.metadata.powertrain in {'electric', 'hybrid'}:
         note = 'Capacity: observed maximum inferred load [kg]; not nominal tank capacity. See Statistics / manifest for source and quality warnings.'
+        agro = excel_result.statistics_result.reporting_agro
+        if agro:
+            note = ('Capacity: observed ' + agro.capacity.status + ' mass; not nominal tank capacity. '
+                    + ('Physical interpretation requires confirmation.' if agro.capacity.interpretation_status == 'assumed' else 'See source policy and quality diagnostics.'))
+            if agro.capacity.value is None:
+                note = 'Agro mass unavailable: ' + agro.capacity.reason
         _add_text_box(slide, note, Inches(.6), Inches(3.08), Inches(12.13), Inches(.25), font_size=9, color=_ASTAUTO_MUTED)
     if template_slide_number in {5, 8}:
         slide.notes_slide.notes_text_frame.text = json.dumps({
@@ -677,7 +685,9 @@ def _render_template_slide(
             'agro_reporting': excel_result.statistics_result.reporting_agro.to_dict() if excel_result.statistics_result.reporting_agro else None,
         }, indent=2)
     _replace_plot_slots(slide, shapes, template_slide_number, list(slide_def.plot_ids), plots_by_id, assets, layout,
-                        allow_unavailable=bool(excel_result.profile.metadata.excel_template))
+                        allow_unavailable=bool(excel_result.profile.metadata.excel_template) or (
+                            template_slide_number == 8 and excel_result.statistics_result.reporting_agro is not None
+                            and excel_result.statistics_result.reporting_agro.capacity.value is None))
     if template_slide_number == 7 and _is_inactive_hybrid_slide(excel_result) and not text_slots.body:
         _add_notice(
             slide,
@@ -1275,19 +1285,27 @@ def _resolve_visual_template() -> Path:
 
 
 def _cover_metadata_items(result: ProfileExcelReportResult) -> tuple[str, str, str, str, str]:
-    configured = result.profile.presentation.metadata_pills if result.profile.presentation else ()
-    if configured:
-        items = tuple(configured[:5])
-        if len(items) == 5:
-            return items
-    powertrain = (result.profile.metadata.powertrain or result.profile.profile_id).title()
-    return (
-        f"Machine {result.report_metadata.machine_name}",
-        f"Powertrain {result.report_metadata.powertrain_name or powertrain}",
-        f"Source {_source_label(result)}",
-        f"Samples {result.sample_count:,}",
-        f"Tool v{__version__}",
-    )
+    return machine_metadata_pills(result.report_metadata)
+
+
+def _write_machine_notes(prs, result, config):
+    """Replace template notes on every page with this run's provenance."""
+    metrics = {s.statistic_id: s.to_dict() for s in _profile_statistics_as_powerpoint_statistics(result).statistics}
+    for slide, definition in zip(prs.slides, config.slides):
+        slide.notes_slide.notes_text_frame.text = json.dumps({
+            'machine_name': result.report_metadata.machine_name,
+            'powertrain': result.report_metadata.powertrain_name,
+            'source_filename': result.report_metadata.source_filename,
+            'source_sha256': result.dataset.quality.source_sha256,
+            'profile_id': result.profile.profile_id,
+            'configuration_detection': result.report_metadata.configuration_detection,
+            'machine_specifications': result.report_metadata.machine_specifications,
+            'metadata_warnings': result.report_metadata.warnings,
+            'reporting_inputs': asdict(result.report_metadata.reporting_inputs),
+            'agro_reporting': result.statistics_result.reporting_agro.to_dict() if result.statistics_result.reporting_agro else None,
+            'statistics': {key: metrics[key] for key in definition.statistic_ids if key in metrics},
+            'plots': list(definition.plot_ids),
+        }, indent=2, allow_nan=False)
 
 
 def _add_cover_source_filename(slide: Any, result: ProfileExcelReportResult) -> None:
@@ -1356,9 +1374,6 @@ def _render_overview_template_body(
 ) -> None:
     values = _statistic_values(result)
     powertrain = (result.profile.metadata.powertrain or "profile").lower()
-    distance = _formatted_value(values, "distance_km_last", "km")
-    time_value = _formatted_value(values, "time_minutes_last", "min")
-    speed = _formatted_value(values, "chassis_speed_max", "kph")
     initial_soc = _formatted_value(values, "battery_soc_first", "%")
     final_soc = _formatted_value(values, "battery_soc_last", "%")
 
@@ -1368,32 +1383,8 @@ def _render_overview_template_body(
     for index, text in zip((5, 7, 9, 11, 13), _cover_metadata_items(result)):
         _set_shape_text(shapes[index], text)
 
-    _set_shape_text(shapes[mission_title_slot], "Drive Cycle Structure")
-    if powertrain == "electric":
-        _set_overview_card_body(
-            shapes[mission_body_slot],
-            "\n".join(
-                (
-                    f"\u25b8  Selected reporting profile: {result.profile.metadata.name}.",
-                    "\u25b8  Powertrain type: fully electric.",
-                    f"\u25b8  Imported samples: {result.sample_count:,}  \u00b7  source channels: {result.source_raw_channel_count:,}.",
-                    f"\u25b8  Resolved required raw channels: {len(result.resolution.resolved):,} / {len(result.profile.raw_channels):,}.",
-                )
-            ),
-        )
-    else:
-        _set_overview_card_body(
-            shapes[mission_body_slot],
-            "\n".join(
-                (
-                    f"Source dataset: {_source_label(result)}",
-                    f"Imported samples: {result.sample_count:,}",
-                    f"Drive cycle duration: {time_value}",
-                    f"Drive cycle distance: {distance}",
-                    f"Maximum speed: {speed}",
-                )
-            ),
-        )
+    _set_shape_text(shapes[mission_title_slot], 'Machine Specifications')
+    _set_overview_card_body(shapes[mission_body_slot], '\n'.join(machine_overview_lines(result.report_metadata)))
     right_title = "Hybrid System Context" if powertrain == "hybrid" else "Computation Context"
     _set_shape_text(shapes[context_title_slot], right_title)
     if powertrain == "electric":
@@ -1420,7 +1411,7 @@ def _render_overview_template_body(
             f"Estimated range @ 85% battery: {_formatted_value(values, 'range_85_battery_km', 'km')}",
             "Electrical system outputs are sourced from profile KPIs and rendered plots.",
         )
-    _set_overview_card_body(shapes[context_body_slot], "\n".join(body))
+    _set_overview_card_body(shapes[context_body_slot], '\n'.join((*body, *result.report_metadata.warnings)))
 
 
 def _replace_kpi_slots(
@@ -1803,6 +1794,9 @@ def _is_inactive_hybrid_slide(result: ProfileExcelReportResult) -> bool:
 
 
 def _agrochemical_active(result: ProfileExcelReportResult) -> bool:
+    report = result.statistics_result.reporting_agro
+    if report is not None:
+        return bool(report.mass_values is not None and np.any(np.abs(report.mass_values) > 1e-9))
     values = _statistic_values(result)
     if abs(values.get("agrochemical_discharge_max", 0.0)) > 1e-9:
         return True
@@ -2333,6 +2327,9 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
         "powertrain": result.excel_result.report_metadata.powertrain_name,
         "report_title": result.excel_result.report_metadata.report_title,
         "reporting_inputs": asdict(result.excel_result.report_metadata.reporting_inputs),
+        "configuration_detection": result.excel_result.report_metadata.configuration_detection,
+        "machine_specifications": result.excel_result.report_metadata.machine_specifications,
+        "metadata_warnings": result.excel_result.report_metadata.warnings,
         "reporting_metrics": reporting_metric_rows(result.excel_result.statistics_result, result.excel_result.report_metadata),
         "agro_reporting": result.excel_result.statistics_result.reporting_agro.to_dict() if result.excel_result.statistics_result.reporting_agro else None,
         "safe_output_stem": result.presentation_path.stem,
@@ -2355,6 +2352,6 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
     # The public result points at the renderer manifest; retain traceability
     # there as well as in the profile-specific companion manifest.
     manifest = json.loads(result.manifest_path.read_text(encoding='utf-8'))
-    for key in ('reporting_inputs', 'reporting_metrics', 'agro_reporting'):
+    for key in ('reporting_inputs', 'reporting_metrics', 'agro_reporting', 'configuration_detection', 'machine_specifications', 'metadata_warnings'):
         manifest[key] = payload[key]
     result.manifest_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding='utf-8')
