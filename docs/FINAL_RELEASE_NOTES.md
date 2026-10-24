@@ -1,6 +1,6 @@
 # Deterministic Release Notes - v1.3.0
 
-Final Sergio distribution, 22 October 2026: `Astauto_VSM_October_22102026`.
+Final Sergio distribution, 24 October 2026: `Astauto_VSM_October_24102026`.
 The existing setup/start launchers, Tool layout, application version, dependencies,
 Python 3.11 policy and deterministic engineering calculations are preserved.
 
@@ -8,8 +8,10 @@ The Electric and Hybrid report configuration includes optional manual Battery pa
 mass (kg), passed explicitly to a seventh PowerPoint card. Blank input displays N/A;
 no preset mass is inferred from machine identity. Diesel needs no battery input.
 Agro Discharge Rate now displays net initial-minus-final remaining mass divided by
-final cumulative distance, in kg/km, in both Excel and PowerPoint. Existing mass
-channels and profile gravity conversions are reused without double conversion.
+final cumulative distance, in kg/km, in both Excel and PowerPoint. Configured direct
+mass or qualified force-derived mass is resolved automatically. Reporting inference
+uses -Fz/9.81; legacy Diesel MATH retains its established 9.80665 convention and is
+not converted twice.
 The current profiles use Electric 08, Hybrid 08 and Diesel 04 Excel templates.
 
 Release checks cover Electric UoL _04, Full Size Diesel _07 and the available
@@ -31,7 +33,7 @@ existing rolling power and accumulated energy; the four additive tyre-total
 channels are removed. Soil components remain separate diagnostics. Live Excel
 KPI formulas and the 15-slide Electric presentation are preserved.
 
-The active portable delivery is Astauto_VSM_October_22102026.zip. Application
+The active portable delivery is Astauto_VSM_October_24102026.zip. Application
 version remains 1.3.0, with Python >=3.11,<3.12 and CPython 3.11.9 bootstrap.
 Validation covers Diesel, Electric UoL and the available older Hybrid reference;
 acceptance of an unavailable latest-client Hybrid source is not claimed.
@@ -44,6 +46,18 @@ No AI functionality is included in engineering calculations.
 
 ## October 2026 Reporting Refinements
 
+- The 24 October package resolves Agro Capacity dynamically from configured direct
+  kg or force-inferred sources, including compatible unseen filenames. Numerical
+  availability is separate from physical confidence; inferred results are not
+  measured contents or nominal tank capacity. Unsupported data remains N/A.
+- Agro Mass Source controls and the dedicated worksheet are removed. Existing
+  raw/MATH channels and, when needed, hidden Metadata columns support the four
+  live Statistics formulas without altering independent export selections.
+- Electric, Hybrid and Diesel PowerPoint specifications follow selected machine
+  metadata and provenance. Missing specifications stay Not specified; filename
+  claims remain TBC. Discharge in L/m requires explicit density.
+- Eight redundant test executions were consolidated while preserving the RMS
+  history, Hybrid RR labels and genuine cross-profile regression scenarios.
 - Tyre-Soil Bulldozing and Tyre-Soil Compaction each have six KPI cards matching Wheel Steering Angles: signed maximum power, time-weighted mean power, sample RMS power, net accumulated energy, energy per kilometre and the existing distance KPI. The original plots retain their data, axes and dimensions below the cards. Excel calculations/layouts and all other slides are unchanged. Missing inputs show N/A with reasons in the presentation manifest.
 
 - Every exported mathematical channel has an authoritative equation note on its main Excel heading; the mapping worksheet remains available.
@@ -53,7 +67,7 @@ No AI functionality is included in engineering calculations.
 - Current Diesel reports provide 20 native charts when their inputs are available. The first row is 24 pt; charts start below frozen headers. The existing thermal slide contains separate oil/water plots and four MIN/MAX cards, preserving the ten-slide complete-data presentation.
 - Electric and Hybrid use measured gearbox-output torque and exact SI wheel-power conversion, channel-specific confirmed HV kW interpretation, signed auxiliary energy, soil-resistance power/energy and optional road height. Complete Electric reports now provide 25 charts, 12 KPI formulas and 15 slides, including the existing auxiliary-energy chart and total tyre resistance power/energy before the soil contribution pages.
 - Current Electric and Hybrid profiles add four separate plots versus Track Time [s]: Total Bulldozing Resistance Power [kW], Tyre Bulldozing Resistance Energy Accumulated [kWh], Total Compaction Resistance Power [kW] and Tyre Compaction Resistance Energy Accumulated [kWh]. Existing four-wheel sums and signed cumulative trapezoidal energy are reused without any calculation changes. Existing combined soil charts remain; two Astauto plot-pair slides are added before the summary. Missing/invalid inputs disable the affected plots explicitly; measured zeros are retained.
-- The dated portable delivery is `Astauto_VSM_October_22102026` (folder and ZIP root), with the existing setup/start launchers beside `Tool`. Legacy and Diesel plot/slide inventories are unchanged.
+- The dated portable delivery is `Astauto_VSM_October_24102026` (folder and ZIP root), with the existing setup/start launchers beside `Tool`. Legacy and Diesel plot/slide inventories are unchanged.
 - Streamlit channel labels carry stable unique IDs. Duplicate selections remain errors; optional missing measurements disable dependent content without becoming fabricated zeros.
 - Diesel `_07` and Electric UoL `_04` real VSM inputs are used for release validation. The available Caiman SP Hybrid reference and controlled integrations pass, including correct rejection of nonphysical chemical loads. A newer client export beyond this reference is not claimed as individually tested.
 - Legacy profiles retain their original conventions. Visible legacy MATH values may remain Python-calculated; KPI formula helpers keep the dependency chain live. Regenerate after source changes to refresh retained values, charts and PowerPoint.

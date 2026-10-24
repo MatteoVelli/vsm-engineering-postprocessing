@@ -14,13 +14,12 @@ from vsm_postprocessing.report_profile import load_reporting_profile
 from vsm_postprocessing.report_selection import ProfileReportSelection
 
 
-@pytest.mark.parametrize("kind", ("electric", "hybrid", "diesel"))
 @pytest.mark.parametrize("filename", (
     "Full_Size_Sprayer_8500Kg_Diesel_1000m_20kph_4WS_DriverPC_up_to_25pcGrad_SL_LSD_07.csv",
     "Long source (with spaces)_" + "configuration_" * 15 + "(final).xlsx",
     "W" * 249 + ".csv",
 ))
-def test_cover_preserves_exact_filename_and_has_wrapping(kind, filename):
+def test_cover_preserves_exact_filename_and_has_wrapping(filename):
     from types import SimpleNamespace
     prs = Presentation("reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx")
     result = SimpleNamespace(report_metadata=SimpleNamespace(source_filename=filename))

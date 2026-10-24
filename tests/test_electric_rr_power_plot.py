@@ -68,6 +68,7 @@ def test_electric_and_hybrid_presentations_select_rr_with_shared_rl_plots():
         if kind == "hybrid":
             assert tuple(s.semantic_name for s in profile.presentation.plot_series_overrides[PLOT]) == RR
             assert tuple(s.semantic_name for s in profile.plots_by_id()[PLOT].series) == RL
+            assert tuple(s.label for s in profile.presentation.plot_series_overrides[PLOT]) == ("Wheel Power RR", "EDU Mech Power RR")
         else:
             assert not profile.presentation.plot_series_overrides
 

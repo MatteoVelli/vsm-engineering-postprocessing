@@ -293,6 +293,8 @@ def test_electric_profile_representative_statistics_regression() -> None:
     assert stats["time_minutes_last"] == pytest.approx(64.2)
     assert stats["distance_km_last"] == pytest.approx(11.9996)
     assert stats["battery_soc_last"] == pytest.approx(12.6927)
+    # These goldens reject the historical fixed 17417 denominator, which gave
+    # incorrect RMS values of 13.506611297860566 and 1.3358187681981721.
     assert stats["battery_power_rms"] == pytest.approx(28.716636645770492)
     assert stats["battery_heatflow_rms"] == pytest.approx(2.840107066457429)
     assert stats["chassis_speed_max"] == pytest.approx(11.9858)
@@ -306,17 +308,6 @@ def test_electric_profile_representative_statistics_regression() -> None:
     assert kpis["battery_energy_consumption_wh_per_km"] == pytest.approx(2804.565985532851)
     assert kpis["battery_capacity_100"] == pytest.approx(50.0)
     assert kpis["range_85_battery_km"] == pytest.approx(15.153859891060916)
-
-
-def test_electric_rms_does_not_reproduce_stale_17417_denominator() -> None:
-    dataset = load_data_file(_robosprayer_csv(), ImportOptions())
-    result = calculate_profile_statistics(dataset, load_reporting_profile(ELECTRIC_PROFILE))
-    stats = {item.definition.statistic_id: item.value for item in result.statistics}
-
-    assert stats["battery_power_rms"] == pytest.approx(28.716636645770492)
-    assert stats["battery_power_rms"] != pytest.approx(13.506611297860566)
-    assert stats["battery_heatflow_rms"] == pytest.approx(2.840107066457429)
-    assert stats["battery_heatflow_rms"] != pytest.approx(1.3358187681981721)
 
 
 def test_hybrid_engine_statistics_are_zero_against_electric_reference_csv() -> None:

@@ -50,7 +50,8 @@ observed-interval signed trapezoidal energy, cumulative channels and statistics.
 Every applicable configured KPI Value cell contains a genuine formula with
 Python-validated cached results. Select a Value cell on the Statistics sheet to
 inspect its equation. The hidden Formula Support sheet documents engineering
-parameters and any additional formula/raw dependencies; unhide it to audit them.
+parameters and formula dependencies. Where necessary, hidden columns in the
+existing Metadata sheet retain additional source data; unhide them to audit it.
 Missing optional measurements disable dependent KPIs rather than appearing as zero.
 
 Legacy profiles keep their original engineering conventions. Some visible legacy
@@ -87,8 +88,8 @@ The existing combined soil charts and all other plots remain available. Missing
 or invalid wheel resistance measurements disable only their dependent plots;
 PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
 
-The final 22 October delivery folder and ZIP are named
-`Astauto_VSM_October_22102026`. Keep the two root launchers beside `Tool`.
+The final 24 October delivery folder and ZIP are named
+`Astauto_VSM_October_24102026`. Keep the two root launchers beside `Tool`.
 
 Release checks use Diesel `_07`, Electric UoL `_04` and the available Caiman SP Hybrid reference. Caiman's negative inferred chemical contents are correctly flagged; a newer Hybrid export beyond this reference is not claimed as tested.
 
@@ -107,8 +108,22 @@ possible refill is reported in the diagnostics; the rate remains the specified
 net endpoint calculation. The current templates are Electric 08, Hybrid 08 and
 Diesel 04. The older volumetric diagnostics remain separate in Excel/metadata.
 
-Agro Capacity is the maximum observed inferred chemical load in kg, not a
-manufacturer's nominal tank capacity. Caiman's available reference has negative
+Agro Capacity is calculated dynamically from the configured source: a direct
+simulation mass channel, or inferred mass from rear-hitch force using -Fz/9.81.
+Force-derived results are explicitly qualified as inferred; a channel name or
+trace does not establish physical validation. Observed mass is not a measured
+load or a manufacturer's nominal tank capacity. Missing or unsuitable sources
+remain N/A with a reason. Source mapping is automatic from the reporting profile;
+there is no Agro Mass Source selection control or dedicated worksheet.
+
+The four agro Statistics Value cells are genuine Excel formulas: maximum observed
+mass, volumetric L/m, diagnostic kg/m and net kg/km. Volumetric discharge requires
+an explicitly supplied density; missing density returns N/A without changing the
+mass-based diagnostics. Machine-specific PowerPoint specifications carry their
+provenance, and unavailable specifications remain Not specified rather than
+borrowing values from another machine. Confirm any TBC filename-derived values.
+
+Caiman's available reference has negative
 inferred contents, so its mass-discharge rate correctly shows N/A. Existing battery
 capacity consistency warnings and other engineering diagnostics remain valid.
 Regenerate reports after changing source data or report inputs. Generated Excel

@@ -10,7 +10,6 @@ from test_electric_rr_power_plot import (
     test_real_renderer_receives_asymmetric_rr_samples as _assert_samples,
     test_rendered_plot_and_metadata_select_actual_rr as _assert_rendered_plot,
 )
-from vsm_postprocessing.report_profile import load_reporting_profile
 
 
 PROFILE = Path(__file__).resolve().parents[1] / "config/report_profiles/robosprayer_hybrid.yaml"
@@ -19,14 +18,6 @@ PROFILE = Path(__file__).resolve().parents[1] / "config/report_profiles/robospra
 @pytest.fixture(scope="module")
 def reports(tmp_path_factory):
     return build_asymmetric_rr_reports(tmp_path_factory.mktemp("asymmetric_hybrid_rr_power"), PROFILE)
-
-
-def test_hybrid_presentation_override_keeps_shared_excel_rl_plot():
-    profile = load_reporting_profile(PROFILE)
-    plot = "power_at_wheels_and_edu"
-    assert tuple(s.semantic_name for s in profile.plots_by_id()[plot].series) == ("wheel_power_rl", "edu_mech_power_rl")
-    assert tuple(s.semantic_name for s in profile.presentation.plot_series_overrides[plot]) == ("wheel_power_rr", "edu_mech_power_rr")
-    assert tuple(s.label for s in profile.presentation.plot_series_overrides[plot]) == ("Wheel Power RR", "EDU Mech Power RR")
 
 
 def test_hybrid_rendered_plot_embeds_rr_and_excludes_rl(reports):

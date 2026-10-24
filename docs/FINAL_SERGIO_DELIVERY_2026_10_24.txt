@@ -1,0 +1,146 @@
+FINAL SERGIO CLIENT DELIVERY - 24 OCTOBER 2026
+
+READY FOR SERGIO. The sole active delivery is Astauto_VSM_October_24102026.
+The verified internal application version remains 1.3.0.
+
+Active folder:
+C:\Users\user\Desktop\Agro Project\dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_24102026
+Active ZIP:
+C:\Users\user\Desktop\Agro Project\dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_24102026.zip
+Checksum:
+C:\Users\user\Desktop\Agro Project\dist\Soil_KPI_Enhancement_2026-10-16\Astauto_VSM_October_24102026.sha256
+ZIP size: 94,430,249 bytes.
+SHA-256: 898b60b1ff99f9892a36c5e737dd3f412521b9ca546afeb290ce9c3d966a25c1
+
+The checksum was generated from the final active ZIP bytes and independently
+verified using PowerShell Get-FileHash. ZIP CRC checks, reproducible candidate
+builds, release-manifest hashes and folder/ZIP byte parity passed. The package
+contains 110 files including its release manifest, with both unchanged BAT
+launchers at the root and the application under Tool/. No parallel version-named
+delivery was built or promoted. Private source CSVs, development environments,
+caches, generated reports and development audit tools are excluded.
+
+The superseded folder, ZIP and original checksum were moved intact to:
+C:\Users\user\Desktop\Agro Project\dist\Archived_Client_Packages\2026-10-24_before_final_delivery
+That directory also preserves the previous delivery-pointer documents.
+The archived October 22 ZIP still has SHA-256:
+1a28f8d184825cba8defca8723a428e426dd5e4f85483396874f4cb43f445c1d
+All six previously established archive directories remain in place. The October
+19 folder, checksum and ZIP were checked against the initial snapshot; its ZIP
+SHA-256 remains:
+55d31fcadfd3ac9a61fd100dc3c39776a2c4093c58ed3e9b778a1253d05ae135
+There was no pre-existing October 24 candidate in the active delivery directory.
+
+Only the eight approved redundant test executions were consolidated:
+- tests/test_sergio_final_feedback.py: removed the unused kind parametrization
+  from the filename/wrapping test, reducing nine executions to three. Genuine
+  Electric/Hybrid/Diesel report coverage remains.
+- tests/test_profile_statistics.py: removed the duplicate RMS regression and
+  retained the historical fixed-17417-denominator explanation beside the existing
+  authoritative golden values.
+- tests/test_electric_rr_power_plot.py and tests/test_hybrid_rr_power_plot.py:
+  moved the unique Hybrid RR labels assertion into the existing shared test's
+  Hybrid branch and removed the duplicate static configuration test. All four
+  dynamic Hybrid fixture tests remain.
+The updated client quick start and release notes describe this dated package and
+the already validated source-policy, formula and specification corrections.
+No production calculations, engineering assumptions or runtime implementation
+were changed during this final consolidation/delivery task. All 113 protected
+source/configuration/reference/launcher inputs match its initial snapshot.
+
+Pytest collection: 869 -> 861 unique cases.
+Targeted verification: 53 passed, 0 failures, in 84.96 seconds.
+Full suite: 860 passed, 1 existing skip, 0 failures, in 1610.79 seconds.
+The complete suite ran once with the short Windows temporary directory
+outputs/f24. The existing skip is tests/test_sergio_october_15.py:338: soil plots
+apply to Electric and Hybrid profiles. No additional regression coverage was
+removed.
+
+Clean extraction and installation acceptance passed using the shipped payload:
+- Single-folder ZIP extraction, CRC and all release-manifest file hashes passed.
+- A fresh package-local CPython 3.11.9 runtime and virtual environment were
+  created with the existing bootstrap; missing-Python handling was exercised.
+- Normal dependency installation, pip check and application doctor passed.
+  Doctor's one nonblocking warning is the intentionally excluded private example
+  source CSV; uploaded client datasets remain supported.
+- The actual unchanged root SETUP_VSM_TOOL.bat completed successfully, including
+  its final console keypress, from an unrelated directory with spaces and with
+  developer Python environment variables removed.
+- The actual unchanged root START_VSM_TOOL.bat started Streamlit 1.49.1. Real Edge
+  uploads automatically selected Electric, Hybrid and Diesel, passed validation,
+  generated Excel and PowerPoint, exposed both download buttons and produced no
+  Streamlit exceptions. Optional battery masses of 470 kg and 725 kg were
+  committed through real keyboard input and verified in the resulting reports.
+- All 110 shipped files remained byte-identical after installation and acceptance.
+  Runtime modules used by acceptance were imported from the extracted Tool/src,
+  independently of the development repository's application source.
+
+Five installed-package reference/fixture report pairs and three real browser
+report pairs passed. Four original reference cases preserve exactly 110 legacy
+mathematical arrays, 161 statistics and 39 KPIs against saved numerical baselines.
+The three browser cases also preserve their saved legacy array hashes/statistics/
+KPIs. Reporting inference remains separate from legacy numerical calculations.
+
+Reference results:
+- Electric 3,500 kg: inferred observed mass 498.1569826707441 kg;
+  mass discharge diagnostic 45.33840184907765 kg/km.
+- Electric 8,500 kg: inferred observed mass 3996.788990825688 kg;
+  mass discharge diagnostic 363.1218540582613 kg/km. The presentation shows its
+  own 8,500 kg / 20 kph claims as TBC; it does not inherit 3,500 kg / 12 kph.
+- Available Caiman SP Hybrid: observed inferred maximum 3998.6544342507646 kg,
+  explicitly questionable because the trace includes negative inferred contents;
+  discharge calculations remain unavailable with the engineering reason.
+- Diesel Test 03: zero hitch force remains unavailable with an informative reason;
+  no payload or discharge value is invented.
+- QA-only unknown-machine fixture: the original 8,500 kg force was halved and the
+  source renamed Future_Carrier_Unknown_Cycle.csv. It resolved without a matching
+  machine configuration and produced 1998.394495412844 kg dynamically. Missing
+  specifications remained Not specified. This is a derived test fixture, not a
+  claim of an independently validated physical simulation.
+
+All eight report pairs passed workbook/PowerPoint relationship checks and slide
+metadata/provenance checks. The five reference workbooks supplied 462 validated
+chart axis references using their actual sample counts. Native Excel rebuilt
+cache-cleared copies of all eight workbooks: 32 HasFormula/formula-bar/value
+checks passed for the four agro Statistics cells, including C56-C59 in the
+Electric reference layout. Missing density stays N/A through a genuine formula.
+Native PowerPoint rendered all eight decks and exported PDFs; KPI-card text
+overflow count was zero. Native renders of the Electric 8,500 kg agro slide and
+the Hybrid battery slide were also visually inspected.
+
+No generated acceptance workbook has an Agro Mass Source worksheet, visible or
+hidden. The removed source controls are absent from the client interface.
+Automatic configured-source resolution, the -Fz/9.81 reporting relationship,
+hidden Metadata fallback columns, independent export selections and all physical
+qualification safeguards are preserved. Unsupported missing-channel inputs were
+rejected for all three profiles. Configured direct sources, independent selections,
+invalid inputs and legacy Diesel gravity handling remain covered by the full suite.
+
+Validation limits and outstanding engineering confirmation:
+- This was a fresh extraction/runtime/environment on the available Windows host,
+  not a separate newly installed physical Windows machine. Cached signed official
+  CPython installer/NuGet downloads were reused; uncached downloads were not
+  repeated. Sergio still needs normal dependency-download access for first setup.
+- Native Excel rejected the long temporary UI report paths. Byte-identical copies
+  at short QA paths passed native recalculation/rendering; their original/copy
+  hashes are recorded. Use a short extraction/output path for Office compatibility.
+- Hitch-force attribution remains an explicit physical assumption. Inferred
+  observed mass is not measured agrochemical content or nominal tank capacity,
+  and the mass-discharge diagnostic is not physically validated discharge.
+- Density is required for L/m. Missing vehicle ratings/specifications need Sergio's
+  confirmation; filename-derived mass and target-speed claims remain TBC.
+- The Caiman negative-load trace and zero-force Diesel trace need source-model
+  interpretation. Validation uses the available Hybrid reference and does not
+  claim acceptance of an unavailable newer client Hybrid simulation.
+
+Evidence: outputs/delivery_24102026/, including full_suite.xml, targeted.xml,
+fresh_installation.json, root_setup_launcher.json, browser_validation.json,
+installed_reports/audit.json, native_excel/results.json, visual_checks/office_checks.json,
+office_short_paths.json, promotion_journal.json and final_checksum_verification.json.
+The current delivery pointer is dist/CURRENT_SERGIO_DELIVERY.json.
+
+Git HEAD remains 6112f34fd6857f42c3bf78a3114c3bc80ea5b6cc. The final read-only
+Git review found no whitespace errors and an empty staging area. Existing pending
+implementation, tests and documentation remain available for review and the user's
+final commit. No Git staging, commit or push was performed. Delivery/evidence
+artifacts remain excluded by the existing .gitignore.
