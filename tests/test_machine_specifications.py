@@ -51,8 +51,8 @@ def test_exact_raw_reference_calculations_and_confidence(profile_id, stem, mass,
         assert agro.net_mass_rate.value == pytest.approx(((-raw[0] / gravity) - (-raw[-1] / gravity)) / (d[-1] / 1000), rel=1e-14)
     if mass == 8500 and profile_id == 'robosprayer_electric':
         assert metadata.configuration_detection == 'unmatched'
-        assert 'not physically validated' in agro.net_mass_rate.definition
-        assert agro.trace['net_mass_discharge']['interpretation_status'] == 'assumed'
+        assert 'not a direct tank-mass measurement' in agro.net_mass_rate.definition
+        assert agro.trace['net_mass_discharge']['interpretation_status'] == 'user_confirmed'
 
 
 def configured_profile():

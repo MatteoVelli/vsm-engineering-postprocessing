@@ -13,6 +13,7 @@ from .models import ChannelInfo, ImportedDataset
 from .utils import normalize_display_unit
 from .reporting_inputs import ReportingInputs
 from .machine_specifications import validate_specifications
+from .diagnostics import Diagnostic
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]*$")
 _NORMALIZE_PATTERN = re.compile(r"[^a-z0-9]+")
@@ -365,9 +366,11 @@ def _source_diagnostics(dataset: ImportedDataset, resolution: ProfileResolutionR
             messages.append("All four measured gearbox-output torque channels are zero throughout a moving-vehicle simulation. Wheel torque/power remain measured zeros; meaningful source torque values are required for real-data validation.")
     for item in resolution.resolved.values():
         if item.unit_interpretation:
-            messages.append(item.unit_interpretation_note)
+            messages.append(Diagnostic(item.unit_interpretation_note,
+                code='approved_unit_interpretation', severity='info', user_visible=False))
         if item.channel.source_name != item.definition.source_name:
-            messages.append(f"Source mapping: {item.definition.report_name} uses {item.channel.source_name} (configured {item.definition.source_name}, {item.match_type}).")
+            messages.append(Diagnostic(f"Source mapping: {item.definition.report_name} uses {item.channel.source_name} (configured {item.definition.source_name}, {item.match_type}).",
+                code='source_mapping', severity='info'))
     return messages
 
 

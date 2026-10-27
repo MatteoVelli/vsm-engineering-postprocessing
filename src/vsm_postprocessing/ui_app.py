@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from vsm_postprocessing.errors import VSMPostProcessingError, DataValidationError
+from vsm_postprocessing.diagnostics import as_diagnostic
 from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 from vsm_postprocessing.pipeline_engine import run_pipeline
 from vsm_postprocessing.report_metadata import resolve_report_metadata
@@ -669,11 +670,7 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
             f"{summary.all_zero_resolved_count} resolved channel(s) are inactive/all-zero. "
             "This is informational and does not make the profile invalid."
         )
-    for message in getattr(summary, "diagnostics", ()):
-        if "Source channel missing" in message or "Source channel unavailable" in message or "All four measured" in message:
-            st.warning(message)
-        else:
-            st.info(message)
+    _render_diagnostics(st, getattr(summary, "diagnostics", ()))
     if summary.missing_optional_names:
         st.info(
             "Optional source channels are not required for profile validation. "
@@ -694,9 +691,15 @@ def _render_profile_validation_summary(st: Any, summary: Any) -> None:
             st.write(", ".join(summary.all_zero_names[:40]))
 
 
+def _render_diagnostics(st: Any, messages) -> None:
+    for message in messages:
+        diagnostic = as_diagnostic(message)
+        if diagnostic.user_visible:
+            getattr(st, diagnostic.severity)(str(diagnostic))
+
+
 def _render_profile_report_completion(st: Any, result: Any) -> None:
-    for warning in result.excel_result.statistics_result.diagnostics:
-        st.warning(warning)
+    _render_diagnostics(st, result.excel_result.statistics_result.diagnostics)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Machine", result.report_metadata.machine_name)
     c2.metric("Samples", f"{result.sample_count:,}")

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.1 - 28 October 2026 - Diagnostic cleanup
+
+- Classify the approved channel-specific kW interpretation as informational provenance, preserving raw values and invalid-unit validation.
+- Record Sergio's 27 October confirmation for explicitly configured Astauto tank-load sources; retain the existing -Fz/9.81 conversion and all numerical quality checks, including the Caiman sign warning.
+- Keep unknown machine identity as traceable optional metadata when valid calculation inputs are available; preserve missing-input and configuration-conflict diagnostics.
+- Preserve engineering calculations, Excel/PowerPoint templates, report structures and Python 3.11 requirements. Package: Astauto_VSM_v1.3.1_28102026.zip.
+
 ## 16 October 2026 - Soil PowerPoint KPI cards
 
 - Added six engineering KPI cards to each soil-resistance slide using the Wheel Steering Angles renderer, retaining all plots and other slides.

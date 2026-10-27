@@ -2,7 +2,12 @@
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.3.0 - Dynamic Vehicle Reporting
+## Current release: 1.3.1 (28 October 2026) - Dynamic Vehicle Reporting
+
+The current delivery is `Astauto_VSM_v1.3.1_28102026.zip`. This patch classifies
+approved unit and tank-source interpretations as informational provenance and
+keeps unknown machine identity optional when valid inputs are available. Genuine
+engineering and data-quality diagnostics, including the Caiman sign warning, remain.
 
 The validated workflow is:
 
@@ -49,7 +54,7 @@ existing PowerPoint plot slots are selectable. See the
 [implementation and validation report](docs/SERGIO_2026_10_15_IMPLEMENTATION.md)
 for exact conventions, tests and unresolved upstream measurements.
 
-The October client update retains application version 1.3.0 and adds live formulas
+The October client update uses application version 1.3.1 and includes live formulas
 for all applicable configured Excel KPIs. The existing Diesel thermal slide shows
 independent oil/water plots and four MIN/MAX cards; its compact Excel header is
 24 pt. Diesel and Electric use updated real VSM CSVs for release validation.

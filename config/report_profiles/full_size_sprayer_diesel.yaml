@@ -8,7 +8,10 @@ profile:
   reporting_inputs:
     agro_mass_source_policy: force_inference
     agro_mass_source: agrochemical_discharge_force
-    agro_mass_source_provenance: 'Explicit reporting policy: resolved rear vertical hitch force is mapped to inferred remaining load using -Fz/9.81; agrochemical attribution is an assumption requiring engineering confirmation, not proof from a channel name or trend.'
+    agro_mass_source_provenance: 'Astauto tank-load simulation mapping: inferred equivalent remaining mass = -Fz/9.81; not a direct tank-mass measurement. Physical confirmation applies only to this explicitly configured tank-load source.'
+    hitch_force_is_remaining_agro_mass: true
+    agro_mass_confirmation_source: HitchRear_Force_Z_VehicleCoordinates
+    agro_mass_provenance: 'Sergio, Astauto, 27 October 2026: for this tank-load simulation configuration, rear hitch Z force deliberately represents agrochemical tank loading/discharging, without a towed implement. Confirms intended simulation meaning only, not every sample, nominal tank capacity or independently validated sprayed quantity.'
   machine_configurations:
   - configuration_id: full_size_sprayer_8500kg_diesel
     machine_names:

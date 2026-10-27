@@ -350,9 +350,9 @@ def test_profile_powerpoint_preserves_final_reference_text_runs(electric_report,
     ]
     assert len({style[3] for style in _run_styles(slide_10_banner)}) >= 3
     assert "post-processing tool" in list(electric.slides[11].shapes)[31].text.lower()
-    assert list(electric.slides[11].shapes)[31].text.endswith("v1.3.0")
+    assert list(electric.slides[11].shapes)[31].text.endswith("v1.3.1")
     assert "post-processing tool" in list(hybrid.slides[11].shapes)[31].text.lower()
-    assert list(hybrid.slides[11].shapes)[31].text.endswith("v1.3.0")
+    assert list(hybrid.slides[11].shapes)[31].text.endswith("v1.3.1")
     hybrid_slide_10_text = "\n".join(
         shape.text for shape in hybrid.slides[9].shapes if getattr(shape, "text", "").strip()
     )
@@ -577,7 +577,7 @@ def test_profile_powerpoint_latest_caiman_hybrid_uses_dynamic_identity(tmp_path:
     assert _slide_titles(report.presentation_path)[0] == "Caiman SP Hybrid"
     assert "RoboSprayer Hybrid" not in text
     assert "Caiman SP Hybrid" in text
-    assert "v1.3.0" in text
+    assert "v1.3.1" in text
     assert "The range extender becomes active at approximately 15 min, with generator power reaching 80 kW." in text
     assert "Range-extender activity is derived from non-zero resolved engine/generator statistics." not in text
     values = {item.definition.statistic_id: item.value for item in report.excel_result.statistics_result.statistics}
@@ -829,7 +829,7 @@ def test_all_generated_slides_share_electric_visual_system(request, fixture_name
         assert len(logos) == 1, index + 1
         assert hashlib.sha256(logos[0].image.blob).hexdigest() == expected_hash
         assert logos[0].width == _ASTAUTO_LOGO_WIDTH
-        footer = _find_text_shape(slide, "VSM ENGINEERING   \u00b7   POST-PROCESSING TOOL  v1.3.0")
+        footer = _find_text_shape(slide, "VSM ENGINEERING   \u00b7   POST-PROCESSING TOOL  v1.3.1")
         assert footer.left == 548640 and footer.top == 6419088
         assert _first_run_font(footer).name == "Calibri"
         if index not in (9, 10):

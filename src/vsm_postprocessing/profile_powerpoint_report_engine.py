@@ -21,6 +21,7 @@ from pptx.oxml.xmlchemy import OxmlElement
 from pptx.oxml.ns import qn
 
 from .errors import PowerPointReportError
+from .diagnostics import diagnostic_records, visible_diagnostics
 from .excel_report_engine import ProfileExcelReportResult, generate_profile_excel_report
 from .importer import ImportOptions
 from .powerpoint_report_engine import (
@@ -1301,6 +1302,7 @@ def _write_machine_notes(prs, result, config):
             'configuration_detection': result.report_metadata.configuration_detection,
             'machine_specifications': result.report_metadata.machine_specifications,
             'metadata_warnings': result.report_metadata.warnings,
+            'diagnostic_records': diagnostic_records(result.statistics_result.diagnostics),
             'reporting_inputs': asdict(result.report_metadata.reporting_inputs),
             'agro_reporting': result.statistics_result.reporting_agro.to_dict() if result.statistics_result.reporting_agro else None,
             'statistics': {key: metrics[key] for key in definition.statistic_ids if key in metrics},
@@ -1411,7 +1413,7 @@ def _render_overview_template_body(
             f"Estimated range @ 85% battery: {_formatted_value(values, 'range_85_battery_km', 'km')}",
             "Electrical system outputs are sourced from profile KPIs and rendered plots.",
         )
-    _set_overview_card_body(shapes[context_body_slot], '\n'.join((*body, *result.report_metadata.warnings)))
+    _set_overview_card_body(shapes[context_body_slot], '\n'.join((*body, *visible_diagnostics(result.report_metadata.warnings))))
 
 
 def _replace_kpi_slots(
@@ -2330,6 +2332,7 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
         "configuration_detection": result.excel_result.report_metadata.configuration_detection,
         "machine_specifications": result.excel_result.report_metadata.machine_specifications,
         "metadata_warnings": result.excel_result.report_metadata.warnings,
+        "diagnostic_records": diagnostic_records(result.excel_result.statistics_result.diagnostics),
         "reporting_metrics": reporting_metric_rows(result.excel_result.statistics_result, result.excel_result.report_metadata),
         "agro_reporting": result.excel_result.statistics_result.reporting_agro.to_dict() if result.excel_result.statistics_result.reporting_agro else None,
         "safe_output_stem": result.presentation_path.stem,
@@ -2352,6 +2355,6 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
     # The public result points at the renderer manifest; retain traceability
     # there as well as in the profile-specific companion manifest.
     manifest = json.loads(result.manifest_path.read_text(encoding='utf-8'))
-    for key in ('reporting_inputs', 'reporting_metrics', 'agro_reporting', 'configuration_detection', 'machine_specifications', 'metadata_warnings'):
+    for key in ('reporting_inputs', 'reporting_metrics', 'agro_reporting', 'configuration_detection', 'machine_specifications', 'metadata_warnings', 'diagnostic_records'):
         manifest[key] = payload[key]
     result.manifest_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding='utf-8')

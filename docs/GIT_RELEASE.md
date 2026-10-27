@@ -1,8 +1,10 @@
 # Git / GitHub Release Procedure - v1.2.5
 
-Historical publication procedure below. The October 2026 client package retains
-application version 1.3.0 and can be built locally with the canonical release
-builder without creating a tag, commit, push or GitHub release. Packaging a
+Historical publication procedure below. The 28 October 2026 client package uses
+application version 1.3.1 and can be built locally with the canonical release
+builder without creating a tag, push or GitHub release. For the authorised 1.3.1 delivery,
+validate and commit the reviewed source locally before packaging, and record that
+commit in the portable manifest. Do not push or publish. Packaging a
 reviewed working tree must record its HEAD and included uncommitted file hashes;
 it must not claim to be a clean committed snapshot. Publication requires a
 separate explicit instruction. See FINAL_RELEASE_NOTES.md for current features.

@@ -1,9 +1,9 @@
 # Known Limitations
 
-Version 1.3.0 provides deterministic profile reporting for Electric, Hybrid and
+Version 1.3.1 provides deterministic profile reporting for Electric, Hybrid and
 Full Size Sprayer Diesel, subject to the following boundaries.
 
-1. Current profiles follow the Diesel `_03` and Electric/Hybrid `_07` reporting layouts; original profiles remain explicit legacy options. Release checks use the updated Diesel `_07` CSV and Electric UoL `_04` CSV, including nonzero gearbox torque and Sergio-confirmed HV power. The available Caiman SP Hybrid reference and controlled integrations are validated, including generator activity and correct rejection of negative chemical contents. A newer client Hybrid export beyond this reference is not claimed as tested.
+1. Current profiles follow the Diesel `_04` and Electric/Hybrid `_08` reporting layouts; original profiles remain explicit legacy options. Release checks use the updated Diesel `_07` CSV and Electric UoL `_04` CSV, including nonzero gearbox torque and Sergio-confirmed HV power. The available Caiman SP Hybrid reference and controlled integrations are validated, including generator activity and correct rejection of negative chemical contents. A newer client Hybrid export beyond this reference is not claimed as tested.
 2. Optional source channels, including `Track_Height`, are exported only when present in the uploaded data.
 3. The current automatic header/unit detection is validated against normal CSV/XLSX layouts. Unusual multi-sheet or multi-level-header exports may require explicit import settings.
 4. Math channels are configured expressions, not a free-form graphical formula editor.

@@ -42,7 +42,8 @@ def test_unknown_simulation_automatically_uses_template_mapping(tmp_path, kind, 
     result = generate_profile_excel_report(csv_for(data, tmp_path / f'Unknown_Carrier_{load}_cycle_Z.csv'),
         profile_path(kind), tmp_path/'report', selection=ProfileReportSelection(plots=()))
     assert result.report_metadata.configuration_detection == 'unmatched'
-    assert not result.report_metadata.reporting_inputs.hitch_force_is_remaining_agro_mass
+    assert result.report_metadata.reporting_inputs.hitch_force_is_remaining_agro_mass
+    assert result.statistics_result.reporting_agro.capacity.interpretation_status == 'user_confirmed'
     assert result.statistics_result.reporting_agro.capacity.value == pytest.approx(load)
     assert result.statistics_result.reporting_agro.capacity.status == 'inferred'
     assert result.statistics_result.reporting_agro.mass_rate.value == pytest.approx((load-51)/300)

@@ -1,7 +1,7 @@
-# Deterministic Release Notes - v1.3.0
+# Deterministic Release Notes - v1.3.1
 
-Final Sergio distribution, 24 October 2026: `Astauto_VSM_October_24102026`.
-The existing setup/start launchers, Tool layout, application version, dependencies,
+Final Sergio distribution, 28 October 2026: `Astauto_VSM_v1.3.1_28102026`.
+The existing setup/start launchers, Tool layout, dependencies,
 Python 3.11 policy and deterministic engineering calculations are preserved.
 
 The Electric and Hybrid report configuration includes optional manual Battery pack
@@ -33,14 +33,26 @@ existing rolling power and accumulated energy; the four additive tyre-total
 channels are removed. Soil components remain separate diagnostics. Live Excel
 KPI formulas and the 15-slide Electric presentation are preserved.
 
-The active portable delivery is Astauto_VSM_October_24102026.zip. Application
-version remains 1.3.0, with Python >=3.11,<3.12 and CPython 3.11.9 bootstrap.
+The active portable delivery is Astauto_VSM_v1.3.1_28102026.zip. Application
+version is 1.3.1, with Python >=3.11,<3.12 and CPython 3.11.9 bootstrap.
 Validation covers Diesel, Electric UoL and the available older Hybrid reference;
 acceptance of an unavailable latest-client Hybrid source is not claimed.
 
+## v1.3.1 Diagnostic Cleanup
+
+- Approved channel-specific kW interpretation is informational provenance; raw
+  values and original units are preserved. Unsupported units remain diagnostic.
+- Sergio's 27 October 2026 confirmation is scoped to the explicitly configured
+  Astauto tank-load force source. Generic unconfirmed-interpretation notifications
+  are removed only for that scope. The -Fz/9.81 formula is unchanged.
+- Unknown machine identity is quiet, traceable metadata when processing inputs
+  are valid. Missing essential inputs and conflicting configurations still matter.
+- Caiman sign interpretation, negative-mass checks, calculations, approved report
+  structures and all Excel/PowerPoint template files remain unchanged.
+
 ## Purpose
 
-Version 1.3.0 provides dynamic vehicle reporting for Diesel, Hybrid and Electric. Machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
+Version 1.3.1 provides dynamic vehicle reporting for Diesel, Hybrid and Electric. Machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
 
 No AI functionality is included in engineering calculations.
 
@@ -67,11 +79,11 @@ No AI functionality is included in engineering calculations.
 - Current Diesel reports provide 20 native charts when their inputs are available. The first row is 24 pt; charts start below frozen headers. The existing thermal slide contains separate oil/water plots and four MIN/MAX cards, preserving the ten-slide complete-data presentation.
 - Electric and Hybrid use measured gearbox-output torque and exact SI wheel-power conversion, channel-specific confirmed HV kW interpretation, signed auxiliary energy, soil-resistance power/energy and optional road height. Complete Electric reports now provide 25 charts, 12 KPI formulas and 15 slides, including the existing auxiliary-energy chart and total tyre resistance power/energy before the soil contribution pages.
 - Current Electric and Hybrid profiles add four separate plots versus Track Time [s]: Total Bulldozing Resistance Power [kW], Tyre Bulldozing Resistance Energy Accumulated [kWh], Total Compaction Resistance Power [kW] and Tyre Compaction Resistance Energy Accumulated [kWh]. Existing four-wheel sums and signed cumulative trapezoidal energy are reused without any calculation changes. Existing combined soil charts remain; two Astauto plot-pair slides are added before the summary. Missing/invalid inputs disable the affected plots explicitly; measured zeros are retained.
-- The dated portable delivery is `Astauto_VSM_October_24102026` (folder and ZIP root), with the existing setup/start launchers beside `Tool`. Legacy and Diesel plot/slide inventories are unchanged.
+- The dated portable delivery is `Astauto_VSM_v1.3.1_28102026` (folder and ZIP root), with the existing setup/start launchers beside `Tool`. Legacy and Diesel plot/slide inventories are unchanged.
 - Streamlit channel labels carry stable unique IDs. Duplicate selections remain errors; optional missing measurements disable dependent content without becoming fabricated zeros.
 - Diesel `_07` and Electric UoL `_04` real VSM inputs are used for release validation. The available Caiman SP Hybrid reference and controlled integrations pass, including correct rejection of nonphysical chemical loads. A newer client export beyond this reference is not claimed as individually tested.
 - Legacy profiles retain their original conventions. Visible legacy MATH values may remain Python-calculated; KPI formula helpers keep the dependency chain live. Regenerate after source changes to refresh retained values, charts and PowerPoint.
-- Application version and Python 3.11 runtime requirements are unchanged.
+- Application version is 1.3.1; Python 3.11 runtime requirements are unchanged.
 - Tested Streamlit is 1.49.1; supported dependency constraints are recorded in `pyproject.toml`. Automatic Windows bootstrap targets CPython 3.11.9 and creates a package-local environment. No MATLAB or Office runtime is required to generate reports.
 
 ## Validated Source Workflow

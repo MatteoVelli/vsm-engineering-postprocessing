@@ -16,6 +16,7 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from . import profile_powerpoint_report_engine as ppt
+from .diagnostics import visible_diagnostics
 
 
 # Template page, content type, title, subtitle. Metric/plot selections live in YAML.
@@ -141,7 +142,7 @@ def _overview(shapes, result):
     ppt._set_overview_card_body(shapes[23], "\n".join((
         "Engine speed, torque and cumulative fuel mass resolved.", flow, height,
         f"Optional raw channels unavailable: {len(result.resolution.missing_optional)}.",
-        *result.report_metadata.warnings,
+        *visible_diagnostics(result.report_metadata.warnings),
     )))
 
 

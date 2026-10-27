@@ -10,6 +10,7 @@ from .utils import client_display_filename
 from .reporting_inputs import ReportingInputs
 from .errors import ConfigurationError
 from .machine_specifications import resolve_machine_specifications
+from .diagnostics import Diagnostic
 
 _SEPARATOR_PATTERN = re.compile(r"[_\-\s]+")
 _INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]+')
@@ -124,6 +125,7 @@ def resolve_report_metadata(
     # Mass mapping and physical confidence are source/report policies, never
     # automatic consequences of a filename's machine identity.
     for key in ('hitch_force_is_remaining_agro_mass', 'agro_mass_provenance',
+                'agro_mass_confirmation_source',
                 'agro_mass_source_policy', 'agro_mass_source', 'agro_mass_source_provenance'):
         automatic.pop(key, None)
     if matches:
@@ -143,7 +145,8 @@ def resolve_report_metadata(
     if source_powertrains and source_powertrains != {powertrain_name.casefold()}:
         warnings.append('Source filename powertrain differs from selected reporting profile; confirm selection')
     if not matches:
-        warnings.append('No matching machine configuration; machine specifications and hitch interpretation require confirmation')
+        warnings.append(Diagnostic('Machine identity unmatched; verified specifications are not specified. Calculation readiness depends on the required inputs.',
+            code='machine_identity_unmatched', severity='info', user_visible=False))
     return ReportMetadata(
         machine_name=machine_name,
         powertrain_name=powertrain_name,

@@ -16,6 +16,7 @@ class ReportingInputs:
     density_provenance: str | None = None
     hitch_force_is_remaining_agro_mass: bool = False
     agro_mass_provenance: str | None = None
+    agro_mass_confirmation_source: str | None = None
     agro_mass_source_policy: str = 'unconfigured'
     agro_mass_source: str | None = None
     agro_mass_source_provenance: str | None = None

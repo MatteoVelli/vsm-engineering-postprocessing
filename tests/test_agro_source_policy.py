@@ -32,6 +32,11 @@ def test_unknown_machine_uses_profile_source_policy(kind, length, load):
     expected = np.linspace(load, load / 5, length)
     data.values[:, data.channel_index('agrochemical_discharge_force')] = -9.81 * expected
     profile = profile_for(kind)
+    # A generic unconfirmed configuration must remain distinct from the
+    # explicitly approved Astauto tank-load configuration inherited above.
+    profile = replace(profile, metadata=replace(profile.metadata, reporting_inputs=replace(
+        profile.metadata.reporting_inputs, hitch_force_is_remaining_agro_mass=False,
+        agro_mass_provenance=None, agro_mass_confirmation_source=None)))
     for filename in ('Future_OrchardCarrier_X.csv', 'CompletelyUnknown_17234Kg_' + kind + '.csv'):
         metadata = resolve_report_metadata(filename, profile)
         assert metadata.configuration_detection == 'unmatched'

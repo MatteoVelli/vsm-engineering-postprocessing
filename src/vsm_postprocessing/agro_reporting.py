@@ -7,6 +7,7 @@ import numpy as np
 
 from .reporting_inputs import ReportingInputs
 from .agro_mass import resolve_mass_values
+from .diagnostics import Diagnostic
 
 
 @dataclass(frozen=True)
@@ -101,7 +102,7 @@ def calculate_net_mass_discharge_rate(mass_kg, mass_unit, distance, distance_uni
 def calculate_agro_kpis(distance, distance_unit, *, inputs: ReportingInputs,
                         force_N=None, force_unit=None, volume_L=None, volume_unit=None,
                         flow=None, flow_unit=None, time_s=None, time_unit='s',
-                        mass_kg=None, mass_unit=None):
+                         mass_kg=None, mass_unit=None, source_name=None):
     trace = {'analysis_window': 'entire report sample window', 'sample_count': len(distance) if distance is not None else 0,
              'density_kg_per_L': inputs.density_kg_per_L, 'density_provenance': inputs.density_provenance,
              'method': None, 'status': 'unavailable', 'warnings': [], 'gravity_m_per_s2': 9.81,
@@ -121,7 +122,7 @@ def calculate_agro_kpis(distance, distance_unit, *, inputs: ReportingInputs,
 
     # Resolve one explicitly mapped source, irrespective of machine identity.
     mass, mass_trace = resolve_mass_values(inputs, force=force_N, force_unit=force_unit,
-                                          mass=mass_kg, mass_unit=mass_unit)
+                                           mass=mass_kg, mass_unit=mass_unit, source_name=source_name)
     trace['mass_source'] = mass_trace
     trace['gravity_m_per_s2'] = mass_trace['gravity_m_per_s2']
     trace['warnings'].extend(mass_trace['warnings'])
@@ -265,7 +266,8 @@ def calculate_reporting_kpis(statistics_result, metadata):
     report = calculate_agro_kpis(d, du, inputs=inputs,
         force_N=selected if inferred else None, force_unit=selected_unit if inferred else None,
         mass_kg=None if inferred else selected, mass_unit=None if inferred else selected_unit,
-        volume_L=v, volume_unit=vu, flow=f, flow_unit=f_unit, time_s=t, time_unit=tu)
+        volume_L=v, volume_unit=vu, flow=f, flow_unit=f_unit, time_s=t, time_unit=tu,
+        source_name=source_item.channel.source_name if source_item else source)
     # The endpoint calculation itself is unchanged; only its source is unified.
     metric, net_trace = calculate_net_mass_discharge_rate(report.mass_values, 'kg', d, du)
     mass_trace = report.trace['mass_source']
@@ -279,7 +281,12 @@ def calculate_reporting_kpis(statistics_result, metadata):
         metric = ReportingMetric(**{**asdict(metric), 'reason': report.capacity.reason})
     net_trace.update(mass_expression=mass_trace['formula'], source=report.capacity.source,
                      interpretation_status=mass_trace['interpretation_status'], provenance=mass_trace['provenance'])
-    net_trace['warnings'].append(mass_trace['assumption'])
+    unconfirmed = inferred and mass_trace['interpretation_status'] != 'user_confirmed'
+    resolved_source_name = source_item.channel.source_name if source_item else source
+    net_trace['warnings'].append(Diagnostic(mass_trace['assumption']
+        + f'; source: {resolved_source_name} [{selected_unit}]; formula: {mass_trace["formula"]}',
+        code='force_interpretation_unconfirmed' if unconfirmed else 'simulation_mass_interpretation',
+        severity='warning' if unconfirmed else 'info', user_visible=unconfirmed))
     report = AgroReport(report.capacity, report.rate, report.trace, metric, report.mass_values)
     report.trace['net_mass_discharge'] = net_trace
     report.trace['warnings'].extend(net_trace['warnings'])
@@ -303,7 +310,7 @@ def calculate_reporting_kpis(statistics_result, metadata):
         'raw_unit': force_resolved.channel.unit,
         'effective_unit': force_resolved.effective_unit,
         'semantic_mapping': force_resolved.definition.semantic_name,
-        'physical_interpretation_supported': inputs.hitch_force_is_remaining_agro_mass,
+        'physical_interpretation_supported': mass_trace['interpretation_status'] == 'user_confirmed',
         'interpretation_provenance': inputs.agro_mass_provenance,
     } if force_resolved else None)
     for key, source in (('direct_volume', inputs.agro_volume_source), ('direct_flow', inputs.agro_flow_source)):

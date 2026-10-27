@@ -27,6 +27,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import quote_sheetname
 
 from .errors import ConfigurationError, ExcelReportError
+from .diagnostics import Diagnostic, diagnostic_records
 from .excel_formulas import (FORMULA_OPERATIONS, profile_arithmetic_formula, profile_temporal_formula,
                              save_report_workbook, statistic_formula, write_formula)
 from .importer import ImportOptions, load_data_file
@@ -542,7 +543,8 @@ def generate_profile_excel_report(
     statistics_result.diagnostics.extend(statistics_result.reporting_agro.trace['warnings'])
     statistics_result.diagnostics.extend(report_metadata.warnings)
     if report_metadata.reporting_inputs.battery_mass_kg is None and profile.metadata.powertrain in {'electric', 'hybrid'}:
-        statistics_result.diagnostics.append('Battery pack mass not specified; enter Battery pack mass (kg) to include it in the report')
+        statistics_result.diagnostics.append(Diagnostic('Battery pack mass not specified; enter Battery pack mass (kg) to include it in the report',
+            code='optional_battery_mass_missing', severity='info', user_visible=False))
     if not statistics_result.is_complete:
         missing_stats = [item.definition.statistic_id for item in statistics_result.unavailable_required_statistics]
         missing_kpis = [item.definition.kpi_id for item in statistics_result.unavailable_required_kpis]
@@ -1943,7 +1945,7 @@ def _write_profile_metadata_sheet(
         ("Calculated statistics", statistics_result.calculated_statistic_count),
         ("Configured KPIs", statistics_result.configured_kpi_count),
         ("Calculated KPIs", statistics_result.calculated_kpi_count),
-        ("Diagnostics", " | ".join(statistics_result.diagnostics) if statistics_result.diagnostics else "-"),
+        ("Diagnostics", json.dumps(diagnostic_records(statistics_result.diagnostics)) if statistics_result.diagnostics else "-"),
         ("Configured plots", plotting_result.configured_plot_count),
         ("Rendered plots", plotting_result.rendered_plot_count),
         ("Plot series", plotting_result.series_count),
@@ -2152,6 +2154,7 @@ def _profile_manifest(
         "configured_kpi_count": result.statistics_result.configured_kpi_count,
         "calculated_kpi_count": result.kpi_count,
         "diagnostics": list(result.statistics_result.diagnostics),
+        "diagnostic_records": diagnostic_records(result.statistics_result.diagnostics),
         "configured_plot_count": result.plotting_result.configured_plot_count,
         "rendered_plot_count": result.plot_count,
         "plot_series_count": result.plotting_result.series_count,

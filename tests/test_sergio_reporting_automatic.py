@@ -56,7 +56,8 @@ def test_latest_sources_without_manual_confirmation(kind,pattern,samples,expecte
     result = calculate_profile_statistics(load_data_file(source,ImportOptions(strict=False)),selected)
     assert result.dataset.quality.sample_count == samples
     metadata = resolve_report_metadata(source,selected)
-    assert not metadata.reporting_inputs.hitch_force_is_remaining_agro_mass
+    assert metadata.reporting_inputs.hitch_force_is_remaining_agro_mass
+    assert '27 October 2026' in metadata.reporting_inputs.agro_mass_provenance
     assert metadata.reporting_inputs.agro_mass_source_policy == 'force_inference'
     agro = calculate_reporting_kpis(result,metadata)
     assert agro.capacity.value > 0 and agro.capacity.status == 'inferred'

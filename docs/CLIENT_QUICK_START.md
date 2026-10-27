@@ -88,8 +88,8 @@ The existing combined soil charts and all other plots remain available. Missing
 or invalid wheel resistance measurements disable only their dependent plots;
 PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
 
-The final 24 October delivery folder and ZIP are named
-`Astauto_VSM_October_24102026`. Keep the two root launchers beside `Tool`.
+The 28 October 2026 delivery folder and ZIP are named
+`Astauto_VSM_v1.3.1_28102026`. Keep the two root launchers beside `Tool`.
 
 Release checks use Diesel `_07`, Electric UoL `_04` and the available Caiman SP Hybrid reference. Caiman's negative inferred chemical contents are correctly flagged; a newer Hybrid export beyond this reference is not claimed as tested.
 
@@ -130,9 +130,14 @@ Regenerate reports after changing source data or report inputs. Generated Excel
 and PowerPoint filenames use the uploaded file's stem; machine-name overrides
 change report content without renaming the source-based outputs.
 
+Approved channel-specific kW interpretation and Sergio's 27 October tank-source
+confirmation are recorded as informational provenance. Unknown machine identity
+is optional when calculation inputs are valid. Missing essential inputs, invalid
+units, conflicting configurations and numerical quality problems remain visible.
+
 ## Supported Runtime
 
-Application version remains 1.3.0. Use Python >=3.11,<3.12; automatic bootstrap
+Application version is 1.3.1. Use Python >=3.11,<3.12; automatic bootstrap
 targets official CPython 3.11.9. The tested Streamlit version is 1.49.1 (declared
 range >=1.49.1,<1.50). Setup installs NumPy >=1.26,<3, openpyxl >=3.1,<4,
 PyYAML >=6,<7, matplotlib >=3.9,<4 and python-pptx >=1,<2.

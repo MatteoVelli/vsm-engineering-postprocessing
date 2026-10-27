@@ -1,4 +1,4 @@
-# Final Acceptance Checklist - v1.3.0
+# Final Acceptance Checklist - v1.3.1
 
 ## Engineering
 
@@ -30,11 +30,11 @@
 
 ## Release Package
 
-- [ ] version is `1.3.0` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
+- [ ] version is `1.3.1` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
 - [ ] an environment package snapshot is retained for the validated release machine.
-- [ ] client ZIP contains no reference/client workbooks.
+- [ ] client ZIP contains required reporting templates but no private source datasets or analysis workbooks.
 - [ ] client ZIP contains no generated report/run outputs.
 - [ ] client ZIP contains no retired scenario/provider assets.
 - [ ] `RELEASE_MANIFEST.json` is present in the client ZIP.
 - [ ] external `.sha256` checksum matches the client ZIP.
-- [ ] Git working tree is reviewed before the release tag is created.
+- [ ] Git working tree is reviewed and the validated source is committed locally before packaging; no push or publication.
