@@ -18,6 +18,6 @@ jobs:
       - name: Install project and tests
         run: uv pip install --python .\.venv\Scripts\python.exe -e ".[dev]"
       - name: Run regression tests
-        run: .\.venv\Scripts\python.exe -m pytest
+        run: .\.venv\Scripts\python.exe -m pytest -ra --durations=10
       - name: Run health check
         run: .\.venv\Scripts\python.exe -m vsm_postprocessing.doctor_cli --project-root .

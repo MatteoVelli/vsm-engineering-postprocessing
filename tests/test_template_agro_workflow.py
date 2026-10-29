@@ -8,6 +8,7 @@ from openpyxl import load_workbook
 import pytest
 import yaml
 
+from conftest import PROJECT_ROOT, REFERENCE_FILES_DIR, require_private_reference_file
 from test_profile_math import _channel
 from test_sergio_october_15 import dataset_for, profile_for, profile_path, csv_for
 from vsm_postprocessing.excel_report_engine import generate_profile_excel_report
@@ -22,12 +23,37 @@ from vsm_postprocessing.report_selection import ProfileReportSelection
     ('Sprayer_Caiman_SP_9300Kg_Electrification_03.xlsx', 'AK', 'AL'),
 ])
 def test_original_template_mapping_and_gravity(filename, force, mass):
-    book = load_workbook(Path('reference_files') / filename, read_only=True)
+    path = PROJECT_ROOT / 'reference_files' / filename
+    if filename != 'Robo_Sprayer_Electrification_Tamplate_Hybrid_06.xlsx':
+        # Historical client workbooks are private; the tracked runtime template
+        # must still fail if missing. Keep local provenance checks when supplied.
+        path = require_private_reference_file(REFERENCE_FILES_DIR / filename, f'historical template {filename}')
+    book = load_workbook(path, read_only=True)
     try:
         sheet = book.worksheets[0]
         assert sheet[force+'4'].value == 'N'
         assert sheet[mass+'4'].value.lower() == 'kg'
         assert sheet[mass+'5'].value == f'=-1*{force}5/9.81'
+    finally:
+        book.close()
+
+
+@pytest.mark.parametrize('kind,filename,force,mass,formula', [
+    ('electric', 'Robo_Sprayer_Electrification_Tamplate_Electric_08.xlsx', 'BV', 'BW', '=-1*BV5/9.81'),
+    ('hybrid', 'Robo_Sprayer_Electrification_Tamplate_Hybrid_08.xlsx', 'CC', 'CD', '=-1*CC5/9.81'),
+    ('diesel', 'Diesel Template_04.xlsx', 'Q', 'R', '=-Q5/9.80665'),
+])
+def test_current_tracked_templates_preserve_mapping_and_gravity(kind, filename, force, mass, formula):
+    # These required runtime assets run in every clean checkout; Diesel's legacy
+    # MATH gravity deliberately differs from the reporting inference convention.
+    template = Path(profile_for(kind).metadata.excel_template)
+    assert template.name == filename
+    book = load_workbook(PROJECT_ROOT / template, read_only=True)
+    try:
+        sheet = book.worksheets[0]
+        assert sheet[force+'4'].value == 'N'
+        assert sheet[mass+'4'].value.lower() == 'kg'
+        assert sheet[mass+'5'].value == formula
     finally:
         book.close()
 
