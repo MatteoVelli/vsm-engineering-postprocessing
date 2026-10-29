@@ -51,6 +51,14 @@ overrides:
     plots:
     - total_compaction_resistance_power
     - tyre_compaction_resistance_energy_accumulated
+  - slide_id: torque_maps
+    mode: additional_plot_pair
+    title: Torque–Speed Operating Maps
+    subtitle: VSM simulation operating points showing the relationship between rotational speed and torque.
+    statistics: []
+    plots:
+    - torque_map_powertrain
+    - torque_map_wheels
   plots:
     road_profile:
       order: 22
@@ -346,4 +354,72 @@ plots:
     required: false
   - semantic_name: wheel_power_total
     label: Wheel Power Total
+    required: false
+- plot_id: torque_map_powertrain
+  title: Motor Torque vs Motor Speed
+  x: electricsystem_em1_speed
+  x_label: Motor Speed [rpm]
+  primary_y_label: Torque [Nm]
+  render_mode: scatter
+  report_group: torque_maps
+  order: 200
+  notes: Actual signed operating points; no capability envelope or inferred conversion.
+  series:
+  - semantic_name: electricsystem_em1_torque
+    x: electricsystem_em1_speed
+    component: EM1
+    label: EM1 / FL
+    measurement_location: electric motor shaft
+    required: false
+  - semantic_name: electricsystem_em2_torque
+    x: electricsystem_em2_speed
+    component: EM2
+    label: EM2 / FR
+    measurement_location: electric motor shaft
+    required: false
+  - semantic_name: electricsystem_em3_torque
+    x: electricsystem_em3_speed
+    component: EM3
+    label: EM3 / RL
+    measurement_location: electric motor shaft
+    required: false
+  - semantic_name: electricsystem_em4_torque
+    x: electricsystem_em4_speed
+    component: EM4
+    label: EM4 / RR
+    measurement_location: electric motor shaft
+    required: false
+- plot_id: torque_map_wheels
+  title: Wheel-Side Torque vs Wheel Speed
+  x: wheel_rotationalspeed_fl
+  x_label: Wheel Speed [rpm]
+  primary_y_label: Measured Torque [Nm]
+  render_mode: scatter
+  report_group: torque_maps
+  order: 201
+  notes: Individual measured locations labelled in legend; no drivetrain conversion.
+  series:
+  - semantic_name: driveshaft_torque_fl
+    x: wheel_rotationalspeed_fl
+    component: FL
+    label: FL gearbox output
+    measurement_location: motor gearbox output
+    required: false
+  - semantic_name: driveshaft_torque_fr
+    x: wheel_rotationalspeed_fr
+    component: FR
+    label: FR gearbox output
+    measurement_location: motor gearbox output
+    required: false
+  - semantic_name: driveshaft_torque_rl
+    x: wheel_rotationalspeed_rl
+    component: RL
+    label: RL gearbox output
+    measurement_location: motor gearbox output
+    required: false
+  - semantic_name: driveshaft_torque_rr
+    x: wheel_rotationalspeed_rr
+    component: RR
+    label: RR gearbox output
+    measurement_location: motor gearbox output
     required: false

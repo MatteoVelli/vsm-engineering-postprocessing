@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace, asdict
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -46,6 +46,11 @@ class ProfilePlotSeriesSummary:
     is_all_zero: bool
     min_value: float
     max_value: float
+    x_semantic_name: str | None = None
+    x_source_name: str | None = None
+    x_unit: str | None = None
+    component: str | None = None
+    measurement_location: str | None = None
 
 
 @dataclass
@@ -59,6 +64,7 @@ class ProfilePlottingResult:
     channels_by_semantic_name: dict[str, ChannelInfo]
     values_by_semantic_name: dict[str, np.ndarray]
     series_summaries: dict[str, tuple[ProfilePlotSeriesSummary, ...]]
+    series_diagnostics: dict[str, tuple[dict[str, Any], ...]] = field(default_factory=dict)
 
     @property
     def sample_count(self) -> int:
@@ -139,6 +145,11 @@ def render_profile_plots(
             unavailable.append(prepared)
             continue
         plotting_definition, series_summaries = prepared
+        plot_defaults = defaults
+        if definition.report_group == "torque_maps":
+            # Keep the established 2:1 panels, with readable text at slide size.
+            plot_defaults = replace(defaults, width_inches=7.2, height_inches=3.6,
+                                    dpi=max(180, defaults.dpi))
         if (profile.metadata.powertrain == "diesel" and profile.metadata.excel_template
                 and definition.plot_id in {"diesel_engine_oil_temperature", "diesel_engine_water_temperature"}):
             temperatures = [values_by_name[n] for n in ("engine_oil_temperature", "engine_water_temperature")
@@ -153,7 +164,7 @@ def render_profile_plots(
         rendered.append(
             _render_one_plot(
                 plotting_definition,
-                defaults,
+                plot_defaults,
                 destination,
                 channels_by_name,
                 values_by_name,
@@ -172,6 +183,9 @@ def render_profile_plots(
         channels_by_semantic_name=channels_by_name,
         values_by_semantic_name=values_by_name,
         series_summaries=summaries,
+        series_diagnostics={plot.plot_id: tuple(
+            _paired_series_status(plot, item, channels_by_name, values_by_name, dataset.quality.sample_count)
+            for item in plot.series) for plot in profile.plots if plot.render_mode == "scatter"},
     )
     _write_profile_plot_metadata(result, destination)
     return result
@@ -218,17 +232,35 @@ def _prepare_plot_definition(
     values_by_name: Mapping[str, np.ndarray],
     sample_count: int,
 ) -> tuple[PlotDefinition, tuple[ProfilePlotSeriesSummary, ...]] | UnavailableProfilePlot:
-    if definition.x not in channels_by_name:
+    if definition.render_mode != "scatter" and definition.x not in channels_by_name:
         return UnavailableProfilePlot(definition, f"x channel unavailable: {definition.x}", (definition.x,))
-    x_values = values_by_name[definition.x]
-    if x_values.size != sample_count:
+    x_values = values_by_name.get(definition.x, np.array([]))
+    if definition.render_mode != "scatter" and x_values.size != sample_count:
         raise PlottingError(f"Profile plot '{definition.plot_id}' x channel '{definition.x}' length is not aligned")
 
     series: list[PlotSeriesDefinition] = []
     missing_required: list[str] = []
     missing_optional: list[str] = []
     series_summaries: list[ProfilePlotSeriesSummary] = []
+    pair_reasons: list[str] = []
     for item in definition.series:
+        x_name = item.x or definition.x
+        if definition.render_mode == "scatter":
+            state = _paired_series_status(definition, item, channels_by_name, values_by_name, sample_count)
+            if not state["included"]:
+                pair_reasons.append(f"{item.label or item.component or item.semantic_name}: {state['reason']}")
+                missing_optional.append(item.semantic_name)
+                if item.required and state["status"] != "inactive":
+                    missing_required.extend([name for name in (x_name, item.semantic_name) if name not in channels_by_name])
+                    if not missing_required:
+                        missing_required.append(item.semantic_name)
+                continue
+            x_values = values_by_name[x_name]
+        elif item.x:
+            if x_name not in channels_by_name:
+                (missing_required if item.required else missing_optional).append(x_name)
+                continue
+            x_values = values_by_name[x_name]
         if item.semantic_name not in channels_by_name:
             if item.required:
                 missing_required.append(item.semantic_name)
@@ -249,6 +281,7 @@ def _prepare_plot_definition(
                 channel_id=item.semantic_name,
                 axis=item.axis,
                 label=item.label,
+                x_channel_id=x_name if item.x is not None or definition.render_mode == "scatter" else None,
             )
         )
         series_summaries.append(
@@ -261,6 +294,11 @@ def _prepare_plot_definition(
                 is_all_zero=bool(np.allclose(finite, 0.0, rtol=0.0, atol=1e-12)),
                 min_value=float(finite.min()),
                 max_value=float(finite.max()),
+                x_semantic_name=x_name,
+                x_source_name=channels_by_name[x_name].source_name,
+                x_unit=channels_by_name[x_name].unit,
+                component=item.component,
+                measurement_location=item.measurement_location,
             )
         )
 
@@ -274,7 +312,7 @@ def _prepare_plot_definition(
     if not series:
         return UnavailableProfilePlot(
             definition,
-            "no renderable series",
+            "; ".join(pair_reasons) or "no renderable series",
             (),
             tuple(missing_optional),
         )
@@ -283,16 +321,49 @@ def _prepare_plot_definition(
         PlotDefinition(
             plot_id=definition.plot_id,
             title=definition.title,
-            x_channel_id=definition.x,
+            x_channel_id=(series[0].x_channel_id or definition.x) if definition.render_mode == "scatter" else definition.x,
             series=tuple(series),
             output_filename=definition.output_filename or f"{definition.plot_id}.png",
             x_label=definition.x_label,
             primary_y_label=definition.primary_y_label,
             secondary_y_label=definition.secondary_y_label,
             reference_chart_number=definition.reference_chart_number,
+            render_mode=definition.render_mode,
         ),
         tuple(series_summaries),
     )
+
+
+def _paired_series_status(definition, item, channels, values, sample_count):
+    """Classify complete pairs; never filter or manufacture individual samples."""
+    x_name, y_name = item.x or definition.x, item.semantic_name
+    record = {"component": item.component or y_name, "x": x_name, "y": y_name,
+              "measurement_location": item.measurement_location, "included": False,
+              "status": "unavailable", "reason": "", "sample_count": sample_count}
+    missing = [name for name in (x_name, y_name) if name not in channels or name not in values]
+    if missing:
+        record["missing_channels"] = missing
+        record["reason"] = "; ".join(label + " source unavailable" for name, label in
+                                      ((x_name, "RPM"), (y_name, "Torque")) if name in missing)
+        return record
+    x, y = np.asarray(values[x_name]), np.asarray(values[y_name])
+    record.update(x_source=channels[x_name].source_name, y_source=channels[y_name].source_name,
+                  x_unit=channels[x_name].unit, y_unit=channels[y_name].unit)
+    if x.ndim != 1 or y.ndim != 1 or x.size != sample_count or y.size != sample_count or not sample_count:
+        record["reason"] = "X/Y samples are not aligned"
+    elif not np.isfinite(x).all() or not np.isfinite(y).all():
+        record["reason"] = "pair contains non-finite values; entire component unavailable, no samples removed"
+    elif definition.report_group == "torque_maps" and (
+            (channels[x_name].unit or "").lower() != "rpm" or (channels[y_name].unit or "").lower() != "nm"):
+        record["reason"] = "torque map requires rpm and Nm; no unit conversion assumed"
+    elif definition.report_group == "torque_maps" and "countertorque" in channels[y_name].source_name.lower().replace("_", ""):
+        record["reason"] = "counter-torque is not an approved delivered-torque measurement"
+    elif definition.report_group == "torque_maps" and np.all(x == 0) and np.all(y == 0):
+        record.update(status="inactive", reason="both RPM and torque are exactly zero throughout the selected interval")
+    else:
+        record.update(included=True, status="constant_nonzero" if np.all(x == x[0]) and np.all(y == y[0]) else "varying",
+                      reason="all original paired samples retained")
+    return record
 
 
 def _write_profile_plot_metadata(result: ProfilePlottingResult, output_dir: Path) -> None:
@@ -341,6 +412,11 @@ def _write_profile_plot_metadata(result: ProfilePlottingResult, output_dir: Path
         "source_file": str(result.dataset.source_path),
         "source_sha256": result.dataset.quality.source_sha256,
         "sample_count": result.sample_count,
+        "source_data_start_row": result.dataset.quality.data_start_row,
+        "source_data_end_row": result.dataset.quality.data_end_row,
+        "scenario": result.dataset.source_path.name,
+        "paired_series": result.series_diagnostics,
+        "series_sources": {key: [asdict(item) for item in items] for key, items in result.series_summaries.items()},
         "configured_plot_count": result.configured_plot_count,
         "rendered_plot_count": result.rendered_plot_count,
         "unavailable_plot_count": result.unavailable_plot_count,

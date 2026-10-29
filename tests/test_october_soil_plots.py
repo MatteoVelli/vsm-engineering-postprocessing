@@ -112,7 +112,8 @@ def test_all_four_native_excel_charts_have_exact_ranges_units_and_clear_placemen
 def test_both_new_powerpoint_pages_reuse_exact_plots_and_approved_style(soil_report):
     _, _, excel, ppt = soil_report
     prs = Presentation(ppt.presentation_path)
-    assert len(prs.slides) == (15 if excel.profile.metadata.powertrain == "electric" else 14)
+    assert len(prs.slides) == (16 if excel.profile.metadata.powertrain == "electric" else 15)
+    assert ppt.powerpoint_result.config.slides[-2].slide_id == "torque_maps"
     assert ppt.powerpoint_result.config.slides[-1].slide_id == "simulation_summary"
     assert [s.slide_id for s in ppt.powerpoint_result.config.slides[9:11]] == ["road_profile", "wheel_steering_angles"]
     plots = {p.plot_id: p for p in excel.plotting_result.rendered_plots}
@@ -169,7 +170,8 @@ def test_missing_pair_is_explicit_in_powerpoint_without_fabricating_charts(tmp_p
     assert text.count("PLOT DATA NOT AVAILABLE") == 2
     assert all(key in text for key in SIGNALS[:2])
     assert not any(s.shape_type == 13 and s.top > Inches(2) for s in slide.shapes)
-    assert len(prs.slides) == 15
+    assert len(prs.slides) == 16
+    assert ppt.powerpoint_result.config.slides[-2].slide_id == "torque_maps"
 
 
 @pytest.mark.parametrize("kind", ("electric", "hybrid"))
@@ -201,7 +203,8 @@ def test_diesel_and_explicit_legacy_profiles_keep_their_original_plot_inventorie
                  Path("config/report_profiles/robosprayer_hybrid.yaml")):
         profile = load_reporting_profile(path)
         assert not set(SIGNALS) & profile.plots_by_id().keys()
-        assert not any(s.mode == "additional_plot_pair" for s in profile.presentation.slides)
+        additional = [s.slide_id for s in profile.presentation.slides if s.mode == "additional_plot_pair"]
+        assert additional == (["torque_maps"] if profile.metadata.powertrain == "diesel" else [])
     selected = select_profile(profile_for("electric"), ProfileReportSelection(
         plots=(), powerpoint_plots={"soil_bulldozing": SIGNALS[:2], "soil_compaction": ()}))
     assert set(SIGNALS[:2]) <= selected.plots_by_id().keys()

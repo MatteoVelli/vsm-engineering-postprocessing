@@ -18,5 +18,5 @@ Before handing a release to another user:
 - [ ] `scripts/build_release.ps1` completes successfully.
 - [ ] Client ZIP contains `RELEASE_MANIFEST.json`.
 - [ ] `.sha256` file matches the generated client ZIP.
-- [ ] No `.xlsx`, `.pptx`, client/reference files or generated run outputs are present in the client ZIP.
+- [ ] Only required report-layout/branding templates are bundled; no raw client datasets, generated reports or development outputs are present.
 - [ ] `scripts/snapshot_environment.ps1` is retained with the validated release record.

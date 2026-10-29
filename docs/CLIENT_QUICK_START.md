@@ -88,8 +88,8 @@ The existing combined soil charts and all other plots remain available. Missing
 or invalid wheel resistance measurements disable only their dependent plots;
 PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
 
-The 28 October 2026 delivery folder and ZIP are named
-`Astauto_VSM_v1.3.1_28102026`. Keep the two root launchers beside `Tool`.
+The 29 October 2026 delivery folder and ZIP are named
+`Astauto_VSM_v1.4.0_29102026`. Keep the two root launchers beside `Tool`.
 
 Release checks use Diesel `_07`, Electric UoL `_04` and the available Caiman SP Hybrid reference. Caiman's negative inferred chemical contents are correctly flagged; a newer Hybrid export beyond this reference is not claimed as tested.
 
@@ -135,9 +135,19 @@ confirmation are recorded as informational provenance. Unknown machine identity
 is optional when calculation inputs are valid. Missing essential inputs, invalid
 units, conflicting configurations and numerical quality problems remain visible.
 
+## Torque-Speed Operating Maps
+
+Current Electric, Hybrid and Diesel reports include two measured torque/RPM maps.
+Excel uses editable XY scatter charts and labelled source tables on Torque Maps;
+this worksheet has no frozen or split panes and scrolls freely in both directions.
+PowerPoint places the matching Astauto slide immediately before Summary.
+Its subtitle is exactly: "VSM simulation operating points showing the relationship between rotational speed and torque."
+Missing optional measurements show an explicit unavailable notice. These are
+simulation operating points, without inferred capability curves or conversions.
+
 ## Supported Runtime
 
-Application version is 1.3.1. Use Python >=3.11,<3.12; automatic bootstrap
+Application version is 1.4.0. Use Python >=3.11,<3.12; automatic bootstrap
 targets official CPython 3.11.9. The tested Streamlit version is 1.49.1 (declared
 range >=1.49.1,<1.50). Setup installs NumPy >=1.26,<3, openpyxl >=3.1,<4,
 PyYAML >=6,<7, matplotlib >=3.9,<4 and python-pptx >=1,<2.

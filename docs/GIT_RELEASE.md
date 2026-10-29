@@ -1,13 +1,25 @@
-# Git / GitHub Release Procedure - v1.2.5
+# Git / GitHub Release Procedure - v1.4.0
 
-Historical publication procedure below. The 28 October 2026 client package uses
-application version 1.3.1 and can be built locally with the canonical release
-builder without creating a tag, push or GitHub release. For the authorised 1.3.1 delivery,
-validate and commit the reviewed source locally before packaging, and record that
-commit in the portable manifest. Do not push or publish. Packaging a
-reviewed working tree must record its HEAD and included uncommitted file hashes;
-it must not claim to be a clean committed snapshot. Publication requires a
-separate explicit instruction. See FINAL_RELEASE_NOTES.md for current features.
+The 29 October 2026 release uses application version 1.4.0 and portable package
+`Astauto_VSM_v1.4.0_29102026.zip`. The explicitly authorised workflow is:
+
+1. Validate the full regression suite, all three report profiles, reference hashes,
+   clean package installation/bootstrap and the shipped setup/start launchers.
+2. Review the complete source diff and stage only release source, configuration,
+   tests and documentation. Exclude unrelated user files, outputs and ZIPs.
+3. Commit the validated source and record the commit/tree in the portable manifest.
+4. Reuse the established deterministic collector/writer and portable Tool layout.
+   Validate the staged archive and a fresh extraction before replacing the ZIP
+   identified by `dist/CURRENT_SERGIO_DELIVERY.json`. Preserve rollback in
+   `dist/Archived_Client_Packages` and keep one active distribution.
+5. Verify main and its expected upstream/remote, then push normally to origin/main.
+   Stop the push if the branch/upstream is unexpected or the remote has diverged.
+   No force push, tag or GitHub Release is required by this delivery request.
+
+The previous 28 October prohibition on pushing applied to that historical task.
+The current release request explicitly authorises the commit and normal push.
+
+## Historical publication example
 
 Run these commands only after the local final acceptance checklist has passed.
 

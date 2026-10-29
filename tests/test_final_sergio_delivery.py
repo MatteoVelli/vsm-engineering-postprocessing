@@ -72,7 +72,8 @@ def test_rolling_tyre_detail_page_keeps_six_cards_and_two_plots(labelled_report)
     ids = [s.slide_id for s in ppt.powerpoint_result.config.slides]
     index = ids.index("tyre_total")
     assert ids[index:index+3] == ["tyre_total", "soil_bulldozing", "soil_compaction"]
-    assert ppt.slide_count == 15
+    assert ppt.slide_count == 16
+    assert ppt.powerpoint_result.config.slides[-2].slide_id == "torque_maps"
     slide = Presentation(ppt.presentation_path).slides[index]
     text = " ".join(s.text for s in slide.shapes if s.has_text_frame)
     assert "Tyre Rolling Resistance Power & Energy" in text

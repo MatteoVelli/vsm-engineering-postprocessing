@@ -103,6 +103,9 @@ class ProfilePlotSeriesDefinition:
     axis: str = "primary"
     label: str | None = None
     required: bool = True
+    x: str | None = None
+    component: str | None = None
+    measurement_location: str | None = None
 
 
 @dataclass(frozen=True)
@@ -120,6 +123,8 @@ class ProfilePlotDefinition:
     status: str = "PASS"
     evidence: str | None = None
     notes: str | None = None
+    render_mode: str = "line"
+    report_group: str | None = None
 
 
 @dataclass(frozen=True)
@@ -741,6 +746,8 @@ def _parse_plot(raw: Any, index: int) -> ProfilePlotDefinition:
             "evidence",
             "notes",
             "series",
+            "render_mode",
+            "report_group",
         },
         context,
     )
@@ -752,6 +759,14 @@ def _parse_plot(raw: Any, index: int) -> ProfilePlotDefinition:
     if not isinstance(series_raw, list) or not series_raw:
         raise ConfigurationError(f"{context}.series must be a non-empty YAML list")
     series = tuple(_parse_plot_series(item, context, item_index) for item_index, item in enumerate(series_raw, 1))
+    render_mode = raw.get("render_mode", "line")
+    if render_mode not in {"line", "scatter"}:
+        raise ConfigurationError(f"{context}.render_mode must be line or scatter")
+    report_group = raw.get("report_group")
+    if report_group not in {None, "torque_maps"}:
+        raise ConfigurationError(f"{context}.report_group must be null or torque_maps")
+    if report_group == "torque_maps" and render_mode != "scatter":
+        raise ConfigurationError(f"{context}: torque_maps require scatter rendering")
     output_filename = _optional_string(raw.get("output_filename"), f"{context}.output_filename")
     if output_filename is not None and (Path(output_filename).name != output_filename or not output_filename.endswith(".png")):
         raise ConfigurationError(f"{context}.output_filename must be a plain .png filename without directories")
@@ -774,6 +789,8 @@ def _parse_plot(raw: Any, index: int) -> ProfilePlotDefinition:
         status=status,
         evidence=_optional_string(raw.get("evidence"), f"{context}.evidence"),
         notes=_optional_string(raw.get("notes"), f"{context}.notes"),
+        render_mode=render_mode,
+        report_group=report_group,
     )
 
 
@@ -781,17 +798,23 @@ def _parse_plot_series(raw: Any, plot_context: str, index: int) -> ProfilePlotSe
     context = f"{plot_context}.series[{index}]"
     if not isinstance(raw, dict):
         raise ConfigurationError(f"{context} must be a YAML mapping")
-    _reject_unknown_keys(raw, {"semantic_name", "axis", "label", "required"}, context)
+    _reject_unknown_keys(raw, {"semantic_name", "axis", "label", "required", "x", "component", "measurement_location"}, context)
     semantic_name = _required_string(raw, f"{context}.semantic_name")
     _validate_identifier(semantic_name, f"{context}.semantic_name")
     axis = _required_string({"axis": raw.get("axis", "primary")}, f"{context}.axis")
     if axis not in {"primary", "secondary"}:
         raise ConfigurationError(f"{context}.axis must be primary or secondary")
+    x = _optional_string(raw.get("x"), f"{context}.x")
+    if x is not None:
+        _validate_identifier(x, f"{context}.x")
     return ProfilePlotSeriesDefinition(
         semantic_name=semantic_name,
         axis=axis,
         label=_optional_string(raw.get("label"), f"{context}.label"),
         required=_optional_bool(raw.get("required", True), f"{context}.required"),
+        x=x,
+        component=_optional_string(raw.get("component"), f"{context}.component"),
+        measurement_location=_optional_string(raw.get("measurement_location"), f"{context}.measurement_location"),
     )
 
 

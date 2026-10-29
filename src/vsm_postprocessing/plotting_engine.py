@@ -66,6 +66,7 @@ class PlotSeriesDefinition:
     axis: str = "primary"
     label: str | None = None
     colour: str | None = None
+    x_channel_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,7 @@ class PlotDefinition:
     secondary_y_label: str | None = None
     reference_chart_number: int | None = None
     primary_y_limits: tuple[float, float] | None = None
+    render_mode: str = "line"
 
 
 @dataclass(frozen=True)
@@ -108,6 +110,8 @@ class RenderedPlot:
     axes_count: int
     png_file: str
     svg_file: str | None = None
+    series_x_channel_ids: tuple[str, ...] = ()
+    render_mode: str = "line"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -128,6 +132,8 @@ class RenderedPlot:
             "axes_count": self.axes_count,
             "png_file": self.png_file,
             "svg_file": self.svg_file,
+            "series_x_channel_ids": list(self.series_x_channel_ids),
+            "render_mode": self.render_mode,
         }
 
 
@@ -314,6 +320,7 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
             "output_filename",
             "reference_chart_number",
             "series",
+            "render_mode",
         },
         context,
     )
@@ -341,6 +348,9 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
     if not isinstance(series_raw, list) or not series_raw:
         raise ConfigurationError(f"{context}.series must be a non-empty YAML list")
     series = tuple(_load_series(item, context, idx) for idx, item in enumerate(series_raw, start=1))
+    render_mode = raw.get("render_mode", "line")
+    if render_mode not in {"line", "scatter"}:
+        raise ConfigurationError(f"{context}.render_mode must be line or scatter")
 
     return PlotDefinition(
         plot_id=plot_id,
@@ -352,6 +362,7 @@ def _load_plot(raw: object, index: int) -> PlotDefinition:
         primary_y_label=primary_y_label,
         secondary_y_label=secondary_y_label,
         reference_chart_number=reference_chart_number,
+        render_mode=render_mode,
     )
 
 
@@ -359,13 +370,14 @@ def _load_series(raw: object, plot_context: str, index: int) -> PlotSeriesDefini
     context = f"{plot_context}.series[{index}]"
     if not isinstance(raw, dict):
         raise ConfigurationError(f"{context} must be a YAML mapping")
-    _reject_unknown_keys(raw, {"channel_id", "axis", "label"}, context)
+    _reject_unknown_keys(raw, {"channel_id", "axis", "label", "x_channel_id"}, context)
     channel_id = _nonempty_string(raw.get("channel_id"), f"{context}.channel_id")
     axis = raw.get("axis", "primary")
     if axis not in _ALLOWED_AXES:
         raise ConfigurationError(f"{context}.axis must be 'primary' or 'secondary'")
     label = _optional_string(raw.get("label"), f"{context}.label")
-    return PlotSeriesDefinition(channel_id=channel_id, axis=axis, label=label)
+    return PlotSeriesDefinition(channel_id=channel_id, axis=axis, label=label,
+                                x_channel_id=_optional_string(raw.get("x_channel_id"), f"{context}.x_channel_id"))
 
 
 def render_plots(
@@ -399,6 +411,7 @@ def render_plots(
 
     requested = {definition.x_channel_id for definition in config.plots}
     requested.update(series.channel_id for definition in config.plots for series in definition.series)
+    requested.update(series.x_channel_id for definition in config.plots for series in definition.series if series.x_channel_id)
     missing = sorted(channel_id for channel_id in requested if channel_id not in channels_by_id)
     if missing:
         raise PlottingError(_format_missing_channels(missing, channels_by_id))
@@ -464,6 +477,11 @@ def _render_one_plot(
             channel = channels_by_id[item.channel_id]
             values = np.asarray(values_by_id[item.channel_id], dtype=np.float64)
             _validate_series_values(values, item.channel_id, "series")
+            series_x_id = item.x_channel_id or definition.x_channel_id
+            series_x = np.asarray(values_by_id[series_x_id], dtype=np.float64)
+            _validate_series_values(series_x, series_x_id, "x-axis")
+            if series_x.size != values.size or values.size != sample_count:
+                raise PlottingError(f"Plot '{definition.plot_id}' pair '{series_x_id}' / '{item.channel_id}' is not sample aligned")
             axis = primary_axis
             if item.axis == "secondary":
                 if secondary_axis is None:
@@ -475,13 +493,14 @@ def _render_one_plot(
             label = _clean_visible_text(item.label or channel.display_name)
             legend_labels.append(label)
             axis.plot(
-                x_values,
+                series_x,
                 values,
                 label=label,
                 linewidth=defaults.line_width,
-                linestyle="-",
+                linestyle="None" if definition.render_mode == "scatter" else "-",
                 color=item.colour or "#" + series_colour(series_index),
-                marker=None,
+                marker="o" if definition.render_mode == "scatter" else None,
+                markersize=3.0 if definition.render_mode == "scatter" else 6.0,
                 antialiased=True,
             )
 
@@ -595,6 +614,8 @@ def _render_one_plot(
         axes_count=2 if secondary_axis is not None else 1,
         png_file=str(output_path.resolve()),
         svg_file=str(svg_path.resolve()) if svg_path is not None else None,
+        series_x_channel_ids=tuple(item.x_channel_id or definition.x_channel_id for item in definition.series),
+        render_mode=definition.render_mode,
     )
 
 

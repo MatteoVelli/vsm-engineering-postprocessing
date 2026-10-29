@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 - 29 October 2026 - Torque-speed operating maps
+
+- Add measured torque-versus-RPM maps to current Electric, Hybrid and Diesel profiles, with explicit component and shaft-location labels and independent signed sample pairs.
+- Add two native editable XY charts and their source tables on an unfrozen Torque Maps worksheet, with free horizontal and vertical scrolling.
+- Add an Astauto Torque–Speed Operating Maps slide before Summary. Its subtitle is exactly: "VSM simulation operating points showing the relationship between rotational speed and torque."
+- Preserve existing engineering calculations, KPIs, report templates, legacy profiles and the Windows Python 3.11 setup/start workflow. Missing optional measurements remain explicitly unavailable.
+- Client package: Astauto_VSM_v1.4.0_29102026.zip, replacing the previous official distribution after validation.
+
 ## 1.3.1 - 28 October 2026 - Diagnostic cleanup
 
 - Classify the approved channel-specific kW interpretation as informational provenance, preserving raw values and invalid-unit validation.

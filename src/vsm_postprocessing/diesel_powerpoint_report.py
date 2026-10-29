@@ -62,7 +62,8 @@ def _display(stat):
 def _available_plots(result):
     # A present, nonzero constant trace is still useful (e.g. a held temperature).
     return {p.plot_id for p in result.plotting_result.rendered_plots
-            if (result.profile.metadata.excel_template and p.plot_id in {
+            if result.profile.plots_by_id()[p.plot_id].render_mode == "scatter"
+            or (result.profile.metadata.excel_template and p.plot_id in {
                     "diesel_engine_oil_temperature", "diesel_engine_water_temperature"})
             or any(not s.is_all_zero for s in result.plotting_result.series_summaries[p.plot_id])}
 
@@ -104,6 +105,11 @@ def diesel_powerpoint_config(result: ppt.ProfileExcelReportResult, *, output_fil
             "subtitle": subtitle, "statistics": [s for s in definition.statistics if s in statistics] + [row['metric_id'] for row in reporting if row['metric_id'] not in {'agro_mass_discharge_rate_kg_per_m', 'agro_discharge_rate_L_per_m'}],
             "plots": plot_ids, "body": list(bodies.get(slide_id, ())),
         })
+    for definition in profile.presentation.slides:
+        if definition.mode == "additional_plot_pair" and definition.plots:
+            slides.insert(len(slides)-1, {"slide_id": definition.slide_id, "type": "plot_pair",
+                "title": definition.title, "subtitle": definition.subtitle,
+                "statistics": list(definition.statistics), "plots": list(definition.plots), "body": []})
     return {
         "version": 1,
         "presentation": {
@@ -178,15 +184,31 @@ def build_diesel_powerpoint(
     plots = {p.plot_id: p for p in excel_result.plotting_result.rendered_plots}
     assets = Path(plot_assets_dir).resolve()
     original_slides = list(prs.slides)
+    # Diesel removes template shapes while replacing controls and thermal plots;
+    # retain the approved caption before those removals change shape indices.
+    caption_element = ppt.deepcopy(original_slides[8].shapes[3].element)
+    pair_rects = tuple((original_slides[8].shapes[i].left, original_slides[8].shapes[i].top,
+                        original_slides[8].shapes[i].width, original_slides[8].shapes[i].height)
+                       for i in _PANELS[9])
     # Reuse the template's neutral overview icon instead of battery/charge pictograms.
     neutral_icon = original_slides[1].shapes[1].image.blob
-    retained_pages = {_SLIDES[s.slide_id][0] for s in config.slides}
+    retained_pages = {_SLIDES[s.slide_id][0] for s in config.slides if s.slide_id in _SLIDES}
     for page in range(10, 0, -1):
         if page not in retained_pages:
             slide_id = prs.slides._sldIdLst[page - 1]
             prs.part.drop_rel(slide_id.rId)
             prs.slides._sldIdLst.remove(slide_id)
     for number, definition in enumerate(config.slides, 1):
+        if definition.slide_id not in _SLIDES:
+            # add_slide numbers by current count, which can collide with a
+            # retained template page after optional pages have been removed.
+            partname = prs.part.package.next_partname("/ppt/slides/slide%d.xml")
+            slide = prs.slides.add_slide(ppt._blank_slide_layout(prs))
+            slide.part.partname = partname
+            ppt._render_additional_plot_pair_slide(slide, prs, definition, statistics, plots, assets,
+                config.footer, excel_result, pair_rects, slide_number=number, slide_count=len(config.slides),
+                caption_element=caption_element, reference_slide=original_slides[8])
+            continue
         page = _SLIDES[definition.slide_id][0]
         slide = original_slides[page - 1]
         shapes = list(slide.shapes)
@@ -263,6 +285,9 @@ def build_diesel_powerpoint(
         for relationship in list(slide.part.rels.values()):
             if relationship.reltype == ppt.RT.IMAGE and relationship.rId not in used_images:
                 slide.part.drop_rel(relationship.rId)
+    if any(s.slide_id not in _SLIDES for s in config.slides):
+        summary_index = list(prs.slides).index(original_slides[9])
+        ppt._move_slide(prs, summary_index, len(prs.slides)-1)
     prs.core_properties.title = config.title
     prs.core_properties.subject = config.subject
     prs.core_properties.author = config.author

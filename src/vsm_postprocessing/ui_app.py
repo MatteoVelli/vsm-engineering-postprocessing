@@ -582,6 +582,15 @@ def _render_profile_report_options(st, definition, inspection):
         plot_labels = {p.plot_id: f"{p.title} ({p.plot_id})" for p in profile.plots}
         plots = st.multiselect("Plots included in Excel", plot_names, default=plot_names,
                                format_func=plot_labels.__getitem__)
+        plot_series = {}
+        for plot in profile.plots:
+            if plot.report_group == "torque_maps":
+                series_labels = {s.semantic_name: s.label or s.component or s.semantic_name for s in plot.series}
+                plot_series[plot.plot_id] = tuple(st.multiselect(
+                    "Components - " + plot.title, list(series_labels), default=list(series_labels),
+                    format_func=series_labels.__getitem__))
+        if plot_series:
+            st.caption("Torque Maps retain editable paired data independently of main-sheet exports. Legends identify motor, gearbox-output or driveshaft measurements; no conversion is assumed.")
         st.caption("Dependencies needed by selected plots, statistics and KPIs are calculated automatically. Plots whose source columns are not exported use the shared chart image in Excel.")
         ppt_plots = {}
         ppt_statistics = None
@@ -601,7 +610,7 @@ def _render_profile_report_options(st, definition, inspection):
             options = replace(options, data_start_row=start_row + first_sample, data_end_row=start_row + last_sample)
     selection = ProfileReportSelection(tuple(exported), tuple(math), tuple(rms + statistics), tuple(kpis), tuple(plots),
                                        ppt_plots or None, tuple(ppt_statistics) if ppt_statistics is not None else None,
-                                       tuple(bottom))
+                                       tuple(bottom), plot_series=plot_series or None)
     return definition, selection, options
 
 

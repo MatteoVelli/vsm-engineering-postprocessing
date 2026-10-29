@@ -67,6 +67,7 @@ _CLIENT_REFERENCE_FILES = (
 # Revised templates aid column-order fidelity when supplied. The deterministic
 # profiles also work without these private workbooks, using configuration order.
 _CLIENT_OPTIONAL_FILES = (
+    "docs/TORQUE_MAPS.md",
     "docs/SERGIO_2026_10_15_IMPLEMENTATION.md",
     "docs/TYRE_ROLLING_CORRECTION_2026_10_18.txt",
     "reference_files/Diesel Template_03.xlsx",

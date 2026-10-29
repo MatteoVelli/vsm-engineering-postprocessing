@@ -108,6 +108,11 @@ def test_diesel_measured_auxiliary_mass_and_zero_front_wheels():
 @pytest.mark.parametrize("kind", ("electric", "hybrid"))
 def test_absent_channels_never_fall_back_to_old_driveshaft(kind):
     data = dataset_for(kind)
+    if kind == "hybrid":
+        # The maps have explicit, separate driveshaft inputs. Avoid creating
+        # duplicate raw headers when substituting the old sources in this test.
+        for corner in ("rl", "rr"):
+            remove_channel(data, f"torque_map_driveshaft_{corner}")
     for wheel in WHEELS:
         index = data.channel_index(f"driveshaft_torque_{wheel}")
         data.channels[index] = replace(data.channels[index], source_name=f"DriveShaft_Torque_{wheel.upper()}")
@@ -299,7 +304,8 @@ def test_legacy_export_generates_partial_modern_excel_and_powerpoint(kind, tmp_p
     ppt = build_profile_powerpoint_report(report, tmp_path / "ppt")
     from pptx import Presentation
     presentation = Presentation(ppt.presentation_path)
-    assert len(presentation.slides) == (15 if kind == "electric" else 14)
+    assert len(presentation.slides) == (16 if kind == "electric" else 15)
+    assert ppt.powerpoint_result.config.slides[-2].slide_id == "torque_maps"
     text = " ".join(s.text for slide in presentation.slides for s in slide.shapes if s.has_text_frame)
     assert "PLOT DATA NOT AVAILABLE" in text
 
@@ -343,7 +349,8 @@ def test_new_soil_plots_replace_existing_powerpoint_slots(revised_report, tmp_pa
     slide = next(s for s in payload["slides"] if s["slide_id"] == "traction_auxiliaries")
     assert slide["plots"] == ["tyre_soil_bulldozing", "tyre_soil_compaction"]
     from pptx import Presentation
-    assert len(Presentation(result.presentation_path).slides) == (15 if kind == "electric" else 14)
+    assert len(Presentation(result.presentation_path).slides) == (16 if kind == "electric" else 15)
+    assert result.powerpoint_result.config.slides[-2].slide_id == "torque_maps"
 
 
 def test_ui_modern_profile_mapping_and_selections(tmp_path, monkeypatch):

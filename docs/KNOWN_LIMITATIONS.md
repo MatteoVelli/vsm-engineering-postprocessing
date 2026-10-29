@@ -1,6 +1,6 @@
 # Known Limitations
 
-Version 1.3.1 provides deterministic profile reporting for Electric, Hybrid and
+Version 1.4.0 provides deterministic profile reporting for Electric, Hybrid and
 Full Size Sprayer Diesel, subject to the following boundaries.
 
 1. Current profiles follow the Diesel `_04` and Electric/Hybrid `_08` reporting layouts; original profiles remain explicit legacy options. Release checks use the updated Diesel `_07` CSV and Electric UoL `_04` CSV, including nonzero gearbox torque and Sergio-confirmed HV power. The available Caiman SP Hybrid reference and controlled integrations are validated, including generator activity and correct rejection of negative chemical contents. A newer client Hybrid export beyond this reference is not claimed as tested.

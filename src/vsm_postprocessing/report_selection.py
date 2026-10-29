@@ -19,6 +19,7 @@ class ProfileReportSelection:
     powerpoint_plots: Mapping[str, tuple[str, ...]] | None = None
     powerpoint_statistics: tuple[str, ...] | None = None
     bottom_operations: tuple[str, ...] | None = None
+    plot_series: Mapping[str, tuple[str, ...]] | None = None
 
 
 def select_profile(profile: ReportingProfile, selection: ProfileReportSelection | None) -> ReportingProfile:
@@ -46,6 +47,14 @@ def select_profile(profile: ReportingProfile, selection: ProfileReportSelection 
     selected_stats = chosen(selection.statistics, stats, "statistics")
     selected_kpis = chosen(selection.kpis, kpis, "KPIs")
     selected_plots = chosen(selection.plots, plots, "plots")
+    if selection.plot_series is not None:
+        unknown = set(selection.plot_series) - set(plots)
+        if unknown:
+            raise ConfigurationError(f"Unknown plot series selections: {sorted(unknown)}")
+        for name, requested in selection.plot_series.items():
+            definition = plots[name]
+            allowed = chosen(requested, {s.semantic_name for s in definition.series}, "plot series")
+            plots[name] = replace(definition, series=tuple(s for s in definition.series if s.semantic_name in allowed))
     chosen(selection.bottom_operations, {"max", "min", "first", "last"}, "Excel column statistics")
     presentation = profile.presentation
     if presentation and selection.powerpoint_plots is not None:
@@ -62,6 +71,13 @@ def select_profile(profile: ReportingProfile, selection: ProfileReportSelection 
             slides.append(replace(slide, plots=tuple(requested),
                                   fallback_mode="configured" if tuple(requested) != slide.plots else slide.fallback_mode))
         presentation = replace(presentation, slides=tuple(slides))
+    if presentation:
+        # Additional pages follow explicit chart inclusion, including the new maps.
+        presentation = replace(presentation, slides=tuple(
+            replace(slide, plots=tuple(p for p in slide.plots if p in selected_plots))
+            if slide.mode == "additional_plot_pair" and any(
+                plots[p].report_group == "torque_maps" for p in slide.plots if p in plots) else slide
+            for slide in presentation.slides))
     if presentation and selection.powerpoint_statistics is not None:
         known = stats.keys() | kpis.keys() | {s for slide in presentation.slides for s in slide.statistics}
         allowed = chosen(selection.powerpoint_statistics, known, "PowerPoint statistics")
@@ -97,6 +113,7 @@ def select_profile(profile: ReportingProfile, selection: ProfileReportSelection 
     for name in selected_plots:
         needed.add(plots[name].x)
         needed.update(s.semantic_name for s in plots[name].series)
+        needed.update(s.x for s in plots[name].series if s.x)
     pending = list(needed)
     while pending:
         name = pending.pop()
@@ -108,5 +125,5 @@ def select_profile(profile: ReportingProfile, selection: ProfileReportSelection 
                    math_channels=tuple(c for c in profile.math_channels if c.semantic_name in needed),
                    statistics=tuple(c for c in profile.statistics if c.statistic_id in selected_stats),
                    kpis=tuple(c for c in profile.kpis if c.kpi_id in selected_kpis),
-                   plots=tuple(c for c in profile.plots if c.plot_id in selected_plots),
+                   plots=tuple(plots[c.plot_id] for c in profile.plots if c.plot_id in selected_plots),
                    presentation=presentation)

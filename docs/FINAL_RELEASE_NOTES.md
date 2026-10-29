@@ -1,4 +1,27 @@
-# Deterministic Release Notes - v1.3.1
+# Deterministic Release Notes - v1.4.0
+
+Current Sergio distribution, 29 October 2026: `Astauto_VSM_v1.4.0_29102026.zip`.
+This replaces the previous official client package after release validation.
+
+## v1.4.0 Torque-Speed Operating Maps
+
+- Current Electric: motor torque versus motor RPM, and measured gearbox output torque versus wheel RPM.
+- Current Hybrid: motor pairs and explicitly configured gearbox/driveshaft measurements, with shaft locations in the legends.
+- Current Diesel: engine torque versus engine RPM, and driveshaft torque versus wheel RPM.
+- Excel: two native editable XY charts and labelled paired source tables on Torque Maps, with no frozen or split panes.
+- PowerPoint: two plots on an Astauto page immediately before Summary. All three profiles use exactly: "VSM simulation operating points showing the relationship between rotational speed and torque."
+- Signed samples, engineering calculations, statistics/KPIs, templates and explicit legacy profiles are preserved. No manufacturer curves or inferred efficiencies are added.
+- Complete decks contain 16 Electric, 15 Hybrid and 11 Diesel slides when optional sections are present.
+- Python >=3.11,<3.12, the official CPython 3.11.9 bootstrap/fallback and root SETUP/START launchers beside Tool are unchanged.
+- First setup remains online; the package contains runtime templates, configuration and operating/troubleshooting instructions, without development environments, raw client datasets or generated reports.
+
+Release evidence is retained locally in `outputs/delivery_29102026/`.
+Available real Electric UoL, Caiman Hybrid and Full Size Diesel references are
+validated; a newer unavailable client Hybrid export is not claimed as tested.
+Caiman negative inferred chemical contents remain invalid, and existing battery
+capacity/source-unit diagnostics retain their engineering meaning.
+
+## Historical v1.3.1 delivery (28 October 2026)
 
 Final Sergio distribution, 28 October 2026: `Astauto_VSM_v1.3.1_28102026`.
 The existing setup/start launchers, Tool layout, dependencies,
@@ -33,7 +56,7 @@ existing rolling power and accumulated energy; the four additive tyre-total
 channels are removed. Soil components remain separate diagnostics. Live Excel
 KPI formulas and the 15-slide Electric presentation are preserved.
 
-The active portable delivery is Astauto_VSM_v1.3.1_28102026.zip. Application
+The historical portable delivery was Astauto_VSM_v1.3.1_28102026.zip. Application
 version is 1.3.1, with Python >=3.11,<3.12 and CPython 3.11.9 bootstrap.
 Validation covers Diesel, Electric UoL and the available older Hybrid reference;
 acceptance of an unavailable latest-client Hybrid source is not claimed.
@@ -52,7 +75,7 @@ acceptance of an unavailable latest-client Hybrid source is not claimed.
 
 ## Purpose
 
-Version 1.3.1 provides dynamic vehicle reporting for Diesel, Hybrid and Electric. Machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
+Version 1.4.0 provides dynamic vehicle reporting for Diesel, Hybrid and Electric. Machine identity is resolved from source metadata/filenames and can be corrected in the UI before Excel and PowerPoint generation.
 
 No AI functionality is included in engineering calculations.
 

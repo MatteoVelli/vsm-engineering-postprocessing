@@ -811,7 +811,7 @@ def _profile_report_channels_from_template(
     expected = {
         semantic_name
         for semantic_name, definition in definitions.items()
-        if getattr(definition, "required", True) or semantic_name in channels_by_name
+        if getattr(definition, "for_report", True) and (getattr(definition, "required", True) or semantic_name in channels_by_name)
     }
     omitted = sorted(expected - seen)
     if strict and (missing or omitted):
@@ -994,6 +994,7 @@ def _write_profile_workbook(
     from .profile_kpi_formulas import write_profile_kpi_formulas
     write_profile_kpi_formulas(workbook, report, statistics_result, report_channels)
     write_agro_statistics_formulas(workbook, statistics_result, report_metadata)
+    _write_torque_maps_sheet(workbook, plotting_result, excel_plot_ids)
 
     structure = {
         'visible_sheet_names': [s.title for s in workbook if s.sheet_state == 'visible'],
@@ -1011,6 +1012,111 @@ def _write_profile_workbook(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     save_report_workbook(workbook, output_path)
     return structure
+
+
+def _write_torque_maps_sheet(workbook, result, selected_ids=None):
+    """Keep native XY sources independent of the main report's export selection."""
+    definitions = [p for p in result.profile.plots if p.report_group == "torque_maps"]
+    if not definitions or (selected_ids is not None and not any(p.plot_id in selected_ids for p in definitions)):
+        return
+    sheet = workbook.create_sheet("Torque Maps")
+    sheet.sheet_view.showGridLines = False
+    sheet.sheet_view.zoomScale = 80
+    sheet.merge_cells("A1:Z1")
+    sheet["A1"] = "Torque\u2013Speed Operating Maps"
+    sheet["A1"].font = Font(name="Calibri", size=22, bold=True, color="FFFFFF")
+    sheet["A1"].fill = PatternFill("solid", fgColor="17365D")
+    sheet.row_dimensions[1].height = 34
+    sheet.merge_cells("A2:Z2")
+    sheet["A2"] = "Scenario: " + result.dataset.source_path.name
+    sheet.merge_cells("A3:Z3")
+    sheet["A3"] = (f"Source rows {result.dataset.quality.data_start_row}\u2013{result.dataset.quality.data_end_row}; "
+                    "all signed paired samples retained. No capability curves or drivetrain conversions.")
+    for row in (2, 3):
+        sheet.cell(row, 1).alignment = Alignment(wrap_text=True, vertical="center")
+        sheet.row_dimensions[row].height = 30
+    for col in range(1, max(27, sum(len(p.series) for p in definitions) * 6 + 1)):
+        sheet.column_dimensions[get_column_letter(col)].width = 12
+    for row in (35, 36, 37):
+        sheet.row_dimensions[row].height = 45
+    series_col = 1
+    for panel, plot_id in enumerate(("torque_map_powertrain", "torque_map_wheels")):
+        definition = next((p for p in definitions if p.plot_id == plot_id), None)
+        if definition is None:
+            continue
+        chosen = selected_ids is None or plot_id in selected_ids
+        prepared = _prepare_plot_definition(definition, result.channels_by_semantic_name,
+                                            result.values_by_semantic_name, result.sample_count)
+        available = chosen and isinstance(prepared, tuple)
+        columns = {}
+        diagnostics = result.series_diagnostics.get(plot_id, ())
+        for item in definition.series:
+            x_name = item.x or definition.x
+            state = next((s for s in diagnostics if s["y"] == item.semantic_name), {})
+            x, y = result.values_by_semantic_name.get(x_name), result.values_by_semantic_name.get(item.semantic_name)
+            label = item.label or item.component or item.semantic_name
+            x_channel, y_channel = result.channels_by_semantic_name.get(x_name), result.channels_by_semantic_name.get(item.semantic_name)
+            for row, text in ((34, label), (35, "RPM source: " + (x_channel.source_name if x_channel else x_name)),
+                              (36, "Torque source: " + (y_channel.source_name if y_channel else item.semantic_name)),
+                              (37, "Location: " + (item.measurement_location or "unspecified")),
+                              (38, state.get("status", "unavailable") + ": " + state.get("reason", "source unavailable"))):
+                sheet.merge_cells(start_row=row, start_column=series_col, end_row=row, end_column=series_col+4)
+                cell = sheet.cell(row, series_col, text)
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+                if row == 34:
+                    cell.font = Font(bold=True, color="FFFFFF")
+                    cell.fill = PatternFill("solid", fgColor="17365D")
+                if row == 38:
+                    sheet.row_dimensions[row].height = max(sheet.row_dimensions[row].height or 15, 45)
+            for offset, title in enumerate(("Source row", "Sample index", "Time [s]", "Speed [rpm]", "Torque [Nm]")):
+                cell = sheet.cell(39, series_col+offset, title)
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill("solid", fgColor="305E85")
+            # Unavailable pairs have no fabricated chart data. Inactive zero pairs
+            # retain their source table and are explicitly excluded from the map.
+            if state.get("included") or state.get("status") == "inactive":
+                times = result.values_by_semantic_name.get("track_time")
+                for offset, (rpm, torque) in enumerate(zip(x, y)):
+                    source_row = result.dataset.quality.data_start_row + offset
+                    values = (source_row, source_row-(result.dataset.quality.unit_row or result.dataset.quality.header_row)-1,
+                              float(times[offset]) if times is not None else None, float(rpm), float(torque))
+                    for j, value in enumerate(values):
+                        sheet.cell(40+offset, series_col+j, value).number_format = "0" if j < 2 else "0.000000"
+                # Every component gets distinct native X and Y ranges, even if
+                # two components happen to have identical arrays in this scenario.
+                columns[x_name] = series_col+3
+                columns[item.semantic_name] = series_col+4
+            series_col += 6
+        if available:
+            native, _ = prepared
+            chart = _build_native_scatter_chart(native, report_sheet=sheet, channel_column_by_id=columns,
+                data_start_row=40, data_end_row=39+result.sample_count, chart_index=500+panel)
+        else:
+            reason = "Not selected" if not chosen else prepared.reason
+            chart = _make_scatter_shell(definition.title + " - Unavailable", x_title=definition.x_label,
+                y_title=definition.primary_y_label, x_axis_id=105001+panel*10, y_axis_id=105002+panel*10, y_position="l")
+            chart.scatterStyle = "marker"
+            chart.legend = None
+            # Retain editable XY source slots using genuinely blank cells.
+            # No marker, simulated point or numeric value is introduced.
+            placeholder = Series(Reference(sheet, min_col=2, min_row=32, max_row=32),
+                                 Reference(sheet, min_col=1, min_row=32, max_row=32),
+                                 title="Unavailable - no validated operating points")
+            placeholder.marker.symbol = "none"
+            placeholder.graphicalProperties.line.noFill = True
+            chart.series.append(placeholder)
+            chart.display_blanks = "gap"
+            sheet.merge_cells(start_row=28, start_column=1+panel*13, end_row=31, end_column=12+panel*13)
+            sheet.cell(28, 1+panel*13, reason).alignment = Alignment(wrap_text=True, vertical="top")
+        chart.width, chart.height = 23, 10.5
+        _apply_profile_chart_layout(chart)
+        sheet.add_chart(chart, "A6" if panel == 0 else "N6")
+    sheet.sheet_properties.pageSetUpPr.fitToPage = True
+    sheet.page_setup.orientation = "landscape"
+    sheet.page_setup.paperSize = sheet.PAPERSIZE_A3
+    sheet.page_setup.fitToWidth, sheet.page_setup.fitToHeight = 1, 0
+    sheet.print_options.horizontalCentered = True
+    sheet.print_title_rows = "1:3"
 
 
 def _bind_agro_excel_sources(workbook, result, report=None, report_channels=()):
@@ -1572,6 +1678,8 @@ def _write_profile_plots_on_report_sheet(
     if 'mass' in binding:
         channel_columns['reporting_agro_mass'] = binding['mass']
     rendered = _ordered_profile_plots(plotting_result.rendered_plots)
+    map_ids = {p.plot_id for p in plotting_result.profile.plots if p.report_group == "torque_maps"}
+    rendered = [p for p in rendered if p.plot_id not in map_ids]
     if selected_ids is not None:
         rendered = [plot for plot in rendered if plot.plot_id in selected_ids]
     # Keep data-row heights and the KPI panel above intact. The panel columns
@@ -1590,7 +1698,8 @@ def _write_profile_plots_on_report_sheet(
             profile_definition, plotting_result.channels_by_semantic_name,
             plotting_result.values_by_semantic_name, plotting_result.sample_count,
         )
-        needed = {definition.x_channel_id, *(series.channel_id for series in definition.series)}
+        needed = {definition.x_channel_id, *(series.channel_id for series in definition.series),
+                  *(series.x_channel_id for series in definition.series if series.x_channel_id)}
         if not needed.issubset(channel_columns):
             # The user may plot channels without exporting them. Reuse the shared
             # rendered chart rather than introducing broken native references.
@@ -2688,7 +2797,8 @@ def _native_chart_source_columns(
         channel.channel_id: index for index, channel in enumerate(report_channels, 1)
     }
     needed = dict.fromkeys(channel_id for definition in definitions.values()
-                          for channel_id in (definition.x_channel_id, *(item.channel_id for item in definition.series)))
+                           for channel_id in (definition.x_channel_id, *(item.channel_id for item in definition.series),
+                                              *(item.x_channel_id for item in definition.series if item.x_channel_id)))
     missing = [channel_id for channel_id in needed if channel_id not in columns]
     if missing:
         data_sheet = report.parent.create_sheet("Chart Data")
@@ -2722,6 +2832,8 @@ def _build_native_scatter_chart(
         y_axis_id=base_axis_id + 2,
         y_position="l",
     )
+    if definition.render_mode == "scatter":
+        chart.scatterStyle = "marker"
     if any(isinstance(location, tuple) for location in channel_column_by_id.values()):
         chart.visible_cells_only = False
 
@@ -2746,7 +2858,7 @@ def _build_native_scatter_chart(
                 values.append(cached[cell.coordinate] if cell.data_type == "f" else cell.value)
         return np.asarray(values, dtype=np.float64)
 
-    x_data = axis_values([definition.x_channel_id])
+    x_data = axis_values(list(dict.fromkeys(item.x_channel_id or definition.x_channel_id for item in definition.series)))
     _apply_native_axis_format(chart.x_axis, x_data, definition.x_label or "")
     secondary_chart = _make_scatter_shell(
         definition.title,
@@ -2759,8 +2871,17 @@ def _build_native_scatter_chart(
     has_secondary = False
     for series_index, item in enumerate(definition.series):
         y_values = channel_reference(item.channel_id)
-        series = Series(y_values, x_values, title=item.label or item.channel_id)
+        series = Series(y_values, channel_reference(item.x_channel_id) if item.x_channel_id else x_values,
+                        title=item.label or item.channel_id)
         _style_native_series(series, series_index)
+        if definition.render_mode == "scatter":
+            from .plot_colours import series_colour
+            series.graphicalProperties.line.solidFill = None
+            series.graphicalProperties.line.noFill = True
+            series.marker.symbol = "circle"
+            series.marker.size = 4
+            series.marker.graphicalProperties.solidFill = series_colour(series_index)
+            series.marker.graphicalProperties.line.noFill = True
         if item.axis == "secondary":
             has_secondary = True
             secondary_chart.series.append(series)

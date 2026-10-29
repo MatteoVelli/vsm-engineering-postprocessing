@@ -1,4 +1,4 @@
-# Final Acceptance Checklist - v1.3.1
+# Final Acceptance Checklist - v1.4.0
 
 ## Engineering
 
@@ -11,6 +11,10 @@
 - [ ] Optional `Track_Height` / `Road Height` is exported when present and omitted without failure when absent.
 - [ ] Agrochemical Discharge remains mapped from `HitchRear_Force_Z_VehicleCoordinates` using `-force / 9.81`.
 - [ ] Hybrid PowerPoint KPI labels and values describe the same statistics.
+
+- [ ] All three current profiles use the exact approved torque-map subtitle.
+- [ ] Torque Maps contains two native XY charts, no frozen/split panes, and freely scrolls horizontally and vertically.
+- [ ] The sole current client ZIP replaces the previous official distribution after clean-extraction validation.
 
 ## Client Workflow
 
@@ -30,11 +34,11 @@
 
 ## Release Package
 
-- [ ] version is `1.3.1` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
+- [ ] version is `1.4.0` in both `pyproject.toml` and `vsm_postprocessing.__version__`.
 - [ ] an environment package snapshot is retained for the validated release machine.
 - [ ] client ZIP contains required reporting templates but no private source datasets or analysis workbooks.
 - [ ] client ZIP contains no generated report/run outputs.
 - [ ] client ZIP contains no retired scenario/provider assets.
 - [ ] `RELEASE_MANIFEST.json` is present in the client ZIP.
 - [ ] external `.sha256` checksum matches the client ZIP.
-- [ ] Git working tree is reviewed and the validated source is committed locally before packaging; no push or publication.
+- [ ] Git working tree is reviewed and the validated source is committed locally before packaging; normal push to verified origin/main is explicitly authorised after validation.

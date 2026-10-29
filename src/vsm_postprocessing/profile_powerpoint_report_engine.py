@@ -829,11 +829,15 @@ def _render_additional_plot_pair_slide(
     *,
     slide_number: int,
     slide_count: int,
+    caption_element: Any = None,
+    reference_slide: Any = None,
 ) -> None:
-    _apply_custom_astauto_background(slide, prs)
+    reference_slide = reference_slide if reference_slide is not None else prs.slides[8]
+    _apply_custom_astauto_background(slide, prs, reference_slide=reference_slide)
     _add_custom_header(
         slide, slide_def.title, slide_def.subtitle or "", assets,
-        icon_slide_number=9, reference_slide=prs.slides[8],
+        icon_slide_number=9, reference_slide=reference_slide,
+        caption_element=caption_element,
     )
     cards = tuple(card for card in soil_kpi_cards(slide_def.slide_id) if card[1] in slide_def.statistic_ids)
     _add_custom_kpi_cards(slide, statistics_by_id, cards)
@@ -931,8 +935,9 @@ def _add_reusable_content_layout(prs: Presentation) -> None:
     ids.append(layout_id)
 
 
-def _apply_custom_astauto_background(slide: Any, _prs: Presentation) -> None:
-    source_background = _prs.slides[8]._element.cSld.bg
+def _apply_custom_astauto_background(slide: Any, _prs: Presentation, *, reference_slide: Any = None) -> None:
+    reference_slide = reference_slide if reference_slide is not None else _prs.slides[8]
+    source_background = reference_slide._element.cSld.bg
     slide._element.cSld.insert(0, deepcopy(source_background))
 
 
@@ -949,6 +954,7 @@ def _add_custom_header(
     *,
     icon_slide_number: int,
     reference_slide: Any,
+    caption_element: Any = None,
 ) -> None:
     icon = slide.shapes.add_shape(MSO_SHAPE.OVAL, *_rect(_V7_HEADER_ICON_RECT))
     icon.fill.solid()
@@ -967,7 +973,7 @@ def _add_custom_header(
         font_name=_PPT_THEME.title_font,
     )
     # Copy the normal caption's full shape XML to preserve typography and geometry.
-    caption = deepcopy(reference_slide.shapes[3].element)
+    caption = deepcopy(caption_element if caption_element is not None else reference_slide.shapes[3].element)
     caption.xpath(".//p:cNvPr")[0].set("id", str(slide.shapes._next_shape_id))
     slide.shapes._spTree.insert_element_before(caption, "p:extLst")
     _set_shape_text(slide.shapes[-1], subtitle)

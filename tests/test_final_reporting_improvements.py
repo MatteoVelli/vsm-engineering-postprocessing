@@ -115,7 +115,8 @@ def test_current_diesel_thermal_charts_are_independent(tmp_path, monkeypatch, mo
     report = generate_reporting_profile_engineering_report(csv_for(data, tmp_path / "measured.csv"),
                       profile_path("diesel"), tmp_path / "report")
     prs = Presentation(report.presentation_path)
-    assert len(prs.slides) == 10
+    assert len(prs.slides) == 11
+    assert report.powerpoint_result.powerpoint_result.config.slides[-2].slide_id == "torque_maps"
     thermal = prs.slides[8]
     plots = [s for s in thermal.shapes if s.shape_type == 13 and s.top > Inches(3)]
     assert len(plots) == (0 if mode == "missing_both" else 1 if missing else 2)

@@ -8,6 +8,15 @@ profile:
     energy.'
   excel_template: reference_files/Diesel Template_04.xlsx
 overrides:
+  additional_presentation_slides:
+  - slide_id: torque_maps
+    mode: additional_plot_pair
+    title: Torque–Speed Operating Maps
+    subtitle: VSM simulation operating points showing the relationship between rotational speed and torque.
+    statistics: []
+    plots:
+    - torque_map_powertrain
+    - torque_map_wheels
   raw:
     engine_water_temperature:
       for_plot: true
@@ -71,6 +80,56 @@ plots:
     required: false
   - semantic_name: wheel_power_total
     label: Wheel Power Total
+    required: false
+- plot_id: torque_map_powertrain
+  title: Engine Torque vs Engine Speed
+  x: engine_speed
+  x_label: Engine Speed [rpm]
+  primary_y_label: Torque [Nm]
+  render_mode: scatter
+  report_group: torque_maps
+  order: 200
+  notes: Actual signed operating points; no capability envelope or inferred conversion.
+  series:
+  - semantic_name: engine_torque
+    x: engine_speed
+    component: Engine
+    label: Engine shaft
+    measurement_location: engine shaft
+    required: false
+- plot_id: torque_map_wheels
+  title: Wheel-Side Torque vs Wheel Speed
+  x: wheel_speed_fl
+  x_label: Wheel Speed [rpm]
+  primary_y_label: Measured Torque [Nm]
+  render_mode: scatter
+  report_group: torque_maps
+  order: 201
+  notes: Individual measured locations labelled in legend; no drivetrain conversion.
+  series:
+  - semantic_name: driveshaft_torque_fl
+    x: wheel_speed_fl
+    component: FL
+    label: FL driveshaft
+    measurement_location: driveshaft
+    required: false
+  - semantic_name: driveshaft_torque_fr
+    x: wheel_speed_fr
+    component: FR
+    label: FR driveshaft
+    measurement_location: driveshaft
+    required: false
+  - semantic_name: driveshaft_torque_rl
+    x: wheel_speed_rl
+    component: RL
+    label: RL driveshaft
+    measurement_location: driveshaft
+    required: false
+  - semantic_name: driveshaft_torque_rr
+    x: wheel_speed_rr
+    component: RR
+    label: RR driveshaft
+    measurement_location: driveshaft
     required: false
 statistics:
 - statistic_id: engine_water_temperature_rms

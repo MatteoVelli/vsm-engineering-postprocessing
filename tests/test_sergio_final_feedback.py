@@ -111,7 +111,8 @@ def test_diesel_actual_exports_keep_engine_torque_and_shift_formulas_safely(tmp_
     try:
         assert all("Engine Load" not in str(c.value) and "#REF!" not in str(c.value)
                    for sheet in book for row in sheet for c in row)
-        assert len(book.worksheets[0]._charts) == len(report.plotting_result.rendered_plots)
+        assert len(book["Torque Maps"]._charts) == 2
+        assert len(book.worksheets[0]._charts) + len(book["Torque Maps"]._charts) == len(report.plotting_result.rendered_plots)
     finally:
         book.close()
     ppt = build_profile_powerpoint_report(report, tmp_path / "ppt")

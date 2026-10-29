@@ -2,12 +2,13 @@
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.3.1 (28 October 2026) - Dynamic Vehicle Reporting
+## Current release: 1.4.0 (29 October 2026) - Torque-Speed Operating Maps
 
-The current delivery is `Astauto_VSM_v1.3.1_28102026.zip`. This patch classifies
-approved unit and tank-source interpretations as informational provenance and
-keeps unknown machine identity optional when valid inputs are available. Genuine
-engineering and data-quality diagnostics, including the Caiman sign warning, remain.
+The current delivery is `Astauto_VSM_v1.4.0_29102026.zip`. Electric, Hybrid and
+Diesel reports include measured torque-versus-RPM maps: two editable XY charts
+on the freely scrolling Torque Maps worksheet and a dedicated Astauto slide
+before Summary. Existing calculations and diagnostics, including the Caiman
+sign warning, remain unchanged. See [torque maps](docs/TORQUE_MAPS.md).
 
 The validated workflow is:
 
@@ -54,7 +55,7 @@ existing PowerPoint plot slots are selectable. See the
 [implementation and validation report](docs/SERGIO_2026_10_15_IMPLEMENTATION.md)
 for exact conventions, tests and unresolved upstream measurements.
 
-The October client update uses application version 1.3.1 and includes live formulas
+The October client update uses application version 1.4.0 and includes live formulas
 for all applicable configured Excel KPIs. The existing Diesel thermal slide shows
 independent oil/water plots and four MIN/MAX cards; its compact Excel header is
 24 pt. Diesel and Electric use updated real VSM CSVs for release validation.
@@ -67,9 +68,10 @@ and operating instructions.
 The 16 October plot update adds four separate soil-resistance plots versus time
 to current Electric and Hybrid Excel and PowerPoint reports, reusing existing
 power and cumulative-energy calculations. Existing combined charts remain.
-Two Astauto pages precede the final summary; complete Electric reports now have
-25 Excel charts and 15 PowerPoint slides after the final Sergio refinements. The portable folder and archive are
-named `Astauto_VSM_October_22102026` for the final 22 October delivery.
+The soil pages remain before the torque maps and final summary. Complete current
+reports contain 16 Electric, 15 Hybrid and 11 Diesel PowerPoint slides when all
+optional sections are available. The portable folder and archive are named
+`Astauto_VSM_v1.4.0_29102026` for the 29 October delivery.
 The two soil pages also include six engineering KPI cards each, using the Wheel
 Steering Angles card style and existing signed power/energy/distance conventions.
 The soil cards reuse existing Excel calculations and layouts.
