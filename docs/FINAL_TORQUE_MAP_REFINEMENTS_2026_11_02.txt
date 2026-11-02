@@ -1,0 +1,168 @@
+FINAL ASTAUTO TORQUE-MAP REFINEMENTS — 2 NOVEMBER 2026
+
+Outcome
+
+Implemented and validated the requested legend refinements, native editable
+torque maps and lightweight manual manufacturer-curve workflow. The current
+Electric presentation remains 16 slides, with Torque Maps on slide 15. Numerical
+calculations and torque-source selection are unchanged.
+
+Files changed for THIS refinement
+
+1. config/report_profiles/sergio_2026_10/robosprayer_electric.yaml
+2. config/report_profiles/sergio_2026_10/robosprayer_hybrid.yaml
+3. src/vsm_postprocessing/excel_report_engine.py
+4. tests/test_torque_maps.py
+5. docs/TORQUE_MAPS.md
+6. scripts/validate_final_torque_refinements.py (new)
+7. scripts/validate_torque_maps_office.ps1
+8. docs/FINAL_TORQUE_MAP_REFINEMENTS_2026_11_02.txt (this report)
+
+The working tree already contained the previous torque investigation's changes.
+Those changes and the unrelated untracked invoice were preserved. No commit,
+push, release publication or final Sergio delivery ZIP was created.
+
+Exact display-label changes
+
+  FL gearbox output -> FL Wheel
+  FR gearbox output -> FR Wheel
+  RL gearbox output -> RL Wheel
+  RR gearbox output -> RR Wheel
+
+Both current Electric and Hybrid profiles use these labels for the equivalent
+Excel and PowerPoint plots. Distinct Hybrid driveshaft legends remain distinct.
+KERS_MotGenUnit_GearboxOutputTorque_1..4 still map to FL/FR/RL/RR respectively.
+Source names, units, values, equations and corner assignments were not renamed
+or substituted. Configuration measurement_location and the Torque Maps source
+tables/manifests retain the full gearbox-output provenance.
+
+Excel structure and editability
+
+The existing Torque Maps worksheet already had native XY charts. It retains
+two marker-only ScatterChart objects, with independent numeric X/Y references
+for every component. X is rotational speed [rpm]; Y is torque [Nm]. Numeric
+source tables start at row 40 and retain original sample indices/source rows.
+Every valid paired sample is retained, including negative torque/RPM. No
+smoothing, clipping, resampling or manufacturer capability envelope is generated.
+
+The map charts now use three-point markers, the existing shared series colours,
+and automatic numeric axis limits/major intervals. This avoids clipping when
+the user adds a curve beyond the operating-point cloud. Axis orientation remains
+increasing left-to-right and bottom-to-top. Other report charts retain their
+existing limits. There are no raster images in place of either native map.
+
+The new Motor Curves worksheet contains only instructions, provenance fields
+and formatted EMPTY input ranges. No example motor data or automatic empty
+series are inserted into the charts. Extending the ranges needs no Python edits.
+This sheet is created only when the torque-map feature is included; disabling
+the feature still omits its worksheets. Existing raw and MATH channels remain
+separate, and manufacturer overlays cannot change engineering calculations.
+
+Sergio's manual workflow
+
+1. On Motor Curves, enter actual motor-shaft RPM/torque in A/B, starting at
+   row 11, and the curve name in B9. Record manufacturer/model, source revision,
+   peak/continuous classification and operating conditions at the right.
+2. Right-click the matching chart on Torque Maps, choose Select Data > Add,
+   and select the populated speed cells as X and torque cells as Y. Select
+   only populated rows. Rows 11–210 are preformatted; extend below if required.
+3. Give the new XY series a solid line if desired. Keep the simulation series
+   as point clouds. Each additional curve can have its own RPM vector.
+4. For the wheel chart, enter already converted wheel-side RPM/torque in D/E
+   and its name in E9. Record the conversion authority.
+5. Copy the finished Excel chart into PowerPoint. Microsoft's recommended
+   self-contained option is Keep Source Formatting & Embed Workbook. A picture
+   paste loses editability; Link Data instead requires the source workbook to
+   remain available. Some versions also offer an Excel OLE paste option.
+
+Official copy/paste guidance:
+https://support.microsoft.com/en-us/office/copy-from-excel-to-another-office-program-4ba759cc-62f3-422c-bd75-3fc83b06bb6b
+
+Engineering constraints
+
+Motor-shaft capability curves may be compared only at the corresponding motor
+shaft and with compatible units and operating conditions. Motor-shaft curves
+must not be labelled as wheel-side envelopes without converting BOTH RPM and
+torque for verified gearing, efficiency, topology and power-flow direction.
+
+The application does not contain verified general drivetrain conversion
+parameters and performs no such conversion. Ratios inferred from an individual
+simulation are not adopted as manufacturer capability parameters. The user must
+supply correctly converted wheel-side curves. No motor-selection subsystem or
+new dependency was added.
+
+Validation results
+
+- Complete existing suite plus new cases: 959 PASS, 1 pre-existing SKIP,
+  0 FAILURES, 0 ERRORS; 960 unique collected cases across four independent
+  pytest processes over disjoint modules. The skip is the existing Diesel
+  parameter for Electric/Hybrid soil-slide coverage.
+- Focused torque-map suite: 33 PASS, including five added cases for exact
+  legends/provenance and editable XY overlays across the three profiles.
+- Supported Streamlit 1.49.1: the 33 torque-map cases also PASS. Full suite runs
+  use the installed local 1.61.1; no dependency bounds/environment were changed.
+- Final copy-instruction text received a further focused 33-case PASS.
+- Real Electric references: 20pcGrad_04 (3,954 samples), 12-5pcGrad_01 (3,769)
+  and the previously problematic 8,500 kg Flat_02 (2,197) all PASS. Across these
+  three files, every component retains all 9,920 selected samples, or 79,360
+  paired operating points across the four motor and four wheel series.
+- Native chart references were compared directly with an independent raw CSV
+  reader, including all four indexed gearbox channels and corresponding RPM.
+  Excel serialization tolerance is rtol=1e-14, atol=0.
+- Eight-dataset historical numerical comparison preserves all 208 existing
+  MATH arrays, 312 existing statistics and 77 existing KPIs exactly. This includes
+  Electric, Hybrid and Diesel sources. The earlier torque fix remains intact.
+- Against the previously validated 8,500 kg report, all 716,222 main time-series
+  cells and the complete Statistics worksheet match exactly. The main worksheet
+  XML, all 16 PowerPoint slide XML layouts and all 15 unrelated slides' image
+  payloads match. Only the wheel-map legend image changes on the torque-map page.
+- Desktop Excel opened the charts as native XY (-4169), exported readable
+  previews and accepted an additional curve on each chart. Saving/reopening
+  confirms source editing persists, original simulation references remain intact,
+  and automatic axes include controlled points outside the simulation range.
+- Desktop PowerPoint rendered the original 16-slide report and the torque-map
+  page. No text overflows were detected. The slide and native Excel chart were
+  visually inspected for units, correct legends, colours, axes and layout.
+- Both edited Excel charts were copied to a separate validation presentation as
+  editable native PowerPoint charts, each with its four simulation series plus
+  the controlled test series. These are NOT screenshots. The synthetic values
+  exist only in disposable files explicitly labelled VALIDATION ONLY.
+
+Office limitation, stated precisely
+
+This installed Office version rejects the OLE-specific clipboard format. Its
+native chart paste works, retains all five series and displays correctly, but
+keeps a link to the source workbook even when the automation requests no link.
+ChartData.IsLinked and the saved presentation's external chart relationships
+were inspected to establish this. Self-contained GUI Embed Workbook is documented
+from Microsoft guidance but is not claimed to be verified by this automation.
+Use that explicit GUI option for portable slides; retain the workbook when using
+the linked option. This is a copy/paste mode distinction, not a numerical or
+Excel chart editability defect.
+
+The real Hybrid gearbox-input limitation documented in the earlier torque
+investigation remains unchanged. These refinements do not invent missing inputs.
+
+Artifacts and reproduction
+
+Final representative reports: outputs/rffinal/case_0/
+  profile_excel_report/*.xlsx
+  profile_powerpoint_report/*.pptx
+Other real Electric outputs: outputs/rfuol/case_0/ and case_1/
+Office previews and editable-copy experiment: outputs/rffinal/office_preview/
+Full tests/preservation/evidence: outputs/final_refinements_2026_11_02/
+
+Do not deliver the *_manual_overlay.* validation files as manufacturer curves.
+The generated client workbook's input ranges remain empty.
+
+Generate fresh real reports and audit them:
+  .venv\Scripts\python.exe scripts/validate_final_torque_refinements.py --output outputs/new_final_refinements
+Exercise native Office edit/copy behavior on disposable copies:
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/validate_torque_maps_office.ps1 -AuditRoot outputs/new_final_refinements -ExerciseMotorOverlays
+
+Recommendation
+
+READY FOR FINAL CLIENT PACKAGING for the requested report refinements, with the
+Office paste-mode distinction and pre-existing Hybrid input limitation documented.
+No numerical or reporting regression remains outstanding in this scope. Build
+the final Sergio delivery ZIP only after explicit user approval; none was built.

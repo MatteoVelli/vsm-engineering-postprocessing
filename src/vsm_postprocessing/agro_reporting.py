@@ -286,7 +286,7 @@ def calculate_reporting_kpis(statistics_result, metadata):
     net_trace['warnings'].append(Diagnostic(mass_trace['assumption']
         + f'; source: {resolved_source_name} [{selected_unit}]; formula: {mass_trace["formula"]}',
         code='force_interpretation_unconfirmed' if unconfirmed else 'simulation_mass_interpretation',
-        severity='warning' if unconfirmed else 'info', user_visible=unconfirmed))
+        severity='info', user_visible=False))
     report = AgroReport(report.capacity, report.rate, report.trace, metric, report.mass_values)
     report.trace['net_mass_discharge'] = net_trace
     report.trace['warnings'].extend(net_trace['warnings'])

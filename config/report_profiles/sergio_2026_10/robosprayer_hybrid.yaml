@@ -240,6 +240,20 @@ channels:
     for_plot: true
     notes: Measured high-voltage auxiliary power; never replaced with a constant or
       unrelated source.
+statistics:
+- statistic_id: edu_mech_power_rr_max
+  target: edu_mech_power_rr
+  operation: max
+  display_name: RR EDU Max Power
+  unit: kW
+  placement_group: traction_auxiliaries
+- statistic_id: wheel_power_rr_max
+  target: wheel_power_rr
+  operation: max
+  display_name: RR Wheel Max Power
+  unit: kW
+  placement_group: traction_auxiliaries
+  required: false
 plots:
 # Append separate time-based quantities; retain the existing combined charts.
 - plot_id: total_bulldozing_resistance_power
@@ -397,25 +411,25 @@ plots:
   - semantic_name: driveshaft_torque_fl
     x: wheel_rotationalspeed_fl
     component: FL
-    label: FL gearbox output
+    label: FL Wheel
     measurement_location: motor gearbox output
     required: false
   - semantic_name: driveshaft_torque_fr
     x: wheel_rotationalspeed_fr
     component: FR
-    label: FR gearbox output
+    label: FR Wheel
     measurement_location: motor gearbox output
     required: false
   - semantic_name: driveshaft_torque_rl
     x: wheel_rotationalspeed_rl
     component: RL
-    label: RL gearbox output
+    label: RL Wheel
     measurement_location: motor gearbox output
     required: false
   - semantic_name: driveshaft_torque_rr
     x: wheel_rotationalspeed_rr
     component: RR
-    label: RR gearbox output
+    label: RR Wheel
     measurement_location: motor gearbox output
     required: false
   - semantic_name: torque_map_driveshaft_rl

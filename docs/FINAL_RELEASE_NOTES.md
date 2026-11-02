@@ -1,7 +1,18 @@
-# Deterministic Release Notes - v1.4.0
+# Deterministic Release Notes - v1.4.1
 
-Current Sergio distribution, 29 October 2026: `Astauto_VSM_v1.4.0_29102026.zip`.
-This replaces the previous official client package after release validation.
+Current Sergio distribution, 2 November 2026: `Astauto_VSM_v1.4.1_02112026.zip`.
+The final patch retains the approved layouts, eight local editable Torque Maps
+datasets, corrected KERS/RR statistics and source-specific 350 kWh confirmation.
+Other compatible sources retain deterministic capacity inference. Unvalidated
+Energy/SOC thresholds are quiet technical heuristics; genuine invalid data and
+unavailable requested results retain warnings/errors. Detailed provenance remains
+in collapsed Diagnostics, Excel Metadata and PowerPoint speaker notes.
+
+Python >=3.11,<3.12, official CPython 3.11.9 bootstrap and the established root
+SETUP/START launchers beside Tool are unchanged. This package replaces v1.4.0
+only after independent clean-extraction validation.
+
+## Historical v1.4.0 delivery (29 October 2026)
 
 ## v1.4.0 Torque-Speed Operating Maps
 
@@ -129,7 +140,7 @@ VSM CSV/XLSX
 - Road Profile plotting includes Road Gradient and optional Road Height when `Track_Height` is present.
 - Excel plot-section headers now use the established dark blue fill with white bold text, and profile charts are larger for review.
 - Hybrid PowerPoint KPI cards now render exactly the available four-card set without an empty fifth card.
-- Nominal battery capacity is inferred from resolved Battery Energy and SOC samples as 100% SOC capacity; initial SOC is not treated as a fixed 95% or as an operational SOC ceiling.
+- Range uses 85% of a traceable nominal-energy reference. Explicit capacity inputs take precedence; otherwise the median Energy/SOC ratio remains an inferred energy-equivalent approximation, not a confirmed nominal specification. The 350 kWh confirmation from Sergio (2 November 2026) is restricted to the exact Electric 03 source SHA-256 in the current Electric profile. Raw stored energy and SOC remain unchanged; no usable SOC window or temperature law is invented. Ratio variation and initial-reference comparisons retain their original thresholds as technical heuristics, not physical acceptance limits or KPI reliability criteria. They and capacity provenance appear in on-demand Diagnostics, metadata and speaker notes without normal-workflow banners. Unconfirmed agro force interpretation is likewise technical provenance; invalid inputs and unavailable results retain warnings/errors.
 - Max Battery Charging Power reports the positive charging side of Battery Power and resolves to 0 kW when no positive charging samples exist.
 
 ## v1.2.10 Changes

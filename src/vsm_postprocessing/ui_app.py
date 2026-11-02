@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 
 from vsm_postprocessing.errors import VSMPostProcessingError, DataValidationError
-from vsm_postprocessing.diagnostics import as_diagnostic
+from vsm_postprocessing.diagnostics import as_diagnostic, diagnostic_records
 from vsm_postprocessing.importer import ImportOptions, inspect_data_file
 from vsm_postprocessing.pipeline_engine import run_pipeline
 from vsm_postprocessing.report_metadata import resolve_report_metadata
@@ -395,6 +395,10 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
                 profile_definition, selection, report_import_options = _render_profile_report_options(st, profile_definition, inspection)
             else:
                 st.info("Legacy reporting uses the previous source mappings and sample-energy convention. The legacy high-voltage auxiliary definition is a constant zero, not a measured high-voltage source.")
+                if profile_definition.powertrain in {"electric", "hybrid"}:
+                    st.warning("Legacy wheel torque uses DriveShaft_Torque_FL/FR/RL/RR. "
+                               "Select Sergio - 15 October 2026 to use the configured "
+                               "KERS gearbox-output torques. Inactive driveshaft signals produce zero wheel power.")
             reporting_inputs = _render_reporting_metadata_inputs(st, profile_definition, source_path)
             settings = repr((profile_definition.profile_path, selection, report_import_options, reporting_inputs, machine_name_override))
             validation_key += ":" + hashlib.sha256(settings.encode()).hexdigest()
@@ -719,6 +723,10 @@ def _render_profile_report_completion(st: Any, result: Any) -> None:
     c6.metric("Statistics", result.statistic_count)
     c7.metric("KPIs", result.kpi_count)
     c8.metric("Output", result.report_path.name)
+    with st.expander("Diagnostics"):
+        st.write({"diagnostics": diagnostic_records(result.excel_result.statistics_result.diagnostics),
+                  "battery_capacity": result.excel_result.statistics_result.battery_capacity,
+                  "source_sha256": result.excel_result.dataset.quality.source_sha256})
 
 
 def _render_profile_report_download(st: Any, result: Any) -> None:

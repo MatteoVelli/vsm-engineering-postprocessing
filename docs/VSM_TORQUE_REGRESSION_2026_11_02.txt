@@ -1,0 +1,301 @@
+VSM TORQUE CHANNEL INVESTIGATION AND ENGINEERING VALIDATION
+2 November 2026 | Baseline Git HEAD: a1f1602
+
+A. ROOT CAUSE
+
+The reported failure pattern is reproducible with the explicit LEGACY Electric
+profile, not with the current October profile at the inspected Git HEAD.
+
+In reference_files/RoboSprayer_8500Kg_Electric_02_UoL_Drive_Cycle_20kph_DriverPC_Flat_02.csv,
+all four DriveShaft_Torque_FL/FR/RL/RR arrays are exactly zero across 2,197
+samples. The four KERS_MotGenUnit_GearboxOutputTorque_1..4 arrays are active.
+Their initial values include 8,115.03, 8,115.59, 8,764.91 and 8,765.12 Nm.
+The legacy configuration explicitly requests DriveShaft_Torque_*. Resolution
+therefore selects valid, inactive signals and its wheel power is zero.
+This is configuration selection, not an activity-based alias choice, importer
+unit conversion, or Excel/PowerPoint corruption.
+
+Current profiles in config/report_profiles/sergio_2026_10 explicitly override
+the four sources to KERS_MotGenUnit_GearboxOutputTorque_1..4, with empty alias
+lists. Missing sources disable dependent results; shafts are not substituted.
+The UI already defaults to these current profiles. The base profiles remain
+explicit legacy definitions. Loading a base YAML directly also selects legacy
+behavior. Shared semantic IDs named driveshaft_torque_* do not determine the
+physical source: inspect source_name in the profile and report mapping sheet.
+
+History:
+- 6b92e5868ef1c610d3d716602e754afbfa708879 (29 September 2026) aligned
+  Electric_05/Hybrid_06 with raw DriveShaft torque, replacing Electric synthetic
+  constant-zero torque definitions. It did not replace an existing KERS mapping.
+- 73920314dd4c4b3237eb494233395b4cabde73b1 (16 October 2026) introduced the
+  versioned October profiles and their explicit KERS gearbox mappings. This
+  correction was already present before this investigation.
+- No subsequent change reverting those current torque mappings was found.
+  The customer's exact installed version/settings and original screenshot CSV
+  were not supplied. It is not established that the customer selected Legacy.
+  The available 8,500 kg file reproduces the failure pattern, but its EDU maxima
+  differ from the supplied screenshot description. Those scenarios are distinct.
+
+The existing 29 October v1.4.0 delivery archive was also inspected read-only.
+Its SHA-256 matches CURRENT_SERGIO_DELIVERY.json:
+728339e71ee40e7ac2bdd4f1453c473f153eb46b51bb02a874ba344faeacb373.
+Both current profile mappings match baseline HEAD, and its UI defaults to the
+current definitions. This rules out a differing mapping in that available ZIP;
+it does not identify the customer's actual installed package or selection.
+
+Pipeline traced:
+importer.load_data_file -> report_profile.resolve_profile ->
+profile_math.calculate_profile_math_channels ->
+profile_statistics.calculate_profile_statistics -> profile_plotting ->
+excel_report_engine.generate_profile_excel_report ->
+profile_powerpoint_report_engine.build_profile_powerpoint_report.
+UI orchestration is in ui_app and ui_config. Report export labels/order are
+matched to templates after numerical resolution; templates do not choose a
+different raw torque array during calculation.
+
+A separate reporting weakness was identified: RR power maxima were calculated
+inside the PowerPoint adapter rather than declared alongside shared statistics.
+This produced equal values in the inspected data, but omitted those explicit RR
+metrics from Excel's canonical Statistics table and allowed recomputation after
+selection. This investigation corrects that weakness.
+
+B. IMPLEMENTED CORRECTION AND ENGINEERING BASIS
+
+Changes:
+- Current Electric and Hybrid YAML: declare edu_mech_power_rr_max and
+  wheel_power_rr_max as shared MAX statistics. Missing wheel torque keeps the
+  wheel statistic optional and unavailable, rather than inventing zero.
+- profile_statistics.py: preserve the RR card labels in canonical metrics.
+- profile_powerpoint_report_engine.py: current profiles consume those shared
+  results; do not recalculate or resurrect omitted current RR metrics. Explicit
+  legacy profiles retain their existing presentation compatibility behavior.
+- ui_app.py: warn that Legacy uses DriveShaft_Torque_* and identify the current
+  reporting option for KERS gearbox torque. No Python editing is needed.
+- excel_report_engine.py: reserve space beneath the plot area when four or more
+  legend entries wrap. Native Office rendering exposed an existing legend/axis
+  overlap on the five-series Wheel Torque and Wheel Power charts. The chart
+  readability test now checks the intentionally smaller inner plot height for
+  multiline legends; its other geometry, styling and data assertions remain.
+- tests/test_torque_source_regression.py: targeted numerical, source-selection,
+  invalid-input, zero, configuration, UI and report regression coverage.
+- scripts/validate_torque_sources.py and validate_torque_sources_office.ps1:
+  reproducible real-source, UI, report, native Office and recalculation audits.
+
+Original versus corrected mapping:
+  Corner  Legacy source          Current source (already correct; retained)
+  FL      DriveShaft_Torque_FL    KERS_MotGenUnit_GearboxOutputTorque_1
+  FR      DriveShaft_Torque_FR    KERS_MotGenUnit_GearboxOutputTorque_2
+  RL      DriveShaft_Torque_RL    KERS_MotGenUnit_GearboxOutputTorque_3
+  RR      DriveShaft_Torque_RR    KERS_MotGenUnit_GearboxOutputTorque_4
+
+Both client Electric_08 and Hybrid_08 channel-selection sheets explicitly pair
+each indexed gearbox source with its respective Wheel Torque FL/FR/RL/RR label.
+The index order is therefore supported by client workbook evidence, not inferred
+from array order or similar values. Tests inspect these actual workbook entries.
+
+Physical meanings and units:
+- DriveShaft torque [Nm] is a distinct measured shaft channel, which may be
+  inactive for a particular VSM driveline architecture.
+- Motor/EDU torque [Nm] and speed [rpm] are ElectricSystem_EM1..4 measurements.
+  Mechanical EDU power [kW] = motor torque * motor rpm * 2*pi/60000.
+  Electrical EDU power channels remain separate electrical quantities.
+- KERS gearbox-output torque [Nm] is measured downstream of the motor gearbox.
+  The current client templates explicitly identify it as their Wheel Torque.
+- Configured wheel power [kW] = corresponding gearbox-output torque * measured
+  wheel rpm * 2*pi/60000. Signed torque, speed and regenerative power are retained.
+- Wheel Total Torque sums four signed torques. Wheel Power Total sums four
+  simultaneous corner powers, not four independently located maxima.
+
+The 8,500 kg CSV provides additional evidence for this shaft pairing: median
+motor/wheel speed ratio is approximately 17 and median motoring output/input
+mechanical power ratio approximately 0.97 at every corner. Median output/motor
+torque ratio is approximately 16.49. These are DATA INFERENCES, not newly entered
+model parameters. Motor-versus-17*wheel speed residuals reach 0.3603 rpm and
+motoring torque-versus-16.49*motor residuals reach 0.05032 Nm. Finite-resolution
+exports and differing measurement locations/transient samples prevent treating
+these relations as exact throughout the trace. No ratio or efficiency is applied
+again to measured gearbox torque, and no torque is reconstructed from motor data.
+
+The authoritative report definition is the client workbook mapping and formula,
+supported by measured speeds. The repository does not contain the VSM mechanical
+model or a manufacturer topology specification. This is not a universal claim
+that any gearbox output on any future configuration is net tyre/contact torque.
+Different downstream gearing needs its own explicit configuration and authority.
+
+Keeping existing source definitions and exact SI calculations is preferable to
+globally replacing legacy mappings, selecting whichever signal is nonzero,
+adding shaft aliases, guessing gear ratios, or fabricating motor-derived torque.
+Raw channels and MATH channels stay distinguishable in import metadata, workbook
+mapping, formulas and report provenance. Separate Hybrid driveshaft torque-map
+inputs remain available and never feed the current gearbox-based power equations.
+
+C. NUMERICAL EVIDENCE
+
+8,500 kg Electric, independent full-trace calculation (2,197 samples):
+  Corner  Peak sample / time [s]  Torque [Nm]  Wheel [rpm]  Power [kW]
+  FL      1322 / 1322             8033.01      63.6454      53.53945498243164
+  FR      1323 / 1323             5962.27      85.7072      53.51278628409146
+  RL      0 / 0                   8764.91      58.5410      53.73239711586532
+  RR      0 / 0                   8765.12      58.5397      53.732491254108076
+
+RR expected = 8765.12 * 58.5397 * pi / 30000
+            = 53.732491254108076 kW.
+Engine RR maximum is identical; Excel and PowerPoint display 53.73 kW.
+RR minimum is -40.11191231059598 kW, RMS 14.005449987249936 kW, and final
+sample 10.184327049547608 kW. Total wheel power ranges from
+-183.46502244507994 to 214.41887051734594 kW. These signed values were
+checked across every sample, including independent four-corner sums.
+RMS is an independent diagnostic here; the default profile does not add wheel
+RMS cards. Explicitly configured torque/power RMS statistics are exercised by
+the new regression tests alongside MAX, MIN and LAST.
+
+RR EDU maximum = 55.392600251565405 kW (display 55.39 kW).
+Existing EDU MAX SPEED and EDU MAX TORQUE cards intentionally retain their
+reference EM3/RL sources: 2442.98 rpm (display 2,443) and 667.313 Nm (667.31).
+These generic labels do not imply RR; their source identities are recorded.
+
+The independently calculated torque/power arrays have zero maximum absolute
+engine difference in the 8,500 kg audit. Workbook serialization is compared with
+rtol=2e-14, atol=1e-10. Desktop Excel recalculated a cache-free disposable UI
+workbook: 814,708 numeric cells across all worksheets agree, maximum absolute
+difference 2.2737367544323206e-13. All 80,498 formula caches were removed
+before recalculation and independently verified absent; no Excel error cells.
+
+Other real Electric gearbox-equipped sources:
+- UoL 20pcGrad_04: 3,954 samples, RR max 7.811849514462106 kW.
+- UoL 12-5pcGrad_01: 3,769 samples, RR max 6.969798760566978 kW.
+
+Across all six Electric/Hybrid CSVs, 5,106,867 exported time-series numeric cells
+were compared. Affected arrays use an independent CSV/formula oracle; unrelated
+columns use the engine arrays as an export-preservation check. Source selection,
+units, max/min/last cells, configured affected statistics, chart references,
+slide notes, KPI text and embedded plot bytes were inspected.
+
+D. VALIDATION RESULTS
+
+Targeted new regression module: all 47 cases PASS, including four-corner signed
+math, raw competition, missing/invalid/ambiguous sources, genuine zeros,
+independent RMS/MAX/MIN/LAST, client workbook ordering, default UI/legacy warning
+and shared Excel/PPT statistics. All 26 existing chart-readability cases PASS.
+An initial focused run exceeded the default three-second AppTest timeout on
+two newly added UI cases; those two pass with a 60-second integration timeout.
+No existing test timeout or numerical assertion was relaxed.
+
+Full project test suite: 954 PASSED, 1 SKIPPED, 0 FAILED, 0 ERRORS.
+All 955 collected cases were executed once in four independent pytest processes
+over disjoint test modules; XML case identities are unique and totals match
+collection. The skip is the pre-existing Diesel parameter of
+test_new_soil_plots_replace_existing_powerpoint_slots: soil plots apply to
+Electric and Hybrid profiles. All earlier partial suite attempts were stopped
+when Office rendering exposed the chart-layout defect; the four final XML logs
+cover the final implementation. No tests were deleted or weakened.
+
+Real report generation:
+- Five Electric CSVs: PASS, including three active gearbox datasets and two
+  older CSVs that lack gearbox measurements. Missing dependent wheel results are
+  explicitly unavailable; the existing zero driveshaft signals are not used.
+- Caiman Hybrid CSV: report generation and numerical/export audit PASS with
+  explicit missing gearbox sources. EDU and distinct raw driveshaft analyses
+  remain available; current wheel torque/power and its MAX KPI are unavailable.
+- Current Electric and Hybrid full gearbox paths: synthetic asymmetric signed
+  values validate all four indices and sums, with competing shaft inputs.
+- Real Electric UI: upload, default current profile, validation, Excel/PPT
+  generation, legacy warning and invalidation of previous validation PASS.
+- Final-code UI regeneration: all six real Electric/Hybrid files PASS their
+  independent audits, covering 15,890 samples and 5,106,867 time-series cells.
+  Three cases intentionally report missing gearbox sources. Final audits match
+  the earlier independent numerical results exactly; all 36 original reference
+  files pass their before/after SHA-256 comparison.
+- Real Hybrid UI: PASS for upload, current-profile selection, validation,
+  Excel/PPT generation, missing-source handling and legacy-switch invalidation.
+- Native Office: all three gearbox-equipped Electric cases and the Hybrid case
+  opened, rendered to PDF and exported native-chart/traction-slide previews.
+  The revised five-series wheel-chart layout was rendered and inspected again;
+  the legend and distance-axis title no longer overlap. Desktop Excel
+  recalculation across all four source cases passes for 4,303,595 numeric cells;
+  the largest absolute difference is 2.2737367544323206e-13. Formula caches were
+  empty before recalculation; no Excel error cells were found.
+
+Historical preservation: all eight datasets in the 29 October numeric snapshot,
+including two Diesel sources, preserve raw hashes, all 208 existing math arrays,
+all 312 existing statistics and all existing engineering KPIs exactly. The only
+new shared statistics are the declared RR maxima. No approved reports or source
+datasets were overwritten; reference hash audits verify original-file integrity.
+
+Limitations:
+1. No real Hybrid CSV with KERS gearbox-output signals is available. Successful
+   Hybrid report generation is not evidence of real Hybrid gearbox power.
+2. The screenshot's exact dataset/version/settings are unavailable; its reported
+   11.03 kW / 635 rpm / 218.23 Nm maxima cannot be numerically reconstructed.
+3. Current gearbox-based output is already corrected at baseline HEAD. This work
+   does not claim to have discovered a new mapping reversion in current code.
+4. Raw zero wheel torque can be valid. Missing/NaN/nonnumeric/incompatible input
+   is diagnosed separately and is never silently filled with zero.
+5. Existing non-torque engineering warnings (for example the Caiman tank-load
+   sign/derived agro rate) remain visible; this task does not alter that physics.
+6. The local full-suite environment uses Python 3.11.15 and Streamlit 1.61.1;
+   Streamlit is outside the declared >=1.49.1,<1.50 range. All 53 targeted torque
+   and UI-selection tests pass under the pre-existing isolated 1.49.1 runtime.
+   Actual Electric and Hybrid upload/validate/generate workflows also pass there,
+   including independent CSV/report checks and legacy-switch invalidation.
+   Their affected numerical arrays/checks agree exactly with the local-runtime
+   audits. The full 955-case suite is not claimed to run under both runtimes.
+   No application environment or dependency bounds were changed.
+
+E. REPOSITORY STATUS AND REPRODUCTION
+
+Changed files are the two current profile YAMLs, profile_statistics.py,
+profile_powerpoint_report_engine.py, ui_app.py, excel_report_engine.py,
+test_excel_chart_readability.py, the new regression test module,
+the two validation scripts, this report and the README link (12 files total).
+Existing unrelated untracked
+Matteo_Velli_Manas_Studio_Invoice_October.pdf was left untouched.
+
+No local commit, push, release build or publication was performed.
+
+Evidence root: outputs/torque_regression_2026_11_02/
+  reference_audit.json, source_inventory.json, preservation.json,
+  drivetrain_evidence.json, package_audit.json, environment.json,
+  suite_0..3.xml/log, suite_groups.json, collection.log, test_summary.json,
+  supported_runtime.xml/log, UI and Office logs.
+  final_validation_summary.json consolidates the final counts and limitations.
+Electric UI reports and Office previews: outputs/n2ui4/
+Final five-series layout reports and Office previews: outputs/n2layout/
+Real gearbox sources and Hybrid reports: outputs/n2active/
+Older Electric reports without gearbox signals: outputs/n2refs2/
+Real Hybrid UI reports: outputs/n2hybridui/
+Final six-source UI regeneration: outputs/n2finalrefs/
+Supported Streamlit 1.49.1 UI checks: outputs/n2supportedui/
+
+Reproduce with a NEW destination:
+  .venv\Scripts\python.exe scripts/validate_torque_sources.py --output outputs/new_torque_audit
+  .venv\Scripts\python.exe scripts/validate_torque_sources.py --output outputs/new_torque_ui --ui --source <CSV>
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/validate_torque_sources_office.ps1 -AuditPath outputs/new_torque_audit/audit.json
+  .venv\Scripts\python.exe scripts/validate_torque_sources.py --verify-office outputs/new_torque_audit/office/checks.json
+  .venv\Scripts\python.exe -m pytest -o cache_dir=outputs/new_torque_cache --basetemp outputs/new_torque_tests
+
+The UI audit uses AppTest with a substituted upload object; actual application
+validation, options, selection, math, report orchestration and downloads run.
+It does not claim an automated browser file-picker gesture. Office scripts use
+read-only source reports and disposable copies. Nothing sends client data out.
+
+Windows shell note: redirected native stderr makes this PowerShell tool wrapper
+return status 1 even when Python exits 0. AppTest writes non-error bare-mode
+warnings/debug messages to stderr. The final six-case and supported UI audit
+logs contain these messages; all six/two audit records and final integrity files
+were completed, then independently rechecked. A minimal stderr-only Python probe
+reproduced shell status 1; explicitly forwarding $LASTEXITCODE returned 0.
+This shell-status discrepancy is not hidden or counted as a failed application
+assertion. When capturing logs in PowerShell, use:
+  python <arguments> *> <log>; $torqueExit = $LASTEXITCODE; exit $torqueExit
+
+F. FINAL ENGINEERING VERDICT
+
+PARTIALLY VERIFIED - The existing current Electric mapping is verified against
+real nonzero gearbox measurements, with reporting consistency hardened. Hybrid
+gearbox behavior is validated with controlled data; a real Hybrid export with
+the required gearbox channels remains necessary for full engineering acceptance.
+The screenshot scenario itself cannot be declared reproduced or resolved without
+its exact source and selected reporting definitions. Use the current Sergio
+reporting option for the documented KERS configuration; retain Legacy only when
+its distinct driveshaft-based definition is intended.

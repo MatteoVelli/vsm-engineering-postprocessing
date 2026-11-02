@@ -2732,7 +2732,7 @@ kpis:
     display_name: 100% Battery Capacity
     unit: kWh
     placement_group: summary
-    notes: Nominal battery capacity at 100% SOC is inferred from Battery Energy / (SOC / 100) across valid samples; initial SOC is not assumed to be 95% or a maximum SOC limit.
+    notes: Fallback energy-equivalent reference is the median of Battery Energy / (SOC / 100) across valid samples, not a confirmed nominal specification. An explicit traceable nominal reference takes precedence; initial SOC is not a fixed ceiling.
   - kpi_id: usable_battery_capacity_85
     expression: battery_capacity_100 * 0.85
     dependencies:
@@ -2740,7 +2740,7 @@ kpis:
     display_name: 85% Battery Capacity
     unit: kWh
     placement_group: summary
-    notes: Usable energy for Range @ 85% is 0.85 times inferred nominal battery capacity, independent of the simulation starting SOC.
+    notes: Reference energy for Range @ 85% is 0.85 times the selected nominal-energy reference, independent of starting SOC. This extrapolation does not establish a usable SOC window or temperature law.
   - kpi_id: range_85_battery_km
     expression: 1000 * usable_battery_capacity_85 / battery_energy_consumption_wh_per_km
     dependencies:

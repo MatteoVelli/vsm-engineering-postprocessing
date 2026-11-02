@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .report_profile import ReportingProfile
-from .utils import client_display_filename
+from .utils import client_display_filename, sha256_file
 from .reporting_inputs import ReportingInputs
 from .errors import ConfigurationError
 from .machine_specifications import resolve_machine_specifications
@@ -101,12 +101,18 @@ def resolve_report_metadata(
     identity_name = machine_name if requested else _resolve_machine_name(
         source_filename, machine_name_override=None, source_metadata=source_metadata)[0]
     matches = []
+    source_digest = None
     for item in configurations:
         compatible = (identity_name.casefold() in {name.casefold() for name in item['machine_names']}
                       and powertrain_name.casefold() in item['powertrains']
                       and (not source_powertrains or source_powertrains == {powertrain_name.casefold()}))
         if compatible and ((requested and requested == item['configuration_id']) or
                            (not requested and set(map(str.casefold, item['identity_tokens'])) <= identity_tokens)):
+            if item.get('source_sha256'):
+                if source_digest is None and Path(source_file).is_file():
+                    source_digest = sha256_file(Path(source_file))
+                if source_digest != item['source_sha256']:
+                    continue
             matches.append(item)
     if requested and not matches:
         raise ConfigurationError('Machine configuration conflicts with machine name or powertrain, or is not defined in this profile')

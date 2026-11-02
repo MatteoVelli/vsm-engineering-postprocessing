@@ -1,0 +1,116 @@
+FINAL CORRECTION: EXCEL TORQUE MAPS BASELINE RESTORATION - 2026-11-02
+
+A. Baseline comparison
+Actual Electric 03 files were found in C:/Users/user/Downloads:
+- Layout baseline: ...FL-RL_Rough (1).xlsx
+- Current engineering baseline: ...FL-RL_Rough (2).xlsx
+- Actual source: ...FL-RL_Rough.csv
+- Approved PowerPoint preserved: ...FL-RL_Rough (2).pptx
+
+The layout baseline contains two native XY charts and eight numerical data
+blocks. Headers are in row 39; all 2,161 paired samples run from rows 40-2200.
+Powertrain X/Y pairs: D:E, J:K, P:Q, V:W.
+Wheel-side X/Y pairs: AB:AC, AH:AI, AN:AO, AT:AU.
+These coordinates were confirmed in actual workbook/chart XML, not inferred.
+The subsequent implementation removed the local data, ended the worksheet at
+row 39, and pointed charts to main-report columns. That change is reversed.
+
+The entire regenerated Torque Maps worksheet XML and both native chart XML
+parts are byte-identical to the layout baseline, including the local numerical
+tables, source metadata, formatting, positions, automatic axes and marker sizes.
+The baseline's old Motor Curves sheet is intentionally omitted as requested.
+The existing six-sheet workbook inventory matches the current workbook.
+
+There is one pre-existing input difference between the two supplied workbooks:
+(1) leaves battery pack mass unspecified; (2) reports 1,700 kg. Current reporting
+inputs were read from (2), preserving that metadata rather than silently
+reverting it. The current main worksheet and engineering calculations are the
+preservation baseline; (1) is the authoritative Torque Maps layout baseline.
+
+B. Implementation
+Production file: src/vsm_postprocessing/excel_report_engine.py
+- _write_torque_maps_sheet: restored deterministic local source tables from
+  processed VSM arrays, including source row/sample index/time/RPM/torque;
+  every simulation series references local numeric cells on Torque Maps.
+- _build_native_scatter_chart: removed the previous mixed-row Reference-object
+  extension, returning to the established int/worksheet-column binding design.
+  The Torque Maps call uses data_start_row=40 and data_end_row=39+sample_count.
+
+Existing main-sheet architecture was inspected before editing. Main plots use
+_write_profile_plots_on_report_sheet and the same _build_native_scatter_chart,
+_make_scatter_shell, _style_native_series and _apply_profile_chart_layout.
+Native Series objects reference numeric X/Y cells using openpyxl Reference;
+style 13, ASTAUTO colours/fonts and bottom legends remain shared. Main source
+data starts at row 5; Torque Maps deliberately uses its approved local tables.
+No alternative chart system, dependency, worksheet, UI or motor-curve generator was added.
+
+The live-update calculation fix from the preceding task is retained unchanged:
+automatic calculation, full recalculation on opening, forceFullCalc=False.
+The prior forced-full-calculation setting prevented live chart dependency
+updates. No engineering formula or torque mapping was changed in this task.
+
+Other changed files:
+- tests/test_torque_maps.py: three export-selection cases now require complete
+  eight-pair local data and exact local ranges; local edits leave main data intact.
+- scripts/validate_final_torque_refinements.py: audit expects complete local data.
+- scripts/validate_torque_maps_restoration.py: generates Excel only with current
+  reporting inputs and compares actual baseline/current workbook XML and values.
+- docs/TORQUE_MAPS.md: describes local editing and the standard Excel workflow.
+The existing scripts/validate_torque_maps_office.ps1 was reused without changes.
+
+C. Verification
+Real Electric 03 source: 610 raw channels, 2,161 samples.
+- Both charts contain four native simulation series, with 2,161 points each.
+- All 17,288 operating points / 34,576 X/Y coordinates match the independently
+  parsed raw CSV and processed VSM values within XLSX serialization precision.
+- Local table values exactly match the supplied layout baseline, in order.
+- Native XY references target the eight local pairs listed above; no images.
+- FL Wheel, FR Wheel, RL Wheel and RR Wheel legends and KERS 1..4 mappings remain.
+- Source identities, signed torque values, rpm/Nm units and physical measurement
+  locations are retained. No gearbox conversion was introduced.
+- 704,486 main-report data cells are unchanged. All 32 calculated channels,
+  37 statistics and 12 KPIs retain the current workbook's formulas/results.
+- Main, mapping, Statistics and Formula Support worksheet XML and all 25
+  unrelated chart XML parts are byte-identical to current workbook (2).
+- Metadata differs only in the new generation timestamp.
+
+Installed Microsoft Excel was used on disposable copies:
+- Every native plotted X/Y value was compared with its referenced numeric cell.
+- API edits at local D40 and AB40 updated each chart live.
+- Real keyboard edits and restores verified horizontal and vertical updates:
+  motor D40 1111.29 -> 9001; motor E40 475.172 -> 2401;
+  wheel AB40 65.3701 -> 481; wheel AC40 7835.58 -> 36001.
+  Both charts updated immediately and automatic axes included the changed points.
+- Three-point synthetic validation curves were entered into unused A/B and D/E
+  cells beneath the complete tables, then added through Excel's native series
+  API (the XY series model exposed by Select Data > Add/Edit).
+- Both charts retained all four original simulation ranges plus the new series.
+  The added curves persisted and expanded the axes without clipping the data.
+- Both modified charts copied into a separate disposable PowerPoint as native,
+  editable five-series scatter charts. The tested paste mode is data-linked;
+  retaining that link requires the corresponding Excel workbook.
+- Original cell values were restored. Synthetic values exist only in explicitly
+  named temporary validation copies, not in the clean generated report.
+
+Tests: 157 focused passed; complete suite 962 passed, 1 existing skip, no
+failures/errors. All 963 collected cases across 52 modules were covered once.
+Existing skip: Diesel soil plots apply only to Electric and Hybrid profiles.
+git diff --check passed. All 45 protected original file hashes are unchanged,
+including the supplied workbooks/CSV/PowerPoints, 36 reference files and prior
+approved output artifacts. No commit, push or final client ZIP was produced.
+
+D. Final assessment
+The generated workbook faithfully restores the original Torque Maps structure
+and supports local numerical editing, manually added native XY motor curves,
+and editable chart copying into PowerPoint. Main engineering output is preserved.
+No blocking workflow limitations remain. The tested PowerPoint paste is linked;
+other paste modes were not needed to verify the requested editable-copy workflow.
+Motor-shaft and wheel-side curve interpretation remains distinct.
+
+Clean workbook: C:\Users\user\Desktop\Agro Project\outputs\localmaps03\case_0\profile_excel_report\RoboSprayer_8500Kg_Electric_03_UoL_DC_20kph_DriverPC_25pcGrad_FL-RL_Rough.xlsx
+Excel SHA256: d36f885bbc819cd46c7bf4d16d2cd078870779361a1088497646b2c73a2adb0c
+Approved PowerPoint SHA256 (unchanged): d305234ceaca2b9d28f12fe1b69fe288740507c6925d92c669afca8817fe873c
+Evidence: outputs/localmaps03/validation.json and office_preview/checks.json
+Tests/baseline inventory/hashes: outputs/local_torque_restore_2026_11_02/
+
+VERIFIED — Meets the required Excel workflow.

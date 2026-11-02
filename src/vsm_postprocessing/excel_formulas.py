@@ -148,7 +148,10 @@ def save_report_workbook(workbook, output_path):
     """
     workbook.calculation.calcMode = "auto"
     workbook.calculation.fullCalcOnLoad = True
-    workbook.calculation.forceFullCalc = True
+    # Forcing every calculation disables Excel's load-time dependency tracking
+    # for charts: source edits can leave their plotted points stale. Recalculate
+    # fully on opening, then use normal automatic updates for cells and charts.
+    workbook.calculation.forceFullCalc = False
     buffer = BytesIO()
     workbook.save(buffer)
     caches = getattr(workbook, "_report_formula_values", {})

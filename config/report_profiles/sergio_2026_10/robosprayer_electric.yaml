@@ -4,6 +4,16 @@ profile:
   name: Electric
   powertrain: electric
   extends: ../robosprayer_electric.yaml
+  machine_configurations:
+  - configuration_id: robosprayer_electric_03_sergio_2026_11_02
+    machine_names: [RoboSprayer]
+    identity_tokens: [8500kg]
+    powertrains: [electric]
+    source_sha256: 4313a92669009893240cbb8b7eadf9f75572b2fc9593ccb5523d7ca5bf6de8c2
+    reporting_inputs:
+      battery_nominal_capacity_kwh: 350.0
+      battery_nominal_capacity_status: confirmed
+      battery_nominal_capacity_provenance: 'Sergio Rinland, ASTAUTO, 2 November 2026: 350 kWh nominal reference for this Electric 03 simulation; initial stored energy 297.78 kWh at 85% SOC. Nominal capacity depends on temperature; no full-cycle capacity law or usable SOC limits were supplied. Confirmation is restricted to the source SHA-256 above.'
   description: 'Sergio 15 October 2026: measured sources, signed power and observed-interval
     energy.'
   excel_template: reference_files/Robo_Sprayer_Electrification_Tamplate_Electric_08.xlsx
@@ -226,6 +236,20 @@ channels:
     for_plot: true
     notes: Measured high-voltage auxiliary power; never replaced with a constant or
       unrelated source.
+statistics:
+- statistic_id: edu_mech_power_rr_max
+  target: edu_mech_power_rr
+  operation: max
+  display_name: RR EDU Max Power
+  unit: kW
+  placement_group: traction_auxiliaries
+- statistic_id: wheel_power_rr_max
+  target: wheel_power_rr
+  operation: max
+  display_name: RR Wheel Max Power
+  unit: kW
+  placement_group: traction_auxiliaries
+  required: false
 plots:
   # Reuse existing validated quantities; provide separate time-based panels.
 - plot_id: tyre_total_resistance_power
@@ -402,24 +426,24 @@ plots:
   - semantic_name: driveshaft_torque_fl
     x: wheel_rotationalspeed_fl
     component: FL
-    label: FL gearbox output
+    label: FL Wheel
     measurement_location: motor gearbox output
     required: false
   - semantic_name: driveshaft_torque_fr
     x: wheel_rotationalspeed_fr
     component: FR
-    label: FR gearbox output
+    label: FR Wheel
     measurement_location: motor gearbox output
     required: false
   - semantic_name: driveshaft_torque_rl
     x: wheel_rotationalspeed_rl
     component: RL
-    label: RL gearbox output
+    label: RL Wheel
     measurement_location: motor gearbox output
     required: false
   - semantic_name: driveshaft_torque_rr
     x: wheel_rotationalspeed_rr
     component: RR
-    label: RR gearbox output
+    label: RR Wheel
     measurement_location: motor gearbox output
     required: false

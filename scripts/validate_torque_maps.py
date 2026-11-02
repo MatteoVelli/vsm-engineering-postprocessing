@@ -49,8 +49,8 @@ def inspect_excel(report):
                 assert series.graphicalProperties.line.noFill and series.marker.symbol == "circle"
                 for reference, semantic in ((series.xVal.numRef.f, record["x"]), (series.yVal.numRef.f, record["y"])):
                     name, extent = reference.split("!")
-                    assert name == "'Torque Maps'"
-                    actual = [row[0].value for row in sheet[extent.replace("$", "")]]
+                    source_sheet = book[name.strip("'").replace("''", "'")]
+                    actual = [row[0].value for row in source_sheet[extent.replace("$", "")]]
                     # Office XML serialises up to 16 significant decimal digits.
                     np.testing.assert_allclose(actual, report.plotting_result.values_by_semantic_name[semantic], rtol=1e-14, atol=0)
             counts.append(len(records))

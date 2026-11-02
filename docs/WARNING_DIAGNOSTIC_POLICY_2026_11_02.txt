@@ -1,0 +1,125 @@
+ASTAUTO WARNING AND DIAGNOSTIC POLICY CORRECTION
+2 November 2026
+
+A. Root cause
+
+The original _profile_diagnostics implementation (introduced in commit 1338648)
+compared every finite Energy / (SOC/100) estimate with the median using
+max(0.1 kWh, 1% of the median). No documented VSM physical acceptance criterion
+accompanied this screen. It ran independently of whether the requested KPIs
+could be calculated. The previous battery refinement qualified its wording but
+left it as a visible warning. The confirmed reference was separately classified
+as visible information. _render_diagnostics therefore rendered both banners.
+The initial-reference comparison reused the same unvalidated 1% assumption.
+
+The ratio is calculated in battery.nominal_capacity_estimates_kwh;
+battery_capacity_reference records its median, extrema, deviation and threshold.
+Variation alone does not establish that the deterministic reference-energy
+range calculation is unavailable or numerically invalid. It also does not
+establish a temperature law or validate physical vehicle range.
+
+B. Corrected policy
+
+Energy/SOC variation and initial-reference comparisons are information with
+user_visible=False. Both numerical thresholds are unchanged and explicitly
+described as technical heuristics, not physical limits or KPI reliability tests.
+Confirmed capacity provenance is also quiet information. Unconfirmed agro
+force interpretation remains an assumption in the audit trail, rather than a
+warning solely because manual physical confirmation is absent. Its inferred
+and assumed statuses and qualified metric definitions remain unchanged.
+
+Missing required channels, incompatible units, invalid required samples,
+impossible battery-domain pairs and unavailable requested calculations retain
+their existing warnings/errors. Unknown identity, optional battery mass and
+approved unit interpretations were already quiet; they remain so. Optional
+unavailable outputs remain explicitly unavailable. For all four real-source
+audits the density-required warning remains visible because the requested
+mass-to-volume output cannot be calculated without density. No density or
+plausible replacement result is invented.
+
+The results view reuses the collapsed Diagnostics presentation to expose all
+diagnostic records, battery interpretation and source SHA-256. The same policy
+records remain in Excel Metadata, manifests and all 16 PowerPoint speaker notes.
+The success message and important warnings remain in the primary workflow.
+
+C. Implementation in this correction
+
+src/vsm_postprocessing/profile_statistics.py: _profile_diagnostics classification.
+src/vsm_postprocessing/battery.py: battery_capacity_reference threshold metadata.
+src/vsm_postprocessing/agro_reporting.py: calculate_reporting_kpis assumption policy.
+src/vsm_postprocessing/ui_app.py: _render_profile_report_completion on-demand details.
+tests/test_battery_capacity_reference.py: quiet heuristics, unavailable reference,
+  native report provenance and actual Streamlit AppTest coverage.
+tests/test_diagnostic_cleanup.py: unconfirmed assumption retains status/provenance.
+scripts/validate_diagnostic_policy.py: before/after and controlled real-data audits.
+docs/FINAL_RELEASE_NOTES.md: policy documentation.
+
+No filename, hash, machine mass or source identity conditions were added to
+warning suppression. Existing source-specific 350 kWh capacity configuration
+is untouched and still controls only the numerical reference/provenance.
+Engineering formulas, KERS mappings and report/chart layouts were not changed.
+
+D. Numerical preservation (before -> after this policy correction)
+
+Source                             Reference kWh                 Range km
+Electric 03, 8,500 kg               350 -> 350                     41.75731229 -> 41.75731229
+Electric 3,500 kg, 20% gradient     98.22632343 -> 98.22632343       24.91256095 -> 24.91256095
+Electric 3,500 kg, 12.5% gradient   98.36165916 -> 98.36165916       27.50662334 -> 27.50662334
+Unregistered Electric prototype    98.36180352 -> 98.36180352       27.50666371 -> 27.50666371
+
+Electric 03 initial stored energy remains 297.780 kWh; consumed energy remains
+76.515 kWh; consumption remains 7,124.50 Wh/km; displayed range remains 41.76 km.
+For each of the four sources, raw arrays, all 32 calculated channels, all 37
+statistics and all 12 KPIs match the snapshot taken before this correction.
+
+The unregistered source is a controlled copy of the real 12.5% gradient file:
+one interior Battery Energy sample changes from 68.1364 to 68.1365 kWh.
+Channel IDs, names, units and kinds are retained; the content hash is new.
+It is not registered in production configuration and requires no capacity
+confirmation. Its original reference file is preserved.
+
+E. Validation evidence
+
+Focused policy/battery/UI/report consistency: 82 passed. Additional battery
+policy run: 26 passed (overlapping coverage, not added to the focused total).
+Streamlit 1.49.1 AppTest verifies success, no battery provenance/heuristic banners,
+collapsed access to provenance and continued display of genuine battery warnings.
+Legacy warning/error defaults and genuine agro-quality checks remain covered.
+
+Complete regression suite: 988 passed, 1 skipped, 0 failures/errors. All 989
+collected cases across all 53 modules executed exactly once. The existing skip
+is the Diesel parametrization of the Electric/Hybrid-only soil-plot test.
+
+Four real-source Excel/PowerPoint pairs were regenerated in fresh output folders.
+Metadata and all speaker notes match the shared diagnostic records and inputs.
+For Electric 03 and the previously generated 20% gradient workbook, every
+non-Metadata worksheet, native chart and drawing XML matches the prior battery
+reports; all slide XML and picture pixels also match. The 16-slide presentation
+structure and two Torque Maps with four local XY simulation series each remain.
+105 protected PowerPoint/chart code blocks are unchanged.
+
+Installed Microsoft Excel recalculated all 48 KPIs across the four workbooks
+and matched Python. Installed PowerPoint opened the four disposable deck copies,
+confirmed 16 slides and matching range text, and exported range/map previews.
+This correction did not rerun manual series-add/cell-edit interactions: chart
+XML is unchanged from the previously verified editable baseline, and native
+Excel confirmed the two charts and all four local series in each workbook.
+
+Six controlled real-data copies were blocked: missing Battery Energy channel;
+nonnumeric required value; non-finite required value; Battery Energy unit kg;
+truncated row omitting required samples; all-zero SOC with positive energy and
+no declared reference. The last case raises an explicit battery_capacity_100
+evaluation error rather than emitting a plausible range. No validation rule
+was weakened. Missing optional data alone remains nonblocking.
+
+Evidence: outputs/diagnostic_policy_2026_11_02/{before.json, validation.json,
+before_after_kpis.json, unseen_derivation.json, invalid_sources.json,
+focused_final.xml, suite_0.xml through suite_3.xml, suite_summary.json,
+protected_code_verified.json, final_checks.json, office_preview/checks.json}.
+Protected original sources and approved reports pass SHA-256 checks.
+No original report was overwritten; no commit, push, publication or final
+client ZIP was made. Prior authorized work and the existing invoice are retained.
+
+F. Final verdict
+
+VERIFIED — Appropriate warnings, normal operation and traceability validated.

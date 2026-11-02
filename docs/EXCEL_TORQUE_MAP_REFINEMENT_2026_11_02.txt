@@ -1,0 +1,54 @@
+FINAL EXCEL TORQUE MAPS REFINEMENT - 2026-11-02
+
+Supersedes the dedicated Motor Curves input-sheet design in the earlier
+FINAL_TORQUE_MAP_REFINEMENTS_2026_11_02.txt assessment.
+
+Changes
+- Removed Motor Curves and its worksheet-generation helper.
+- Kept both native numeric XY charts on the separate Torque Maps worksheet.
+- Chart X/Y ranges reference main-report cells when exported. Only omitted
+  channels retain local numeric sources; mixed-sheet pairs remain supported.
+- Retained formatting, FL/FR/RL/RR Wheel legends, signed paired samples,
+  KERS mappings, measurement locations and source provenance.
+- Manufacturer values can be entered in ordinary unused cells and added as
+  native XY series using Select Data > Add/Edit. No conversion or curve
+  generation, extra worksheet or configuration system was introduced.
+- Disabled forceFullCalc while retaining automatic calculation and full
+  recalculation on opening. Controlled native/exported Excel tests isolated
+  this load-time setting as the cause of stale chart dependencies. No
+  formula or engineering-value changes were needed.
+
+Real-data and native Office verification
+- Real Electric 8500 kg Flat UoL dataset: 2,197 samples in each of four
+  powertrain and four wheel series, independently matched to raw CSV.
+- 716,222 main-report data cells unchanged; 32 math-channel hashes,
+  37 statistics and 12 KPIs exactly match the approved baseline.
+- Four unrelated worksheet XML files and all 25 existing chart XML files
+  are byte-identical. Metadata changes only in generation time/sheet inventory.
+- Excel verified every native plotted coordinate against its referenced cell.
+- Actual keyboard edits of both X and Y on BOTH charts updated plotted points
+  and automatic axes live, without reopening; original values were restored.
+- Added three-point validation curves in unused Torque Maps cells (A/B and
+  D/E, rows 43-45) via Excel's native series API. Both charts retained their
+  four original simulation series and expanded their axes without clipping.
+- Copied both charts into a separate disposable PowerPoint. Each pasted
+  chart is native/editable with five series; this Office paste is data-linked.
+  The approved PowerPoint was never modified or regenerated.
+
+Tests
+- Focused regression: 156 passed.
+- Complete suite: 961 passed, 1 existing skip, 0 failures/errors; all 962
+  collected cases across 52 modules were covered exactly once.
+- Existing skip: Diesel soil-plot scenario is inapplicable to that profile.
+- git diff --check passed.
+
+Evidence
+- Clean workbook and source/engineering audit: outputs/exlive/
+- Native Office records/previews: outputs/exlive/office_preview/checks.json
+- Final focused/full test XML and logs:
+  outputs/excel_refinement_final_2026_11_02/
+- Clean Excel SHA256: 0540958e530a24c8208b875641805b9e39a33d782c27cda01a79bd7d02c377ed
+- Approved PowerPoint SHA256 (unchanged):
+  b25f8b48e98a7d312ad3dce9bf269934779e9e22b17ee2a8de41886fc1ca89fb
+
+All 36 reference files are unchanged. No commit, push or client ZIP build.

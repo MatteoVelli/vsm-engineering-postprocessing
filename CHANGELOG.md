@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.1 - 2 November 2026 - Final torque, battery and diagnostic corrections
+
+- Share current-profile RR wheel/EDU maximum power between Excel and PowerPoint; retain the exact measured KERS gearbox-output mappings and explicit legacy-source notice.
+- Retain eight editable local Torque Maps datasets, two native XY charts, FL/FR/RL/RR Wheel legends and automatic axes; restore live Excel chart dependency updates without a Motor Curves sheet.
+- Apply the traceable 350 kWh confirmation only to the exact confirmed Electric 03 source; retain deterministic inference for other compatible inputs.
+- Keep unvalidated Energy/SOC heuristics and normal assumptions in on-demand diagnostics; preserve genuine quality warnings and unavailable results.
+- Preserve the approved reporting layouts and Windows Python 3.11 bootstrap. Package: Astauto_VSM_v1.4.1_02112026.zip.
+
 ## 1.4.0 - 29 October 2026 - Torque-speed operating maps
 
 - Add measured torque-versus-RPM maps to current Electric, Hybrid and Diesel profiles, with explicit component and shaft-location labels and independent signed sample pairs.

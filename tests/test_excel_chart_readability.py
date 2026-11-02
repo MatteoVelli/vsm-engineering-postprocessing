@@ -109,8 +109,10 @@ def test_two_column_profile_layout_and_presentation_rules(tmp_path, plot_count):
         assert chart.anchor.ext.cx / 914400 == pytest.approx(637 / 96)
         assert chart.anchor.ext.cy / 914400 == pytest.approx(3.75)
         assert chart.layout.manualLayout.layoutTarget == "inner"
+        # Multiline legends need a separate row below the distance-axis title.
+        height = 0.56 if len(definitions[i].series) > 3 else 0.64
         assert (chart.layout.manualLayout.x, chart.layout.manualLayout.y,
-                chart.layout.manualLayout.w, chart.layout.manualLayout.h) == pytest.approx((0.13, 0.14, 0.74, 0.64))
+                chart.layout.manualLayout.w, chart.layout.manualLayout.h) == pytest.approx((0.13, 0.14, 0.74, height))
         assert "".join(r.t for p in chart.title.tx.rich.p for r in p.r) == definitions[i].title
         assert chart.title.txPr.p[0].pPr.defRPr.sz == 1400
         assert chart.title.txPr.p[0].pPr.defRPr.solidFill.srgbClr == "1F4E78"

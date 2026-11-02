@@ -185,9 +185,10 @@ class _Compiler:
                 percent = self.parameter(100, "Battery SOC conversion: percent to fraction")
                 e, s = [self.context[a.id] for a in node.args]
                 with np.errstate(all="ignore"):
-                    estimates = np.where(np.isfinite(e) & np.isfinite(s) & (s/100 > SOC_FRACTION_EPSILON), e/(s/100), np.nan)
+                    estimates = np.where(np.isfinite(e) & np.isfinite(s) & (e >= 0) & (s <= 100)
+                                         & (s/100 > SOC_FRACTION_EPSILON), e/(s/100), np.nan)
                 extent = self.helper(label + ": valid energy / SOC fraction", estimates,
-                    lambda r: f'IFERROR(IF(AND(ISNUMBER({self.at(energy,r)}),ISNUMBER({self.at(soc,r)}),{self.at(soc,r)}/{percent}>{epsilon}),{self.at(energy,r)}/({self.at(soc,r)}/{percent}),""),"")')
+                    lambda r: f'IFERROR(IF(AND(ISNUMBER({self.at(energy,r)}),ISNUMBER({self.at(soc,r)}),{self.at(energy,r)}>=0,{self.at(soc,r)}<={percent},{self.at(soc,r)}/{percent}>{epsilon}),{self.at(energy,r)}/({self.at(soc,r)}/{percent}),""),"")')
                 return f"MEDIAN({extent})"
             if name == "time_average":
                 integral_node = ast.Call(func=ast.Name(id="cumulative_trapezoid"), args=node.args, keywords=[])
@@ -212,9 +213,14 @@ class _Compiler:
         else:
             row, item = self.kpis[name]
             expression = item.definition.expression
-            formula = "=" + self.translate(ast.parse(expression, mode="eval").body, expression)
+            description = expression
+            if name == 'battery_capacity_100' and self.result.battery_capacity.get('nominal_capacity_kwh') is not None:
+                description = name + ': ' + item.definition.notes
+            formula = "=" + self.translate(ast.parse(expression, mode="eval").body, description)
             cell = sheet.cell(row, 3)
             cell.comment = Comment("Live profile KPI: " + expression + "\nParameters and helper calculations: Formula Support (hidden sheet).", "Astauto")
+            if name in {'battery_capacity_100', 'usable_battery_capacity_85', 'range_85_battery_km'} and item.definition.notes:
+                cell.comment.text += '\n' + item.definition.notes
         write_formula(cell, formula, item.value)
         reference = self.ref(sheet, cell.coordinate)
         self.scalars[name] = reference

@@ -144,6 +144,19 @@ def test_component_selection_validates_names_and_retains_x_dependencies():
         select_profile(p, ProfileReportSelection(plot_series={MAPS[0]: ("invented",)}))
 
 
+@pytest.mark.parametrize("kind", ["electric", "hybrid"])
+def test_wheel_legend_names_preserve_exact_gearbox_sources(kind):
+    profile = profile_for(kind)
+    series = profile.plots_by_id()[MAPS[1]].series[:4]
+    for i, (corner, item) in enumerate(zip(("FL", "FR", "RL", "RR"), series), 1):
+        assert item.label == corner + " Wheel"
+        assert item.x == "wheel_rotationalspeed_" + corner.lower()
+        assert item.measurement_location == "motor gearbox output"
+        source = profile.raw_by_semantic_name()[item.semantic_name]
+        assert source.source_name == f"KERS_MotGenUnit_GearboxOutputTorque_{i}"
+        assert source.unit == "Nm" and not source.aliases
+
+
 @pytest.fixture(scope="module", params=["electric", "hybrid", "diesel"])
 def map_report(request, tmp_path_factory):
     kind = request.param
@@ -194,6 +207,83 @@ def test_excel_native_pairs_survive_main_export_deselection_and_interval(map_rep
         book.close()
 
 
+def test_native_maps_allow_manual_curve_series_without_axis_clipping(map_report, tmp_path):
+    from openpyxl.chart import Reference, Series
+    from openpyxl.chart.axis import NumericAxis
+    from vsm_postprocessing.plot_colours import series_colour
+    _, report, _ = map_report
+    book = load_workbook(report.report_path)
+    try:
+        maps = inputs = book["Torque Maps"]
+        assert "Motor Curves" not in book and not maps._images
+        assert book.calculation.calcMode == "auto" and book.calculation.fullCalcOnLoad
+        assert not book.calculation.forceFullCalc  # Preserve live chart dependencies after loading.
+        first_row = maps.max_row + 3
+        before = []
+        for chart in maps._charts:
+            assert isinstance(chart.x_axis, NumericAxis) and isinstance(chart.y_axis, NumericAxis)
+            for axis in (chart.x_axis, chart.y_axis):
+                assert axis.scaling.min is None and axis.scaling.max is None and axis.majorUnit is None
+                assert axis.scaling.orientation == "minMax"
+            before.append([(s.xVal.numRef.f, s.yVal.numRef.f) for s in chart.series])
+            for i, series in enumerate(chart.series):
+                assert series.marker.size == 3
+                assert series.marker.graphicalProperties.solidFill.srgbClr == series_colour(i)
+        # Controlled test values are deliberately outside the operating cloud.
+        # Use ordinary unused cells; the report needs no dedicated input sheet.
+        for chart, column in zip(maps._charts, (1, 4)):
+            for row, x, y in ((first_row, -9000, -8000), (first_row+1, 25000, 40000)):
+                inputs.cell(row, column, x)
+                inputs.cell(row, column+1, y)
+            chart.series.append(Series(Reference(inputs, min_col=column+1, min_row=first_row, max_row=first_row+1),
+                                       Reference(inputs, min_col=column, min_row=first_row, max_row=first_row+1),
+                                       title="Controlled overlay test"))
+        destination = tmp_path / "edited.xlsx"
+        book.save(destination)
+    finally:
+        book.close()
+    edited = load_workbook(destination)
+    try:
+        for chart, original, column in zip(edited["Torque Maps"]._charts, before, ("A", "D")):
+            assert [(s.xVal.numRef.f, s.yVal.numRef.f) for s in chart.series[:-1]] == original
+            assert chart.series[-1].xVal.numRef.f == f"'Torque Maps'!${column}${first_row}:${column}${first_row+1}"
+            assert chart.x_axis.scaling.max is None and chart.y_axis.scaling.max is None
+    finally:
+        edited.close()
+
+
+@pytest.mark.parametrize("export_channels", [None, ("track_time",), ("track_time", "electricsystem_em1_speed")])
+def test_maps_keep_complete_editable_local_tables_regardless_of_main_export(tmp_path, export_channels):
+    from openpyxl.utils.cell import range_boundaries
+    data = dataset_for("electric")
+    selection = ProfileReportSelection(export_channels=export_channels) if export_channels else None
+    report = generate_profile_excel_report(csv_for(data, tmp_path/"source.csv"),
+        profile_path("electric"), tmp_path/"excel", selection=selection)
+    book = load_workbook(report.report_path)
+    try:
+        assert "Motor Curves" not in book
+        sheet, main = book["Torque Maps"], book.worksheets[0]
+        expected = report.plotting_result.values_by_semantic_name
+        main_before = list(main.values)
+        for chart, key, pairs in zip(sheet._charts, MAPS, ((4, 10, 16, 22), (28, 34, 40, 46))):
+            records = [r for r in report.plotting_result.series_diagnostics[key] if r["included"]]
+            assert len(chart.series) == len(records) == 4
+            for series, record, x_col in zip(chart.series, records, pairs):
+                for reference, semantic, expected_col in ((series.xVal.numRef.f, record["x"], x_col),
+                                                          (series.yVal.numRef.f, record["y"], x_col+1)):
+                    name, extent = reference.rsplit("!", 1)
+                    assert name == "'Torque Maps'"
+                    col, first, last_col, last = range_boundaries(extent)
+                    assert (col, first, last_col, last) == (expected_col, 40, expected_col, 43)
+                    np.testing.assert_array_equal([r[0].value for r in sheet[extent]], expected[semantic])
+                    assert all(sheet.cell(row, col).data_type == "n" for row in range(first, last+1))
+                    sheet.cell(first, col, sheet.cell(first, col).value + 100)
+        assert sheet.max_row == 43 and list(main.values) == main_before
+        assert all(sheet.cell(39, col).value == "Speed [rpm]" for col in (4, 10, 16, 22, 28, 34, 40, 46))
+    finally:
+        book.close()
+
+
 def test_powerpoint_maps_precede_summary_and_preserve_numbering(map_report):
     kind, report, ppt = map_report
     prs = Presentation(ppt.presentation_path)
@@ -227,6 +317,7 @@ def test_feature_can_be_disabled_without_removing_existing_reports(tmp_path):
     book = load_workbook(report.report_path)
     try:
         assert "Torque Maps" not in book
+        assert "Motor Curves" not in book
     finally:
         book.close()
     assert ppt.slide_count == 10

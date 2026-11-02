@@ -2075,13 +2075,16 @@ def _profile_statistics_as_powerpoint_statistics(excel_result: ProfileExcelRepor
             source_channel=item['source'], source_name=item['source'], source_kind='reporting',
             statistic='REPORT', calculation=item['definition'], placement_group='reporting', notes=item['reason'])
         statistics.append(_canonical_metric_as_powerpoint_item(metric))
-    # Slide 9's RR cards are presentation-specific: keep existing Excel metrics
-    # and all other slides unchanged, using the shared deterministic calculator.
+    # Current profiles declare RR cards in the shared statistics pipeline.
+    # Retain presentation-only calculation solely for explicit legacy profiles.
+    configured_statistics = excel_result.profile.statistics_by_id()
     if excel_result.profile.metadata.powertrain in {"electric", "hybrid"}:
         for channel_id, label in (
             ("edu_mech_power_rr", "RR EDU MAX POWER"),
             ("wheel_power_rr", "RR WHEEL MAX POWER"),
         ):
+            if excel_result.profile.metadata.excel_template or channel_id + "_max" in configured_statistics:
+                continue
             channels = excel_result.plotting_result.channels_by_semantic_name
             values = excel_result.plotting_result.values_by_semantic_name
             if channel_id not in channels or channel_id not in values:

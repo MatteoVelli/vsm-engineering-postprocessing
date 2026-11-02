@@ -70,7 +70,7 @@ def test_headline_is_live_sample_rms_in_shared_top_block(report, metric_id):
         assert numeric[value.coordinate].value == pytest.approx(expected, rel=2e-15)
         assert backend.value == pytest.approx(expected, rel=2e-15)
         assert backend.channel_unit == unit == sheet.cell(4, col).value
-        assert formulas.calculation.fullCalcOnLoad and formulas.calculation.forceFullCalc
+        assert formulas.calculation.fullCalcOnLoad and not formulas.calculation.forceFullCalc
     finally:
         formulas.close()
         cached.close()

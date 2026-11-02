@@ -1,0 +1,170 @@
+ASTAUTO BATTERY CAPACITY INTERPRETATION AND RANGE VALIDATION - 2 NOVEMBER 2026
+
+A. Root-cause assessment
+The legacy nominal-capacity estimate is MEDIAN(Battery Energy / (SOC/100)) over
+finite samples with SOC above zero. It is NOT a fixed initial-SOC division, a
+mean, or a direct nominal-capacity measurement. The diagnostic compares every
+valid sample's ratio with that median; tolerance=max(0.1 kWh, 1%*abs(median)).
+For Electric 03, median=346.357794394718 kWh, max deviation=3.971617369988 kWh,
+tolerance=3.463577943947 kWh. The warning correctly detected ratio variation.
+The unsupported part was describing that ratio as the nominal specification.
+The ratio also directly influenced range, not merely diagnostics.
+
+No arithmetic/import defect was found in Battery Energy or SOC. The variation
+is observed; the data do not prove its physical cause. It is not established as
+a defect in VSM, nor established as being caused solely by temperature.
+The variation warning is retained at the SAME threshold with qualified wording.
+
+B. Engineering interpretation and evidence
+Sergio Rinland, ASTAUTO, 2 November 2026 confirmed a 350 kWh nominal reference
+for this Electric 03 simulation and stated that nominal capacity depends on
+temperature. This does NOT supply a full-cycle temperature-capacity law or an
+operational lower SOC cutoff. No such law, reserve or usable SOC window is
+invented. The 350 kWh value is a declared reference, not a forced identity
+Energy(t)=350*SOC(t)/100 throughout the simulation.
+
+Initial SOC=85%; initial stored energy=297.780 kWh. 350*0.85=297.500 kWh, a
+0.280 kWh difference (0.094118% relative to 297.5 kWh). Energy/SOC at the initial
+sample is 350.329411764706 kWh. This small reference difference is retained and
+recorded, not corrected or treated as a source defect. The available evidence
+does not demonstrate that display rounding alone explains it.
+
+Over the 2,161 samples:
+- SOC: 85.0000% -> 64.5782%.
+- Stored energy: 297.780 -> 221.265 kWh.
+- Energy/SOC equivalent: 350.329411764706 -> 342.631104614251 kWh.
+- Battery cell temperature: 30.0000 -> 28.8703 degC; min/max 28.8540/30.0764.
+- Exported Battery Voltage: 48.1805 -> 45.4341 V.
+Both voltage and temperature vary. These co-varying measurements do not identify
+the VSM SOC/energy equations, assembly scaling or a temperature-capacity law.
+
+General battery model documentation distinguishes charge-based SOC from energy
+and models voltage as a function of SOC and temperature. This explains why a
+constant Energy/SOC identity must be justified, rather than assumed. It does
+NOT establish which equations AVL VSM uses in this run:
+[MathWorks Battery (Table-Based)](https://www.mathworks.com/help/simscape-electrical/ref/batterytablebased.html)
+[MathWorks Battery (System-Level)](https://www.mathworks.com/help/sdl/ref/batterysystemlevel.html)
+
+Range policy retained: 85% of the selected nominal-energy REFERENCE divided by
+observed net stored-energy depletion per km. The existing KPI was explicitly
+independent of initial SOC. Therefore a confirmed nominal reference takes
+precedence over an Energy/SOC approximation. This policy, rather than proximity
+to 350, justifies the new value. 85% is an energy allowance for extrapolation,
+not proof that physical 85% SOC-to-cutoff usable energy equals 0.85*nominal.
+
+Using initial stored energy instead would produce 41.7966132915 km, a different
+initial-remaining-energy estimate that depends on the starting state. It does
+not preserve the defined reference-energy KPI and was not introduced.
+A temperature-aware or cutoff-aware actual usable range remains unvalidated.
+The report continues to label range as estimated; comments, metadata, manifest,
+speaker notes and UI diagnostics disclose the reference and limitations.
+
+C. Changes implemented
+- reporting_inputs.py: optional battery_nominal_capacity_kwh, status and
+  provenance; strict positive finite value and consistent status/provenance.
+  Confirmed, estimated/user-provided, inferred and unavailable remain distinct.
+- report_profile.py / report_metadata.py: optional exact source_sha256 constraint
+  in the EXISTING machine-configuration architecture. No separate registry/UI.
+- config/report_profiles/sergio_2026_10/robosprayer_electric.yaml: 350 kWh,
+  confirmed, Sergio/ASTAUTO/date provenance, restricted to Electric 03 SHA-256:
+  4313a92669009893240cbb8b7eadf9f75572b2fc9593ccb5523d7ca5bf6de8c2
+  The general processing engine contains no hard-coded 350 kWh value.
+- battery.py: separates declared nominal reference from median energy-equivalent
+  inference and records the selected range policy, status, valid/excluded sample
+  counts, diagnostic threshold and initial reference residual. Invalid negative
+  energy / SOC above 100% are excluded from inference, never altered in raw data.
+- profile_statistics.py: uses the configured reference for battery_capacity_100;
+  existing dependent KPI expressions then calculate 85% reference energy/range.
+  An imported-source SHA check also protects explicitly scoped configurations.
+  The full-cycle ratio diagnostic remains independent of the reference choice.
+  Warnings cover nonfinite/out-of-domain Energy/SOC and large initial reference
+  disagreement. Small normal differences are recorded without a false alert.
+- excel_report_engine.py: passes resolved inputs into the shared calculation and
+  exports interpretation/provenance in existing Metadata and manifest.
+- profile_kpi_formulas.py: live Excel formulas use a provenance-labelled numeric
+  parameter for declared capacity; unknown capacity retains MEDIAN inference.
+  Excel valid-sample guards match Python. Battery KPI comments disclose policy.
+- base Electric profile: battery-specific explanatory notes clarified; numeric
+  formulas remain unchanged. Hybrid inherits these notes without a 350 setting.
+- tests/test_battery_capacity_reference.py: 22 targeted cases covering reference
+  selection, unknown capacity, nonlinear ratios, small differences, bad data,
+  input validation, content scoping, other configurations and Excel/PPT/UI.
+  Existing diagnostic test wording was updated because nominal-specification
+  wording was the faulty assumption; its numerical threshold was not weakened.
+- Validation scripts generate real reports, independently check values, protect
+  chart/layout invariants and recalculate every KPI in installed Excel.
+No Torque Maps, KERS mapping, wheel equation, UI layout or PowerPoint generator
+function was modified for this task. No worksheet or dependency was added.
+
+D. Numerical comparison (Electric 03)
+Quantity                         Before                  After
+Nominal reference for range      346.357794 inferred      350.000000 confirmed kWh
+Energy/SOC median diagnostic     346.357794 kWh           346.357794 kWh unchanged
+Initial stored energy            297.780 kWh              297.780 kWh unchanged
+Final stored energy              221.265 kWh              221.265 kWh unchanged
+Battery Capacity Used            76.515 kWh               76.515 kWh unchanged
+Energy Consumption               7,124.500684 Wh/km       7,124.500684 Wh/km unchanged
+85% reference energy             294.404125 kWh           297.500000 kWh
+Estimated Range @ 85%            41.322773 km             41.757312 km (display 41.76)
+Consistency diagnostic           nominal-capacity drift  qualified Energy/SOC ratio
+Threshold                        max(0.1 kWh, 1%)         unchanged
+
+Inputs/formulas/provenance:
+- Raw Energy [kWh] and SOC [%] are imported unchanged from their explicit VSM
+  ElectricSystem_Battery_Energy / ElectricSystem_Battery_SOC channels.
+- Distance=Track_Distance(last)/1000=10.7397 km; duration=2160 s=36 min.
+- Used=(297.780-221.265)=76.515 kWh: observed net stored-energy depletion,
+  not a newly derived terminal-power integral or a change in nominal capacity.
+- Consumption=1000*76.515/10.7397=7124.500684376657 Wh/km.
+- Budget=0.85*350=297.5 kWh, using Sergio's scoped reference.
+- Range=1000*297.5/7124.500684376657=41.75731229170752 km.
+- Independent NumPy/CSV comparisons use rtol=1e-14 (XLSX float serialization).
+- Native Excel recalculation comparison uses max(1e-10, abs(value)*2e-12).
+  PowerPoint display rounds the same shared value to two decimals.
+
+E. Validation
+- Focused tests: 138 passed, including 22 new battery cases.
+- Complete regression suite: 984 passed, 1 existing skip, 0 errors/failures.
+  All 985 collected cases in 53 modules covered exactly once.
+  Existing skip: Diesel soil plots are not applicable to that profile.
+- Real Electric 03: 2,161 samples; raw arrays and all 32 MATH hashes unchanged;
+  all 37 statistics unchanged; all 9 unrelated KPIs unchanged.
+- 704,486 main-report data cells unchanged. All 27 native chart XML parts,
+  drawings and the COMPLETE Torque Maps worksheet XML are unchanged.
+  Eight local numerical datasets and native XY source references are preserved.
+- Generated PowerPoint retains 16 slides. All slide layouts and image pixels are
+  identical; only expected range numbers change on slides 1, 3, 7 and 16.
+  Some PNG byte encodings differ, but RGBA pixels are exactly identical.
+- Other real Electric run: RoboSprayer_3500Kg_Electric_UoL_DriveCycle_12kph_
+  DriverPC_20pcGrad_04.csv, 3,954 samples. No confirmed nominal capacity is
+  applied: inferred reference=98.226323433264 kWh and range=24.912560945032 km,
+  unchanged. Used energy=35.9912 kWh; consumption=3351.416785391699 Wh/km.
+- Explicit unknown-capacity case on Electric 03 retains the inferred reference
+  and legacy 41.322773 km estimate with qualified diagnostics, not a fake 350.
+- Installed Microsoft Excel recalculated ALL 12 KPIs in BOTH real reports.
+  Every value matches Python within the stated tolerance. Microsoft PowerPoint
+  opened both 16-slide decks and confirmed the corresponding range text.
+- Streamlit diagnostic presentation, Excel metadata/manifests and PowerPoint
+  speaker-note diagnostics are identical outputs of the shared pipeline.
+- Protected original datasets/reference workbooks/approved PowerPoints are
+  unchanged by SHA-256. Torque Maps and PowerPoint function AST hashes unchanged.
+- git diff --check passed. No commit, push, publish or client ZIP build.
+
+F. Engineering verdict / readiness
+The battery reporting correction is ready for client delivery as a documented
+reference-energy extrapolation. The confirmed reference, measured simulation
+outputs and inferred fallback are distinguished and traced consistently.
+No unsupported VSM battery law is claimed. Actual temperature-dependent usable
+range, reserve/cutoff behaviour and the exact physical cause of Energy/SOC drift
+cannot be certified without the VSM signal equations and battery parameters.
+Those are explicit limits of the estimate, not silently filled assumptions.
+
+Evidence and deliverables
+- Clean Electric 03 Excel/PowerPoint: outputs/bcapvalid/case_0/
+- Additional Electric report: outputs/bcapvalid/case_1/
+- Independent audit: outputs/bcapvalid/validation.json
+- Native Office verification: outputs/bcapvalid/office_preview/checks.json
+- Raw numerical analysis, before_after_kpis.json, tests/XML/logs and protected
+  hashes: outputs/battery_capacity_2026_11_02/
+
+VERIFIED — Engineering interpretation and implementation validated.

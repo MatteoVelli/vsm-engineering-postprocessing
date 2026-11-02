@@ -538,7 +538,8 @@ def generate_profile_excel_report(
             + ", ".join(item.definition.semantic_name for item in math_result.unavailable_required)
         )
 
-    statistics_result = calculate_profile_statistics(dataset, profile, resolution, math_result)
+    statistics_result = calculate_profile_statistics(dataset, profile, resolution, math_result,
+                                                     reporting_inputs=report_metadata.reporting_inputs)
     statistics_result.reporting_agro = calculate_reporting_kpis(statistics_result, report_metadata)
     statistics_result.diagnostics.extend(statistics_result.reporting_agro.trace['warnings'])
     statistics_result.diagnostics.extend(report_metadata.warnings)
@@ -1110,6 +1111,13 @@ def _write_torque_maps_sheet(workbook, result, selected_ids=None):
             sheet.cell(28, 1+panel*13, reason).alignment = Alignment(wrap_text=True, vertical="top")
         chart.width, chart.height = 23, 10.5
         _apply_profile_chart_layout(chart)
+        # Preserve the baseline's automatic numeric axes and marker sizes.
+        # Added manufacturer series can extend beyond the simulation cloud.
+        for axis in (chart.x_axis, chart.y_axis):
+            axis.scaling.min = axis.scaling.max = axis.majorUnit = None
+        if available:
+            for series in chart.series:
+                series.marker.size = 3
         sheet.add_chart(chart, "A6" if panel == 0 else "N6")
     sheet.sheet_properties.pageSetUpPr.fitToPage = True
     sheet.page_setup.orientation = "landscape"
@@ -1725,8 +1733,11 @@ def _apply_profile_chart_layout(chart: ScatterChart) -> None:
     """Reuse the established Diesel inner plot area and axis-title gutters."""
     from openpyxl.chart.layout import Layout, ManualLayout
 
+    # Four or more bottom legend entries wrap onto a second row in Excel.
+    # Reserve that row so the legend cannot cover the distance-axis title.
+    height = 0.56 if sum(len(component.series) for component in chart._charts) > 3 else 0.64
     chart.layout = Layout(manualLayout=ManualLayout(
-        layoutTarget="inner", xMode="edge", yMode="edge", x=0.13, y=0.14, w=0.74, h=0.64,
+        layoutTarget="inner", xMode="edge", yMode="edge", x=0.13, y=0.14, w=0.74, h=height,
     ))
     for component in chart._charts:
         component.y_axis.title.layout = Layout(manualLayout=ManualLayout(
@@ -2084,6 +2095,8 @@ def _write_profile_metadata_sheet(
         ('Battery pack mass', report_metadata.reporting_inputs.battery_display),
         ('Agro reporting diagnostics', json.dumps(statistics_result.reporting_agro.to_dict()) if statistics_result.reporting_agro else 'Unavailable'),
     ])
+    if statistics_result.battery_capacity:
+        metadata.append(('Battery capacity interpretation', json.dumps(statistics_result.battery_capacity)))
     for row, (key, value) in enumerate(metadata, start=2):
         sheet.cell(row, 1, key).border = border
         sheet.cell(row, 2, value).border = border
@@ -2236,6 +2249,7 @@ def _profile_manifest(
         "metadata_warnings": result.report_metadata.warnings,
         "reporting_metrics": reporting_metric_rows(result.statistics_result, result.report_metadata),
         "agro_reporting": result.statistics_result.reporting_agro.to_dict() if result.statistics_result.reporting_agro else None,
+        "battery_capacity": result.statistics_result.battery_capacity,
         "source_file": str(source_path),
         "source_sha256": result.dataset.quality.source_sha256,
         "profile_file": str(profile_path),

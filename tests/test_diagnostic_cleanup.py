@@ -72,7 +72,7 @@ def test_physical_confirmation_does_not_leak_to_unapproved_sources_or_configurat
                                    resolve_report_metadata('Unknown.csv', profile))
     assert agro.capacity.interpretation_status == 'assumed'
     assert any(getattr(d, 'code', '') == 'force_interpretation_unconfirmed'
-               for d in visible_diagnostics(agro.trace['warnings']))
+               and d.severity == 'info' and not d.user_visible for d in agro.trace['warnings'])
 
 
 @pytest.mark.parametrize('values,reason', [([100, -5, -10], 'negative'),

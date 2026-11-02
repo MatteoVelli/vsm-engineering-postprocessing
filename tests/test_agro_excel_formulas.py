@@ -90,7 +90,7 @@ def test_all_three_values_have_formulas_and_matching_caches(tmp_path, kind, coun
         assert agro.mass_rate.value == pytest.approx(630/300)
         assert agro.rate.value == pytest.approx(630/(1.2*300))
         assert formulas.calculation.calcMode == 'auto'
-        assert formulas.calculation.fullCalcOnLoad and formulas.calculation.forceFullCalc
+        assert formulas.calculation.fullCalcOnLoad and not formulas.calculation.forceFullCalc
     finally:
         formulas.close(); cached.close()
 

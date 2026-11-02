@@ -193,7 +193,8 @@ def test_profile_kpi_nominal_capacity_emits_consistency_diagnostic() -> None:
     )
 
     assert result.diagnostics
-    assert "Nominal battery capacity estimates vary" in result.diagnostics[0]
+    assert "Battery Energy/SOC energy-equivalent estimates vary" in result.diagnostics[0]
+    assert "not a confirmed nominal specification" in result.diagnostics[0]
 
 
 def test_range_85_uses_nominal_capacity_not_fixed_starting_soc() -> None:

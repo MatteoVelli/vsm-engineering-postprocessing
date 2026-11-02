@@ -516,7 +516,10 @@ def _parse_metadata(raw: Any) -> ProfileMetadata:
     for item in configurations:
         if not isinstance(item, dict):
             raise ConfigurationError('machine configuration must be a mapping')
-        _reject_unknown_keys(item, {'configuration_id', 'machine_names', 'identity_tokens', 'powertrains', 'reporting_inputs', 'specifications'}, 'machine configuration')
+        _reject_unknown_keys(item, {'configuration_id', 'machine_names', 'identity_tokens', 'powertrains', 'reporting_inputs', 'specifications', 'source_sha256'}, 'machine configuration')
+        digest = item.get('source_sha256')
+        if digest is not None and (not isinstance(digest, str) or len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest)):
+            raise ConfigurationError('machine configuration source_sha256 must be a lowercase SHA-256 digest')
         identity = _required_string(item, 'configuration_id')
         if identity in seen_configurations:
             raise ConfigurationError('Duplicate machine configuration: ' + identity)

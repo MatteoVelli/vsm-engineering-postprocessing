@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Mapping
 
 import numpy as np
 
-from .battery import nominal_capacity_estimates_kwh
+from .battery import battery_capacity_reference
+from .diagnostics import Diagnostic
+from .reporting_inputs import ReportingInputs
 from .errors import MathChannelError, StatisticsError
 from .math_engine import _compile_expression, _evaluate_node, _topological_order
 from .models import ChannelInfo, ImportedDataset
@@ -87,6 +89,7 @@ class ProfileStatisticsResult:
     kpi_calculation_order: list[str] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
     reporting_agro: AgroReport | None = None
+    battery_capacity: dict[str, Any] = field(default_factory=dict)
 
     @property
     def configured_statistic_count(self) -> int:
@@ -130,6 +133,8 @@ class ProfileStatisticsResult:
 
 
 _POWERPOINT_LABEL_OVERRIDES = {
+    "edu_mech_power_rr_max": "RR EDU MAX POWER",
+    "wheel_power_rr_max": "RR WHEEL MAX POWER",
     "time_minutes_last": "DRIVE CYCLE TIME",
     "distance_km_last": "DISTANCE",
     "chassis_speed_max": "MAX SPEED",
@@ -249,6 +254,8 @@ def calculate_profile_statistics(
     resolution: ProfileResolutionResult | None = None,
     math_result: ProfileMathResult | None = None,
     constants: Mapping[str, float] | None = None,
+    *,
+    reporting_inputs: ReportingInputs | None = None,
 ) -> ProfileStatisticsResult:
     if resolution is None:
         resolution = resolve_profile(dataset, profile)
@@ -287,10 +294,34 @@ def calculate_profile_statistics(
             )
         )
 
-    diagnostics = _profile_diagnostics(values_by_name)
+    if reporting_inputs is None:
+        from .report_metadata import resolve_report_metadata
+        reporting_inputs = resolve_report_metadata(dataset.source_path, profile).reporting_inputs
+    configuration = next((c for c in profile.metadata.machine_configurations
+                          if c['configuration_id'] == reporting_inputs.machine_configuration_id), {})
+    if configuration.get('source_sha256') and dataset.quality.source_sha256 != configuration['source_sha256']:
+        raise StatisticsError('Simulation-scoped battery confirmation does not match the imported source SHA-256; reload the source.')
+    capacity = battery_capacity_reference(values_by_name.get('electricsystem_battery_energy'),
+                                         values_by_name.get('electricsystem_battery_soc'), reporting_inputs)
+    diagnostics = _profile_diagnostics(values_by_name, capacity)
     if profile.metadata.excel_template:
         diagnostics = [*resolution.diagnostics, *diagnostics]
-    kpis, unavailable_kpis, kpi_order = _calculate_kpis(profile, statistics, constants or {}, values_by_name)
+    effective_profile = profile
+    if capacity:
+        definitions = []
+        for definition in profile.kpis:
+            if definition.kpi_id == 'battery_capacity_100':
+                notes = ('Nominal reference: ' + capacity['reference_status'] + '. '
+                         + (capacity['nominal_capacity_provenance'] or 'Median Energy/SOC energy-equivalent approximation; not a confirmed specification.'))
+                definition = replace(definition, notes=notes)
+                if reporting_inputs.battery_nominal_capacity_kwh is not None:
+                    definition = replace(definition, expression=repr(float(reporting_inputs.battery_nominal_capacity_kwh)), dependencies=())
+            elif definition.kpi_id in {'usable_battery_capacity_85', 'range_85_battery_km'}:
+                definition = replace(definition, notes=capacity['range_policy'] + '; reference status: '
+                                     + capacity['reference_status'] + '. ' + capacity['limitations'])
+            definitions.append(definition)
+        effective_profile = replace(profile, kpis=tuple(definitions))
+    kpis, unavailable_kpis, kpi_order = _calculate_kpis(effective_profile, statistics, constants or {}, values_by_name)
 
     return ProfileStatisticsResult(
         dataset=dataset,
@@ -303,6 +334,7 @@ def calculate_profile_statistics(
         unavailable_kpis=unavailable_kpis,
         kpi_calculation_order=kpi_order,
         diagnostics=diagnostics,
+        battery_capacity=capacity,
     )
 
 
@@ -404,21 +436,33 @@ def _calculate_kpis(
     return results, unavailable, executed_order
 
 
-def _profile_diagnostics(values_by_name: Mapping[str, np.ndarray]) -> list[str]:
+def _profile_diagnostics(values_by_name: Mapping[str, np.ndarray], capacity: Mapping[str, Any]) -> list[str]:
+    """Warn on invalid inputs; retain unvalidated ratio comparisons as provenance."""
     energy = values_by_name.get("electricsystem_battery_energy")
     soc = values_by_name.get("electricsystem_battery_soc")
-    if energy is None or soc is None:
-        return []
-    try:
-        estimates = nominal_capacity_estimates_kwh(energy, soc)
-    except ValueError as exc:
-        return [f"Nominal battery capacity could not be inferred from Battery Energy/SOC: {exc}"]
-    median = float(np.median(estimates))
-    max_deviation = float(np.max(np.abs(estimates - median)))
-    tolerance = max(0.1, abs(median) * 0.01)
-    if max_deviation <= tolerance:
-        return []
-    return [
-        "Nominal battery capacity estimates vary across Battery Energy/SOC samples: "
-        f"median={median:.6g} kWh, max deviation={max_deviation:.6g} kWh, tolerance={tolerance:.6g} kWh"
-    ]
+    messages = []
+    if energy is not None and soc is not None:
+        invalid = (~np.isfinite(energy) | ~np.isfinite(soc) | (energy < 0) | (soc < 0) | (soc > 100)
+                   | ((soc == 0) & (energy > 0)) | ((energy == 0) & (soc > 0)))
+        if np.any(invalid):
+            messages.append(Diagnostic(f'Battery source data require review: {int(invalid.sum())} non-finite or physically inconsistent Energy/SOC pairs; raw values are preserved.', code='battery_source_data'))
+    if capacity.get('inference_unavailable_reason'):
+        messages.append(Diagnostic('Battery Energy/SOC energy-equivalent estimate unavailable: '
+                                  + capacity['inference_unavailable_reason'], code='battery_energy_soc_unavailable'))
+    estimate = capacity.get('energy_soc_equivalent_kwh')
+    if estimate and estimate['max_deviation'] > estimate['tolerance']:
+        messages.append(Diagnostic(
+            'Battery Energy/SOC energy-equivalent estimates vary: '
+            f"median={estimate['median']:.6g} kWh, max deviation={estimate['max_deviation']:.6g} kWh, tolerance={estimate['tolerance']:.6g} kWh. "
+            'This ratio is not a confirmed nominal specification. The tolerance is a diagnostic heuristic, not a validated physical acceptance limit or KPI reliability criterion; the cause is not established and no temperature law is applied.',
+            code='battery_energy_soc_variation', severity='info', user_visible=False))
+    nominal = capacity.get('nominal_capacity_kwh')
+    if nominal is not None:
+        messages.append(Diagnostic(f"Battery range reference: {capacity['reference_status']} nominal {nominal:.6g} kWh; "
+                                  + capacity['limitations'] + ' Source: ' + capacity['nominal_capacity_provenance'],
+                                  code='battery_capacity_reference', severity='info', user_visible=False))
+        if energy is not None and soc is not None and len(energy) and np.isfinite(energy[0]) and 0 < soc[0] <= 100:
+            if abs(energy[0]/(soc[0]/100)-nominal) > max(0.1, nominal*0.01):
+                messages.append(Diagnostic('Initial Battery Energy/SOC reference differs from the declared nominal capacity beyond the legacy max(0.1 kWh, 1%) diagnostic heuristic; this comparison is not a validated physical acceptance limit or KPI reliability criterion.',
+                    code='battery_initial_reference_mismatch', severity='info', user_visible=False))
+    return messages

@@ -1,7 +1,7 @@
-# Git / GitHub Release Procedure - v1.4.0
+# Git / GitHub Release Procedure - v1.4.1
 
-The 29 October 2026 release uses application version 1.4.0 and portable package
-`Astauto_VSM_v1.4.0_29102026.zip`. The explicitly authorised workflow is:
+The 2 November 2026 patch release uses application version 1.4.1 and portable package
+`Astauto_VSM_v1.4.1_02112026.zip`. The explicitly authorised workflow is:
 
 1. Validate the full regression suite, all three report profiles, reference hashes,
    clean package installation/bootstrap and the shipped setup/start launchers.
