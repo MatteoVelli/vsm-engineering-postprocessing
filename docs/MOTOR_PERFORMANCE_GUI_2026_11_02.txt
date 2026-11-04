@@ -1,0 +1,195 @@
+ASTAUTO optional motor performance curves — implementation and verification
+Date: 2 November 2026
+Baseline: 2734e5147ebc7d17b046af7e18f44db5a5534eed (v1.4.1)
+
+USER WORKFLOW
+
+Upload a compatible Electric or Hybrid source and use the existing report
+workflow. Open "Motor Performance Curves (Optional)" and enable "Include one
+shared motor capability curve". Enter or paste motor speed [rpm] and positive
+motor peak torque [Nm], then provide a dimensionless final-drive ratio and a
+driveline efficiency fraction. Neither parameter has an assumed default.
+
+The table supports dynamic insertion/deletion, including pasting more than
+23 rows. Calculated columns appear in a separate read-only preview. Generate
+the engineering report normally. Excel receives the capability table and
+overlays; the approved PowerPoint generator retains its existing output.
+
+Values survive ordinary reruns and validation/generation. Widget state is
+scoped by source SHA-256, source path and profile path. An unrelated source
+starts without a curve. "Clear motor curve" resets the optional inputs.
+Changing a curve hides an earlier report download until regeneration.
+
+An enabled curve requires at least two complete finite numeric pairs, a
+positive ratio, and 0 < efficiency <= 1. Peak torque is a nonnegative magnitude.
+Entirely blank insertion rows are ignored; incomplete/nonnumeric rows are
+rejected. Signed RPM and the entered point order are preserved. Overflow is
+rejected. There is no 23-point limit; the remaining Excel row count is the
+storage limit. Numeric blank editor columns prevent ambiguous null schemas.
+
+ASSUMPTIONS AND FORMULAS
+
+The user explicitly supplies one curve shared by all four motors. Generator
+peak torque is assumed to equal the negative of motor peak torque, following
+Sergio's example. This symmetry is not a universal motor characteristic.
+
+For speed n, peak torque T, ratio r and efficiency e:
+  Generator torque = -T
+  Wheel speed = n / r
+  Positive wheel torque = T * r * e
+  Negative wheel torque = -T * r / e
+
+RPM remains RPM, torque remains Nm, and ratio/efficiency are dimensionless.
+The motor-shaft and wheel-side charts retain their distinct physical domains.
+Only the supplied capability curve uses this explicit drivetrain conversion.
+Original VSM/KERS channels and calculations do not use these reporting inputs.
+
+EXCEL STRUCTURE AND EDITABILITY
+
+The existing Torque Maps worksheet, chart positions and eight original VSM
+numeric datasets are retained. No Motor Curves worksheet is created. The
+additional table starts at AX, beyond the original data blocks ending at AU,
+so it does not overwrite existing values or overlap the charts at A6/N6.
+A hyperlink at A4 leads to the new table.
+
+For the actual 23-point example:
+  Blue inputs: AX5:AX27 RPM, AY5:AY27 peak torque; BE4 ratio; BG4 efficiency.
+  Black formulas: AZ generator, BA wheel RPM, BB positive, BC negative torque.
+  AZ6 = -AY6
+  BA6 = AX6/$BE$4
+  BB6 = AY6*$BE$4*$BG$4
+  BC6 = AZ6*$BE$4/$BG$4
+
+Capability series references (native Excel XY, continuous straight lines):
+  Motor Peak Torque:
+    X = 'Torque Maps'!$AX$5:$AX$27; Y = 'Torque Maps'!$AY$5:$AY$27
+  Generator Peak Torque:
+    X = 'Torque Maps'!$AX$5:$AX$27; Y = 'Torque Maps'!$AZ$5:$AZ$27
+  Positive Wheel Torque Limit:
+    X = 'Torque Maps'!$BA$5:$BA$27; Y = 'Torque Maps'!$BB$5:$BB$27
+  Negative Wheel Torque Limit:
+    X = 'Torque Maps'!$BA$5:$BA$27; Y = 'Torque Maps'!$BC$5:$BC$27
+
+The final row follows the supplied curve length. The original simulation
+series keep their references, scatter markers, names and values. Wheel legends
+remain FL Wheel, FR Wheel, RL Wheel and RR Wheel. Numeric axes scale
+automatically, including negative torque. The workbook uses live formulas,
+cached initial values and automatic recalculation. Inputs remain editable;
+Excel's normal Select Data Add/Edit tools remain available.
+
+Metadata records assumptions, parameter values, formula provenance and table
+location. The Excel manifest also retains all supplied points. No curve input
+means no additional table, series, metadata record or engineering warning.
+
+IMPLEMENTATION
+
+src/vsm_postprocessing/motor_performance.py:
+  MotorPerformanceCurve validates immutable inputs, calculates the preview and
+  exposes provenance independently of the simulation/statistics engines.
+src/vsm_postprocessing/motor_performance_excel.py:
+  write_motor_performance adds the table, formulas and native chart series.
+src/vsm_postprocessing/ui_app.py:
+  _render_motor_performance_inputs renders/scopes the optional editor; the
+  report workflow forwards valid inputs and invalidates stale downloads.
+src/vsm_postprocessing/ui_config.py:
+  Optional motor_performance argument in the two profile-report wrappers.
+src/vsm_postprocessing/excel_report_engine.py:
+  Optional validated argument, Torque Maps selection checks, result metadata
+  and conditional workbook integration after existing simulation reporting.
+tests/test_motor_performance.py:
+  30 focused cases: validation, formulas, table/series integrity, unchanged
+  reporting/PPT, optional behavior and Streamlit session/editor interactions.
+scripts/validate_motor_performance.py:
+  Repeatable real-source comparison against Sergio's workbook and saved
+  pre-task engineering baselines, including an unregistered source and Hybrid.
+
+AUTHORITATIVE EXAMPLE AND NUMERICAL RESULTS
+
+Untouched source workbook in Downloads:
+RoboSprayer_8500Kg_Electric_03_UoL_DC_20kph_DriverPC_25pcGrad_FL-RL_Rough (3) (1).xlsx
+SHA-256 f11b4176c17d174c59149fd1d816179a028cc6f6c8270c6c371675468d785202
+
+Its chart references, all 23 RPM/torque pairs, formulas and cached outputs
+were inspected directly. The example uses r = 17.5 and e = 0.97.
+For n = 175 rpm and T = 1068.5710547955418 Nm:
+  Generator torque = -1068.5710547955418 Nm
+  Wheel speed = 10 rpm
+  Positive wheel torque = 18138.99365515432 Nm
+  Negative wheel torque = -19278.343772084518 Nm
+
+All 92 calculated example values match Python and the initial generated
+formula caches with maximum absolute difference 0.0. In the actual
+browser-generated workbook, the maximum stored-input difference is
+4.547473508864641e-13; the 92 initial derived values still differ by 0.0.
+Native Excel recalculation has maximum absolute difference
+1.0913936421275139e-11, consistent with Excel numeric serialization and
+floating-point arithmetic. No engineering rounding/conversion is introduced.
+
+REAL VALIDATION AND PRESERVATION
+
+Evidence root: outputs/motor_curve_gui_2026_11_02/
+
+Real full workflow: supported CPython 3.11.9 / Streamlit 1.49.1 runtime,
+current workspace code, isolated headless Microsoft Edge. Uploaded the real
+8500 kg Electric_03 CSV, validated it, pasted the actual 23 pairs, entered
+17.5/0.97 and generated Excel + PowerPoint with no Streamlit exceptions.
+The actual GUI workbook has six series per Torque Maps chart. The browser
+paste-event fallback was exercised without altering the system clipboard;
+no values were injected directly into production backend state.
+Evidence: browser_validation.json, browser_workbook_comparison.json.
+
+Additional actual-browser editor checks: normal rerun preserves values;
+ratio/efficiency edits update calculated outputs; zero ratio and zero
+efficiency reject the curve; standard Delete row(s) reduces 23 rows to 22;
+pasting a longer curve produces 24 rows; Clear restores blank optional inputs.
+Source/profile separation and incomplete/nonnumeric/overflow rejection also
+pass focused automated tests. Evidence: browser_editing_validation.json.
+
+Microsoft Excel 16.0 opened both the real-source audit workbook and the actual
+browser-generated workbook, using disposable copies. Both native charts have
+six series; every plotted coordinate matches its referenced numerical cell.
+All four original series retain 2161 samples per chart. Input/formula colors,
+formulas, six-sheet structure and positive/negative axis scaling pass.
+
+Guarded keyboard edits in Excel changed AX6 (RPM), AY6 (torque), BE4 (ratio)
+and BG4 (efficiency). Formulas and both capability series in both charts
+updated live without reopening; each edit was restored, and original VSM
+points remained intact. Both charts copied to a separate native editable
+PowerPoint presentation with all six series. Chart/table renderings were
+visually inspected. Generated originals were closed without saving.
+Evidence: office/checks.json, office_gui/checks.json and copied_native_charts.pptx.
+
+Real no-input Electric report vs prior installed release: all 27 chart XML
+parts and all six worksheet contents are unchanged except Metadata Generated
+UTC. All 16 PowerPoint slide XML parts and plot pixels match the prior release.
+The optional report also preserves those approved PowerPoint slide contents.
+Evidence: no_input_baseline_comparison.json, real/validation.json.
+
+Additional real cases: an unregistered Electric prototype and a real Caiman
+Hybrid source. All raw-array/MATH hashes, KPIs and statistics match saved
+pre-task baselines. The Electric charts retain four simulation series plus
+two supplied lines. Hybrid retains its two available simulation series plus
+two supplied lines; absent signals are not fabricated. Battery, warning
+policy, wheel torque/power, KERS mappings and unrelated charts are unchanged.
+
+61 protected files retain their recorded SHA-256 values, including reference
+data, approved reports, Sergio's workbook, unchanged calculation/PPT code,
+the unrelated invoice and official release artifacts. No commit, push or
+package replacement is performed. The official v1.4.1 ZIP remains unchanged:
+SHA-256 402d77625aa715ca22de196bf1d8b6dd76523c7f3cff21a393ff63c2ec4e2335.
+
+FINAL RESULT
+
+Focused tests: 30 passed after the final UI correction.
+Complete regression suite: 1018 passed, 1 existing skip, zero failures/errors;
+all 54 test modules collected and executed. The sole skip is the same existing
+Diesel-only soil-plot case as the prior release baseline. The complete suite
+was rerun after the final UI correction; no source code changed afterward.
+Evidence: focused_numeric.xml, final_suite/suite_groups.json,
+final_suite/suite_summary.json and all four JUnit XML files.
+
+VERIFIED: Sergio can enter his shared motor specification once through the
+GUI and automatically obtain the completed native Excel Torque-Speed plots.
+He can continue editing the numerical inputs, formulas and series directly in
+Excel and copy the completed charts into PowerPoint. Deployment remains
+pending: the implementation is uncommitted and the official ZIP is untouched.

@@ -1,0 +1,105 @@
+ASTAUTO slide 15: dynamic capability curves and compact engineering indicators
+
+Scope
+Only the PowerPoint Torque Maps presentation changes. The Electric deck retains
+16 slides. No Duty Summary charts, GUI changes, Excel changes, engineering
+policy changes, release commit, push or official client package replacement.
+
+Implementation
+src/vsm_postprocessing/torque_maps_presentation.py
+  read_torque_map_series: resolves the Torque Maps sheet, drawing and native XY
+  charts through workbook relationships. Reads each series name and numerical
+  source-cell reference, including the written cached values of Excel formulas.
+  It preserves original point order, signs and supplied RPM extent.
+  render_torque_maps: renders four simulation scatter series plus the capability
+  series actually present in each Excel chart. Orange solid peak and teal dashed
+  continuous limits share compact legend entries for positive/negative curves.
+  Limits include every valid point with padding; no engineering conversions,
+  interpolation, extrapolation or sample reduction occur here.
+  torque_maps_metadata: retains compact provenance in slide notes/manifests;
+  exact numerical arrays remain in torque_maps_presentation_data.json.
+
+src/vsm_postprocessing/continuous_torque_ppt.py
+  continuous_torque_cards: selects independent per-motor maxima of existing
+  maximum_segment_s, total_time_s, episode_count and maximum_utilisation.
+  Utilisation is displayed as a percentage. Responsible motors and exact ties
+  are retained separately for each indicator. No duration sums across motors.
+  add_continuous_torque_kpi: four native compact cards for automatic results,
+  one centred duration card with explicit provenance for manual fallback,
+  no empty cards when results are unavailable. Valid automatic zero is retained.
+
+src/vsm_postprocessing/profile_powerpoint_report_engine.py
+  _build_template_profile_powerpoint_report: creates separate presentation-only
+  map assets from the already generated workbook.
+  _render_additional_plot_pair_slide: uses those assets and KPI row only on the
+  Torque Maps slide; other slide rendering retains the approved path.
+  _write_machine_notes: records chart sources, counts, scaling and aggregation
+  rules only in Torque Maps notes. Displayed KPI count includes automatic cards.
+
+Regression coverage
+tests/test_torque_maps_presentation.py adds exact source/sign preservation,
+changing lengths/specifications, workbook immutability, dynamic axis bounds,
+line/marker styles, legend canvas bounds, independent maxima/ties, and missing
+or manual-only metrics. Existing torque-map, motor-performance and continuous
+report tests now expect the authorised slide 15 overlays while continuing to
+require identical unrelated slide XML, source simulation data and calculations.
+scripts/validate_slide15.py generates real-data input variants and independently
+compares every plotted XY coordinate to openpyxl data-only source cells.
+
+Validation evidence
+outputs/slide15_redesign_2026_11_03/validation.json
+  Fresh real Electric 03, second real Electric 02 Flat simulation, doubled motor
+  ratings/changed drivetrain, peak-only, continuous-only, continuous with wheel
+  conversion, ratio-only, efficiency-only, absent, manual-only and unavailable
+  analysis cases. Full arrays and references accompany each generated deck.
+outputs/slide15_redesign_2026_11_03/approved_match/validation.json
+  Additional fresh Electric 03 report using the exact reporting inputs recorded
+  in the actual downloaded approved (6) deck. This retains its user-provided
+  1,700 kg battery mass, status and provenance. The first controlled matrix used
+  the default missing mass; that input difference is not a calculation change.
+  The final review deck and final native Office render use the approved inputs.
+outputs/slide15_redesign_2026_11_03/office/
+  Microsoft PowerPoint renders, native Excel series comparisons, all 16 slides
+  and baseline render comparison. Existing user-open PowerPoint is preserved.
+  Final baseline is the actual approved Downloads (6) presentation; all other
+  15 slides retain identical XML/images and native-rendered pixels.
+outputs/slide15_redesign_2026_11_03/baseline_comparison.json
+  Controlled default-input comparison: other 15 slide XML/notes identical; all
+  Excel xl/* parts identical except the expected new Metadata!B3 generation
+  timestamp. Native chart XML unchanged. Actual approved input-parity comparison
+  is separately recorded in downloads_baseline_comparison.json.
+outputs/slide15_redesign_2026_11_03/protected_check.json
+  Hash verification of 74 protected references, original inputs, Excel/GUI/
+  engineering modules, approved reports, unrelated invoice and official ZIP.
+
+Electric 03 result
+82 s maximum consecutive duration; 828 s maximum accumulated time per motor;
+13 maximum episodes per motor; 123.56784430058616% maximum utilisation, shown
+as 123.6%. First three maxima tie across all four motors. Utilisation maximum
+belongs to EM2 / FR. Both charts have eight series and 34,944 XY coordinates
+match their generated Excel source exactly. Microsoft Excel independently
+checked every native chart coordinate within 1e-9.
+
+Second simulation: 7 s, 11 s, 4 episodes, 123.6%; different sample count.
+Doubled motor ratings: 0 s, 0 s, 0 episodes, 61.8%; axes and curves update.
+
+Operational behaviour
+The workbook remains the native editable Excel report. The PowerPoint uses
+rendered plot assets, consistent with the existing presentation architecture.
+Adding/changing Excel series can be reflected by rebuilding the presentation
+from that workbook; engineering episode metrics still come from the existing
+deterministic analysis, not Excel chart edits. Normal GUI report generation
+always uses the current simulation and validated motor inputs.
+
+Final test totals and rendered-case results are recorded in the task's
+validation_summary.json alongside the individual JUnit and native Office checks.
+
+Final results
+85 focused tests passed. Full current collection: 1,063 passed, one existing
+skip, 57 modules / 1,064 cases. All collected cases were executed exactly once
+across the four suite groups and the late-added legend-layout regression.
+The existing skip is the unconfigured diesel soil-plot replacement case.
+12 fresh real reports (11 input scenarios plus approved-input parity) checked
+417,612 XY coordinates with zero source-cell differences. Eleven native Office
+case previews have no KPI text overflow. Final native renders match the actual
+approved downloaded deck on all slides except 15. No remaining issues.

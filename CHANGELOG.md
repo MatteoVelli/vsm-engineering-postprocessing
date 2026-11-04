@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.1 - 4 November 2026 - Sergio requested final release
+
+- Add current-run peak and continuous motor reference inputs, continuous-limit assessment and Motor Duty Summary, without substituting manufacturer data.
+- Add the native four-curve Motor Torque and Power Excel chart with live shaft-power formulas and a matching PowerPoint characteristics slide; retain operating maps.
+- Add CONSUMPTION to the requested energy KPI labels while preserving values.
+- Apply the approved small-radius white plot cards and explicit subtle shadow through the shared Electric/Hybrid generator; preserve KPI styling and picture placement.
+- Preserve Python 3.11, the validated dependencies and Windows SETUP/START workflow. Package: VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip.
+- Real Electric 03 acceptance is complete. Latest motor-reporting acceptance with real Hybrid inputs remains pending; synthetic tests are identified separately.
+
 ## 1.4.1 - 2 November 2026 - Final torque, battery and diagnostic corrections
 
 - Share current-profile RR wheel/EDU maximum power between Excel and PowerPoint; retain the exact measured KERS gearbox-output mappings and explicit legacy-source notice.

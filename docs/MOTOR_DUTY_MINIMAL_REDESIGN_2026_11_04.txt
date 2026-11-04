@@ -1,0 +1,63 @@
+ASTAUTO Motor Duty Summary — final minimalist Excel refinement
+4 November 2026
+
+Scope
+Presentation-only revision in src/vsm_postprocessing/motor_duty_excel.py.
+Existing layout expectations updated in tests/test_motor_duty_summary.py.
+No numerical engine, GUI, channel mapping, main worksheet, Torque Maps or
+PowerPoint renderer was changed.
+
+Layout
+Default worksheet-tab appearance; no assigned tab colour.
+White overview, charcoal numbers, navy title, light-grey table header.
+Navigation strip, coloured KPI panels, shaded maxima and decorative hairline
+borders removed. Exact column maxima use bold type, including ties.
+Two compact metadata lines; full simulation identifier retained in a cell
+comment and source provenance. Four dynamic KPIs identify responsible motors.
+Compact six-column comparison: motor, longest event, total elapsed exceedance,
+cycle fraction, maximum continuous utilisation and episode count.
+RMS and indicative RMS/continuous ratio remain in the detailed evidence.
+Two short factual conclusion lines reuse the validated engine observation.
+Only three header rows freeze; default zoom remains 90%.
+Matching native XY charts start at A19 and I19, each 14.2 × 8.4 cm.
+The reserved chart rows are shorter to preserve all existing technical data
+and native series addresses while moving the plots directly below the overview.
+Detailed rows and filters remain complete; methodology and peak residual
+explanations are retained in the lower technical section.
+
+Validation
+Real Electric03 source and the previously approved input curves were reused.
+Complete generated motor-duty evidence equals the Phase 3 evidence exactly.
+All four motors preserve 2,161 source samples, 829 flagged samples, 828 elapsed
+seconds, 82-second longest event and 13 episodes. Cycle fraction remains 38.3%;
+maximum instantaneous utilisation remains 123.6%, with EM2 / FR responsible.
+All 52 events, 20 motor/band checks, RMS values and peak residuals were checked.
+Twelve dynamic cases passed; eight available workbooks were opened in Excel,
+including two zero-exceedance cases. Missing/partial assessment omission remains
+covered by existing tests.
+Native Excel inspected at 90% and 100%; screenshots include the full application
+window, overview, detailed statistics and event headers, and complete sheet.
+Both native charts retain four series and unchanged XML definitions/source ranges.
+Private QA edits updated plotted points; adding/removing a fifth XY series passed.
+Sorting the event table preserved each motor's plotted episodes.
+All QA edits were discarded; the delivered workbook equals the generated file.
+Other worksheet XML is unchanged except the normal Metadata generation timestamp.
+All sixteen regenerated PowerPoint slides retain identical shape XML and images.
+The supplied (10).xlsx has identical duty evidence to the earlier review; only
+its provenance source path points to the GUI workspace copy of the same CSV.
+
+Tests and machine-readable evidence
+131 focused tests passed. Full regression: 1,083 passed, one existing skip.
+All 1,084 collected cases ran exactly once. Final totals and collection coverage
+are recorded in outputs/motor_duty_minimal_2026_11_04/validation_summary.json.
+The preceding baseline was 1,083 passed and one existing skip.
+
+Deliverables
+outputs/motor_duty_minimal_2026_11_04/Electric03_Motor_Duty_Minimal_Review.xlsx
+outputs/motor_duty_minimal_2026_11_04/office/executive_normal_zoom.png (90%)
+outputs/motor_duty_minimal_2026_11_04/office/executive_normal_zoom_100.png
+outputs/motor_duty_minimal_2026_11_04/office/complete_worksheet.png
+outputs/motor_duty_minimal_2026_11_04/office/before_after.html
+
+No commit, push, publication or official Sergio ZIP replacement was performed.
+

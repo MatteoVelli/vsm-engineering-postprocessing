@@ -127,8 +127,8 @@ def test_all_six_cards_preserved_and_rr_sources_correct(reports):
     values = final.excel_result.plotting_result.values_by_semantic_name
     assert after["edu_mech_power_rr_max"].value == np.max(values["edu_mech_power_rr"])
     assert after["wheel_power_rr_max"].value == np.max(values["wheel_power_rr"])
-    texts = [s.text for s in Presentation(final.presentation_path).slides[8].shapes if s.has_text_frame]
-    assert {"RR EDU MAX POWER", "RR WHEEL MAX POWER", "EDU MAX SPEED", "EDU MAX TORQUE", "TYRE TOTAL ENERGY", "AUX ENERGY"} <= set(texts)
+    texts = [' '.join(s.text.split()) for s in Presentation(final.presentation_path).slides[8].shapes if s.has_text_frame]
+    assert {"RR EDU MAX POWER", "RR WHEEL MAX POWER", "EDU MAX SPEED", "EDU MAX TORQUE", "TYRE TOTAL ENERGY CONSUMPTION", "AUX ENERGY CONSUMPTION"} <= set(texts)
     assert "RR EDU MAX SPEED" not in texts and "RR EDU MAX TORQUE" not in texts
 
 

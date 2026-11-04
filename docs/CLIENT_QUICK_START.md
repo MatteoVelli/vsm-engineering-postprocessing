@@ -20,8 +20,9 @@ The first setup requires internet access if Python or Python packages are not al
 4. Review the automatically detected **Diesel**, **Hybrid** or **Electric** profile and machine information; change the selection only if needed.
 5. Click **STEP 3 - Validate**. Resolve any missing required channels or invalid data before continuing; the UI lists the affected channels and blocks report generation.
 6. For Electric or Hybrid, enter **Battery pack mass (kg)** if known. Leave it blank to show N/A. Enter a finite positive value; no mass is inferred automatically.
-7. Click **STEP 4 - Generate Engineering Report**.
-8. Download the Excel report and, when needed, the PowerPoint report from **STEP 5 - Access Output**. The profile workflow generates both reports; using the PowerPoint is optional.
+7. For motor capability reporting, open **Motor Performance Curves** and enter the current motor's peak and continuous torque curves versus RPM, plus the applicable ratio and efficiency. These are user reference inputs, not inferred ratings. Both curves are required for the four-curve Motor Torque and Power chart and slide. Leave unavailable inputs blank; the tool reports the omission.
+8. Click **STEP 4 - Generate Engineering Report**.
+9. Download the Excel report and, when needed, the PowerPoint report from **STEP 5 - Access Output**. The profile workflow generates both reports; using the PowerPoint is optional.
 
 The launcher opens the local Streamlit interface in your browser. If the browser does not open automatically, use `http://localhost:8501`. Keep the launcher running while using the application; close it when finished.
 
@@ -88,8 +89,17 @@ The existing combined soil charts and all other plots remain available. Missing
 or invalid wheel resistance measurements disable only their dependent plots;
 PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
 
-The 2 November 2026 delivery folder and ZIP are named
-`Astauto_VSM_v1.4.1_02112026`. Keep the two root launchers beside `Tool`.
+The 4 November 2026 ZIP is named
+`VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip` and contains
+the shorter folder `VSM_Sergio_v1.4.1` to avoid Windows path-length problems.
+Use a short extraction location, such as your Desktop, rather than deeply nested folders.
+Keep the two root launchers beside `Tool`. With the complete real Electric 03
+reference inputs, this release generates 30 native Excel charts and 17 slides:
+Motor Torque & Power Characteristics on slide 15 and operating maps on slide 16.
+Edit the blank MOTOR BRAND and MOTOR TYPE / MODEL text boxes in PowerPoint as
+needed. Regenerate PowerPoint after changing source data or motor curves.
+Latest motor-reporting validation with real Hybrid inputs remains pending;
+synthetic Hybrid integration checks are not real-data acceptance.
 
 Release checks use Diesel `_07`, Electric UoL `_04` and the available Caiman SP Hybrid reference. Caiman's negative inferred chemical contents are correctly flagged; a newer Hybrid export beyond this reference is not claimed as tested.
 

@@ -1,0 +1,263 @@
+ASTAUTO dynamic continuous-torque analysis — Phases 1 and 2
+3 November 2026; workspace baseline commit 2734e5147ebc7d17b046af7e18f44db5a5534eed
+
+PURPOSE AND SCOPE
+
+One optional, user-supplied continuous motor curve is assessed against the
+current simulation's four actual motor-side speed/torque pairs. No simulation
+registration, reference duration, fixed sample count, frequency, motor model,
+23-row structure or stored manufacturer curve is required. The existing peak
+workflow remains independent. Continuous-only assessment needs neither peak
+torque nor gearbox parameters. This is a specification-exceedance assessment,
+not a thermal model or proof of thermal failure. No manufacturer Duty Summary
+is implemented.
+
+GUI INPUTS AND STATE
+
+The existing Motor Performance Curves (Optional) editor now has three editable
+columns: Motor speed [rpm], Motor peak torque [Nm], Motor continuous torque [Nm].
+Rows can be pasted, inserted/deleted and cleared. Missing rating cells may
+belong to the independent other curve. At least two complete pairs are needed
+for a supplied curve. Continuous speed points must be nonnegative and unique;
+they are sorted for interpolation. Continuous ratings must be finite and
+positive. A row without either rating contributes to neither curve. Peak point order retains the existing behavior. No curve or
+drivetrain parameter is populated by default.
+
+Invalid continuous data do not prevent valid peak reporting; invalid/missing
+peak or drivetrain data do not prevent valid motor-side continuous assessment.
+The GUI shows the unavailable part explicitly. No optional specification means
+ordinary reporting with no additional warning or fabricated zero/duration.
+
+The GUI displays maximum segment duration and responsible motor(s), plus a
+per-motor table containing maximum segment duration, accumulated exceedance
+time, episode count, maximum utilisation, flagged sample count and status.
+Accumulated times and episode counts are per motor, not sums over four motors.
+All four motors must be available for a complete vehicle maximum. A valid
+zero-exceedance assessment shows 0 s, 0 s total, and 0 episodes.
+
+Inputs are scoped by source content SHA-256, absolute path and profile path.
+The imported-array cache additionally binds import options; assessment cache
+keys include the actual loaded profile and current reporting inputs. Changing
+continuous inputs invalidates stale report downloads. Ordinary reruns preserve
+input values. Source/profile switches show no old result. Reuse previous motor
+specifications for this source explicitly copies only motor specifications and
+then recalculates against that source/profile. It never copies manual duration.
+
+The optional externally calculated maximum-duration field is blank by default
+and requires finite nonnegative seconds plus external calculation provenance.
+It is a fallback only: an available automatic result, including a true zero,
+always takes precedence. There is no manual override of an automatic result.
+Manual results are labelled Manual fallback in the GUI, slide and provenance.
+
+EQUATIONS AND INTERPOLATION
+
+For the supplied continuous curve (n_j, C_j), at measured motor speed n_i:
+  x_i = abs(n_i)
+  C_i = C_j + (C_(j+1) - C_j) * (x_i - n_j) / (n_(j+1) - n_j)
+  utilisation_i = abs(T_i) / C_i
+  above_i = abs(T_i) > C_i
+
+Equality is not an exceedance. Interpolation includes both endpoint RPMs.
+There is no extrapolation outside the supplied speed range. Missing/nonfinite
+samples, unsupported units or unsupported RPM coverage produce unavailable
+status and no complete vehicle duration, rather than an invented zero.
+
+The shared workflow assumes symmetric positive/negative continuous torque
+magnitude and uses absolute RPM. This follows Sergio's demonstrated convention;
+real motors do not universally have symmetric continuous regenerative ratings.
+For signed speed, mechanical power sign distinguishes motoring (n*T > 0) from
+regeneration (n*T < 0); the magnitude comparison covers both under this explicit
+symmetry assumption. Capability curves are plotted at supplied nonnegative RPM.
+Peak torque is never substituted for continuous torque.
+
+The adapter reads track_time and electricsystem_em1..4_speed/torque through the
+selected profile's semantic resolution. It does not use CSV column positions,
+wheel torque, KERS gearbox torque or a guessed ratio. Explicit channel units
+are converted to seconds/RPM/Nm where supported, with conversion factors,
+source names/IDs, source SHA-256 and profile recorded in provenance.
+
+EPISODE DURATION POLICY
+
+Require at least two finite, strictly increasing timestamps. Duplicate,
+reversed, missing or nonfinite timestamps make analysis unavailable.
+
+Sample i represents the observed interval [t_i, t_(i+1)):
+  dt_i = t_(i+1) - t_i for i < N-1
+  dt_(N-1) = 0
+
+Group consecutive flagged samples into episodes. Episode duration is the sum
+of their observed interval widths. The interval end is the timestamp after the
+last flagged sample, bounded by the last recorded timestamp. Accumulated time
+is the sum of flagged interval widths; maximum segment duration is the largest
+episode duration; episode count is the number of runs. The final flagged sample
+still contributes to sample/episode counts and utilisation but adds no time.
+
+No one-second assumption, terminal interval extension or sub-sample threshold
+crossing is introduced. Irregular and long positive intervals use the same
+declared sample-and-hold policy; no arbitrary dropout threshold is inferred.
+Shorter unobserved excursions or crossings between samples cannot be resolved.
+A terminal-only exceedance can have one flagged sample/episode and zero
+observed duration; this is distinct from a zero-exceedance result.
+
+REFERENCE WORKBOOK INVESTIGATION
+
+Read-only inspection covered Time_Above_Continuous_Torque.xlsx, _03.xlsx and
+_04.xlsx, and the updated 25% gradient workbook ending Rough_(4).xlsx, all in
+Downloads. The actual 23-point continuous ratings were read from Motor Curve,
+not inferred from peak torque. Drive Data uses ABS(speed), linear interpolation,
+ABS(torque) > limit, and symmetric generating limits. Segments counts flagged
+samples times an explicitly entered one-second interval.
+
+The source has 2161 timestamps from 0 to 2160 seconds. The workbooks count a final
+flagged sample as one additional second, yielding 829 seconds. This application
+bounds time to the recorded horizon, yielding 828 seconds. Both approaches give
+the same required maximum run of 82 seconds. The application does not alter
+its definition to force agreement with a reference duration. The updated
+Torque Maps workbook provides slightly more precise ratings (maximum difference
+5.542233338928781e-13 Nm); an independent rerun gives identical flags and durations.
+
+PER-MOTOR REAL REFERENCE RESULTS
+
+Real Electric_03, 25% gradient, supplied continuous curve:
+Motor       Samples  Flagged  Episodes  Maximum[s]  Total[s]  Max utilisation
+EM1 / FL    2161     829      13        82          828       1.235675671217071
+EM2 / FR    2161     829      13        82          828       1.235678443005862
+EM3 / RL    2161     829      13        82          828       1.235678216121186
+EM4 / RR    2161     829      13        82          828       1.235676993871868
+
+All four share the maximum. Each motor is calculated independently; equality
+of these particular durations is not assumed by the implementation.
+
+Same source, twice the continuous rating: 0 flagged samples, 0 episodes,
+0 s maximum and accumulated time for every motor. Same source, half the rating:
+873 flagged samples, 16 episodes, maximum 87 s, accumulated time 872 s per motor.
+Raising limits does not introduce additional flagged samples under the same
+coverage/comparison policy. A separate very-high-limit curve also returns zero.
+
+Real Electric_02 flat-road source, SAME original continuous curve:
+Motor       Flagged  Episodes  Maximum[s]  Total[s]
+EM1 / FL    11       4         7           11
+EM2 / FR    11       4         7           11
+EM3 / RL    9        3         7           9
+EM4 / RR    9        3         7           9
+Half ratings on this source give a 37 s maximum with independently differing
+flag/episode counts; twice the ratings give zero. These results do not reuse 82.
+
+The actual reference source resampled at 2 s gives an 82 s maximum. An irregular
+subset of the same real source with 1/2/3 s intervals gives 84 s. Independent
+scalar interpolation and episode-time loops validate every flag, duration and
+maximum utilisation. Synthetic tests also cover fractional/irregular intervals,
+start/end boundaries, malformed vectors and invalid timestamps.
+
+EXCEL AND POWERPOINT
+
+Torque Maps, both native XY charts and all eight existing local VSM datasets
+are retained. Existing FL/FR/RL/RR names, original point values and peak overlays
+are preserved. The new continuous table uses BI4:BN(last input row+4), beyond
+the existing peak table AX:BG and original simulation blocks ending at AU.
+No additional worksheet or separate calculation workbook is introduced.
+
+Continuous input RPM/torque in BI/BJ are blue; BK is the black generator formula.
+With explicit ratio/efficiency, BL/BM/BN contain black wheel formulas:
+  BK6 = -BJ6
+  BL6 = BI6/$BE$4
+  BM6 = BJ6*$BE$4*$BG$4
+  BN6 = BK6*$BE$4/$BG$4
+
+The shared explicit drivetrain parameters use BE4/BG4. Peak and continuous
+wheel overlays must use the same parameters. Without them, no wheel conversion
+or wheel capability series is fabricated. Motor-side assessment remains valid.
+
+For the 23-point reference:
+  Motor Continuous Torque: X BI5:BI27, Y BJ5:BJ27
+  Generator Continuous Torque: X BI5:BI27, Y BK5:BK27
+  Positive Continuous Wheel Torque Limit: X BL5:BL27, Y BM5:BM27
+  Negative Continuous Wheel Torque Limit: X BL5:BL27, Y BN5:BN27
+All references are on Torque Maps and all capability series are native lines.
+Peak + continuous + drivetrain produces 8 series in each Electric chart.
+Continuous-only without drivetrain gives 6 motor-side and 4 wheel-side series.
+Excel editing updates the formula-derived capability lines live. Assessment
+metrics/PPT are calculation snapshots: re-run the app after Excel limit edits
+to recalculate episode metrics; this is stated in workbook metadata/provenance.
+
+Slide 15 retains both original plot images/geometry, typography, colors and the
+16-slide structure. An optional native KPI rectangle occupies existing space
+above the maps and reads MAXIMUM SEGMENT TIME ABOVE CONTINUOUS TORQUE. It shows
+the current calculated duration, or a labelled externally sourced fallback.
+No valid duration means no card. Zero is displayed when calculated accurately.
+No automatic capability overlays are added to the approved PowerPoint charts.
+
+The current real reports render 82 s, 7 s, 0 s, a labelled manual 12.25 s, and no
+card for the no-input case. Every unrelated slide and all original map picture
+bytes/positions are unchanged on the same source. All 25 unrelated native Excel
+charts and protected VSM numerical calculations remain unchanged.
+
+IMPLEMENTATION FILES/FUNCTIONS
+
+continuous_torque.py:
+  ContinuousTorqueCurve, analyse_motor, analyse_dataset; numerical engine and
+  explicit policy, episode/per-motor results, source/semantic channel provenance.
+continuous_torque_reporting.py:
+  ContinuousTorqueInputs, ContinuousTorqueAssessment, assess_continuous_torque;
+  validated optional inputs and automatic/manual fallback selection.
+motor_performance_ui.py:
+  render_motor_performance_inputs, render_continuous_torque_results; shared
+  three-column editor, optional manual field, explicit reuse and scoped cache.
+ui_app.py:
+  Existing report flow forwards both independent input types, displays current
+  results and invalidates stale downloads. The peak helper retains compatibility.
+ui_config.py:
+  Both profile report wrappers accept optional continuous_torque_inputs.
+excel_report_engine.py:
+  Creates the separate assessment, records provenance and invokes the optional
+  table/overlay writer without modifying engineering calculations/statistics.
+continuous_torque_excel.py:
+  write_continuous_torque adds only the native continuous table and overlays.
+continuous_torque_ppt.py / profile_powerpoint_report_engine.py:
+  add_continuous_torque_kpi adds the optional card and records its provenance
+  in torque-map notes and manifests; displayed card counts include the new card.
+tests/test_continuous_torque.py / tests/test_continuous_reporting.py:
+  Engine, unavailable/zero boundaries, reporting/PPT/Excel and GUI state tests.
+scripts/validate_continuous_torque.py:
+  Reproducible independent reference/source/changed-curve numerical audit.
+
+VALIDATION EVIDENCE
+
+Root: outputs/continuous_torque_2026_11_03/
+reference_inspection.json: original formulas, cells, dimensions and hashes.
+dynamic_real/results.json: independent per-motor comparisons for both sources
+  and original/higher/lower/no-exceedance curves.
+variable_sampling.json: retained real-source indices and independent checks.
+reports_validation.json: current real report paths and verified KPI values.
+browser_validation.json: real Edge upload, validate, actual 23-point paste and
+  generated Excel/PPT, continuous-only with blank peak/drivetrain fields.
+browser_editing_validation.json: actual GUI curve edits, stable normal reruns,
+  source/profile switching, explicit reuse, unavailable coverage and clearing.
+office/checks.json: native Excel source points, live RPM/continuous torque/
+  ratio/efficiency edits, native chart copying, PowerPoint slide/card validation.
+office/*slide15.png: native PowerPoint renderings, checked visually and for
+  text overflow. No curve case omits the card; zero case displays 0 s.
+protection_verification.json: original/reference/client artifacts retain hashes.
+
+Phase 1: 23 engine tests passed. Full regression: 1041 passed after isolated
+rerun, 1 existing skip, all 55 modules executed. One existing AppTest initially
+hit its 3 s timeout under four-worker load and passed unchanged on rerun.
+Phase 2: 68 focused tests pass, including the existing peak-curve tests. The
+complete suite is rerun after the final source change with lower concurrency.
+Final Phase 2 full suite: 1056 passed, 1 existing skip, zero failures/errors,
+all 56 test modules executed. The skip is the same pre-existing Diesel soil-plot
+case. The source hashes match the final tested code. The full aggregate and
+per-group JUnit results are in phase2_suite/summary.json and suite_0..3.xml.
+
+No commit, push or final client ZIP build/replacement is performed. Existing
+approved PowerPoint files and release artifacts remain untouched. This is a
+workspace implementation pending a separately authorized release.
+
+FINAL VERDICT: VERIFIED
+
+Sergio can enter a variable-length continuous motor curve, load a compatible
+Electric VSM simulation and obtain independently calculated per-motor results
+and the current maximum on slide 15. Continuous-only, changed-curve, changed-
+source/profile, explicit-reuse, no-curve, unavailable and zero-exceedance paths
+are verified. Existing peak curves and native Excel editability are preserved.
+64 protected files retain their hashes; HEAD remains 2734e5147ebc7d17b046af7e18f44db5a5534eed.

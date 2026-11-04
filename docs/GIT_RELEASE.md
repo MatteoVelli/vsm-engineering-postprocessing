@@ -1,10 +1,28 @@
 # Git / GitHub Release Procedure - v1.4.1
 
-The 2 November 2026 patch release uses application version 1.4.1 and portable package
-`Astauto_VSM_v1.4.1_02112026.zip`. The explicitly authorised workflow is:
+The 4 November 2026 requested final release uses application version 1.4.1 and
+`VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip`.
+The reproducible portable builder is `scripts/build_sergio_release.py`; it uses
+the existing release collector and deterministic ZIP writer. Run it in the
+validated environment after committing the tested source:
 
-1. Validate the full regression suite, all three report profiles, reference hashes,
-   clean package installation/bootstrap and the shipped setup/start launchers.
+```powershell
+python scripts/build_sergio_release.py --output-dir outputs/release_staging --release-date 2026-11-04
+```
+
+Use a new output directory; the builder refuses to overwrite a release. Verify
+the ZIP and its manifest, test a fresh extraction, archive the previous delivery,
+then promote the validated ZIP and update `dist/CURRENT_SERGIO_DELIVERY.json`.
+Final artifact checksums belong in the accompanying release record, avoiding a
+self-referential package checksum. Real Hybrid motor acceptance stays pending
+unless matching real inputs and motor curves have actually been tested.
+
+The explicitly authorised workflow is:
+
+1. Validate the full regression suite, the requested report workflows and reference
+   hashes, clean package installation/bootstrap and shipped setup/start launchers.
+   Record real-data limitations explicitly rather than treating synthetic fixtures
+   as client engineering acceptance.
 2. Review the complete source diff and stage only release source, configuration,
    tests and documentation. Exclude unrelated user files, outputs and ZIPs.
 3. Commit the validated source and record the commit/tree in the portable manifest.

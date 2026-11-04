@@ -356,6 +356,9 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
     selection = None
     report_import_options = ImportOptions(strict=True)
     reporting_inputs = None
+    motor_performance = None
+    motor_performance_valid = True
+    continuous_inputs = None
     if uploaded is None:
         st.info("Upload a supported VSM CSV or XLSX file to validate it against the selected profile.")
     else:
@@ -400,6 +403,14 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
                                "Select Sergio - 15 October 2026 to use the configured "
                                "KERS gearbox-output torques. Inactive driveshaft signals produce zero wheel power.")
             reporting_inputs = _render_reporting_metadata_inputs(st, profile_definition, source_path)
+            if profile_definition.powertrain in {'electric', 'hybrid'}:
+                from vsm_postprocessing.motor_performance_ui import render_motor_performance_inputs, render_continuous_torque_results
+                motor_inputs = render_motor_performance_inputs(
+                    st, quality.source_sha256 + ':' + str(source_path.resolve()) + ':' + str(profile_definition.profile_path.resolve()))
+                motor_performance, motor_performance_valid = motor_inputs.peak, motor_inputs.valid
+                continuous_inputs = motor_inputs.continuous
+                render_continuous_torque_results(st, source_path, profile_definition.profile_path,
+                    continuous_inputs, quality.source_sha256, report_import_options)
             settings = repr((profile_definition.profile_path, selection, report_import_options, reporting_inputs, machine_name_override))
             validation_key += ":" + hashlib.sha256(settings.encode()).hexdigest()
 
@@ -443,6 +454,7 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
         and summary is not None
         and st.session_state.get("profile_validation_key") == validation_key
         and summary.is_valid
+        and motor_performance_valid
     )
     run_clicked = st.button(
         "STEP 4 - Generate Engineering Report",
@@ -465,6 +477,8 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
                     machine_name_override=machine_name_override,
                     selection=selection,
                     reporting_inputs=reporting_inputs,
+                    **({'motor_performance': motor_performance} if motor_performance is not None else {}),
+                    **({'continuous_torque_inputs': continuous_inputs} if continuous_inputs is not None else {}),
                 )
         except VSMPostProcessingError as exc:
             st.error(_friendly_profile_error(exc))
@@ -473,14 +487,21 @@ def _render_profile_engineering_report_workflow(st: Any) -> None:
             return
 
         st.session_state["profile_report_result"] = result
-        st.session_state["profile_report_result_key"] = (validation_key, machine_name_override)
+        st.session_state["profile_report_result_key"] = (validation_key, machine_name_override, repr(motor_performance), repr(continuous_inputs))
         st.success(f"Engineering reports generated: {result.report_path.name} and {result.presentation_path.name}")
         _render_profile_report_completion(st, result)
 
     result = st.session_state.get("profile_report_result")
-    if result is not None and st.session_state.get("profile_report_result_key") == (validation_key, machine_name_override):
+    if result is not None and motor_performance_valid and st.session_state.get("profile_report_result_key") == (validation_key, machine_name_override, repr(motor_performance), repr(continuous_inputs)):
         st.subheader("STEP 5 - Access Output")
         _render_profile_report_download(st, result)
+
+
+def _render_motor_performance_inputs(st, source_scope):
+    """Compatibility wrapper for the existing peak-only helper callers."""
+    from vsm_postprocessing.motor_performance_ui import render_motor_performance_inputs
+    result = render_motor_performance_inputs(st, source_scope)
+    return result.peak, result.valid
 
 
 def _render_reporting_metadata_inputs(st, definition, source_path=None):

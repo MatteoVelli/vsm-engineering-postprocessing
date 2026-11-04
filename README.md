@@ -2,9 +2,19 @@
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.4.1 (2 November 2026) - Torque-Speed Operating Maps
+## Current release: 1.4.1 (4 November 2026) - Sergio requested final
 
-The current delivery is `Astauto_VSM_v1.4.1_02112026.zip`. Electric, Hybrid and
+The current delivery is `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip`.
+Electric and Hybrid add user-provided peak/continuous motor inputs, continuous
+assessment and Motor Duty Summary, a native four-curve Motor Torque and Power
+Excel chart with live shaft-power formulas, and a matching PowerPoint slide with
+editable brand/model fields. Requested energy KPI labels say CONSUMPTION, and
+plot containers use the approved small corners and subtle shadow. Missing motor
+inputs produce an omission diagnostic; no synthetic ratings are substituted.
+Real Electric 03 acceptance is complete; latest motor-reporting acceptance with
+real Hybrid inputs remains pending. See [client release notes](docs/FINAL_RELEASE_NOTES.md).
+
+Electric, Hybrid and
 Diesel reports include measured torque-versus-RPM maps: two editable XY charts
 on the freely scrolling Torque Maps worksheet and a dedicated Astauto slide
 before Summary. Shared RR power statistics, editable local map tables and traceable battery
@@ -75,9 +85,9 @@ The 16 October plot update adds four separate soil-resistance plots versus time
 to current Electric and Hybrid Excel and PowerPoint reports, reusing existing
 power and cumulative-energy calculations. Existing combined charts remain.
 The soil pages remain before the torque maps and final summary. Complete current
-reports contain 16 Electric, 15 Hybrid and 11 Diesel PowerPoint slides when all
-optional sections are available. The portable folder and archive are named
-`Astauto_VSM_v1.4.1_02112026` for the 2 November delivery.
+reports contain 17 Electric and 16 Hybrid PowerPoint slides with complete motor
+reference inputs (16/15 when the motor-characteristics slide is omitted), and
+11 Diesel slides when the optional sections are available.
 The two soil pages also include six engineering KPI cards each, using the Wheel
 Steering Angles card style and existing signed power/energy/distance conventions.
 The soil cards reuse existing Excel calculations and layouts.

@@ -27,6 +27,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import quote_sheetname
 
 from .errors import ConfigurationError, ExcelReportError
+from .motor_performance import MotorPerformanceCurve
+from .continuous_torque_reporting import ContinuousTorqueInputs, ContinuousTorqueAssessment, assess_continuous_torque
 from .diagnostics import Diagnostic, diagnostic_records
 from .excel_formulas import (FORMULA_OPERATIONS, profile_arithmetic_formula, profile_temporal_formula,
                              save_report_workbook, statistic_formula, write_formula)
@@ -136,6 +138,8 @@ class ProfileExcelReportResult:
     report_metadata: ReportMetadata
     selection: ProfileReportSelection | None = None
     workbook_structure: dict[str, Any] | None = None
+    motor_performance: MotorPerformanceCurve | None = None
+    continuous_torque_assessment: ContinuousTorqueAssessment | None = None
 
     @property
     def sample_count(self) -> int:
@@ -497,6 +501,8 @@ def generate_profile_excel_report(
     machine_name_override: str | None = None,
     selection: ProfileReportSelection | None = None,
     reporting_inputs: Mapping[str, Any] | None = None,
+    motor_performance: MotorPerformanceCurve | None = None,
+    continuous_torque_inputs: ContinuousTorqueInputs | None = None,
 ) -> ProfileExcelReportResult:
     """Generate a profile-driven engineering workbook.
 
@@ -508,12 +514,24 @@ def generate_profile_excel_report(
     source_path = Path(input_file).expanduser().resolve()
     profile_path = Path(profile_file).expanduser().resolve()
     profile = select_profile(load_reporting_profile(profile_path), selection)
+    if motor_performance is not None:
+        if not isinstance(motor_performance, MotorPerformanceCurve):
+            raise ConfigurationError('Motor performance must be a validated shared motor curve.')
+        maps = {'torque_map_powertrain', 'torque_map_wheels'}
+        if profile.metadata.powertrain not in {'electric', 'hybrid'}:
+            raise ConfigurationError('Motor performance overlays require Electric or Hybrid Torque Maps.')
+        if selection is not None and selection.plots is not None and not maps <= set(selection.plots):
+            raise ConfigurationError('Select both Torque Maps charts before including motor performance curves.')
+        if not maps <= set(profile.plots_by_id()):
+            raise ConfigurationError('Motor performance overlays require both Torque Maps in the reporting profile.')
     report_metadata = report_metadata or resolve_report_metadata(
         source_path,
         profile,
         machine_name_override=machine_name_override,
         reporting_inputs=reporting_inputs,
     )
+    if continuous_torque_inputs is not None and profile.metadata.powertrain not in {'electric', 'hybrid'}:
+        raise ConfigurationError('Continuous motor assessment requires an Electric or Hybrid profile.')
     options = import_options or ImportOptions(strict=not bool(profile.metadata.excel_template))
     dataset = load_data_file(source_path, options)
     if not dataset.quality.time_is_strictly_increasing or dataset.quality.time_channel_id is None:
@@ -588,6 +606,7 @@ def generate_profile_excel_report(
     summary_path = destination / "profile_excel_report_summary.txt"
     report_type = report_type or (profile.metadata.powertrain or profile.profile_id)
 
+    continuous_assessment = assess_continuous_torque(dataset, profile, continuous_torque_inputs, resolution) if continuous_torque_inputs is not None else None
     workbook_structure = _write_profile_workbook(
         report_path,
         source_path=source_path,
@@ -605,7 +624,13 @@ def generate_profile_excel_report(
         template_comparison=comparison,
         excel_plot_ids=selection.plots if selection is not None else None,
         bottom_operations=selection.bottom_operations if selection is not None else None,
+        motor_performance=motor_performance,
+        continuous_torque_assessment=continuous_assessment,
     )
+
+    capability = workbook_structure.get('motor_capability')
+    if capability and capability['status'] == 'omitted':
+        statistics_result.diagnostics.append(Diagnostic(capability['warning'], code='motor_capability_omitted'))
 
     result = ProfileExcelReportResult(
         report_path=report_path,
@@ -623,6 +648,8 @@ def generate_profile_excel_report(
         report_metadata=report_metadata,
         selection=selection,
         workbook_structure=workbook_structure,
+        motor_performance=motor_performance,
+        continuous_torque_assessment=continuous_assessment,
     )
     manifest_path.write_text(
         json.dumps(_profile_manifest(result, source_path, profile_path, report_type), indent=2),
@@ -899,6 +926,8 @@ def _write_profile_workbook(
     template_comparison: list[dict[str, str]],
     excel_plot_ids: tuple[str, ...] | None = None,
     bottom_operations: tuple[str, ...] | None = None,
+    motor_performance: MotorPerformanceCurve | None = None,
+    continuous_torque_assessment: ContinuousTorqueAssessment | None = None,
 ) -> dict[str, Any]:
     workbook = Workbook()
     report = workbook.active
@@ -997,6 +1026,36 @@ def _write_profile_workbook(
     write_agro_statistics_formulas(workbook, statistics_result, report_metadata)
     _write_torque_maps_sheet(workbook, plotting_result, excel_plot_ids)
 
+    motor_record = None
+    if motor_performance is not None:
+        from .motor_performance_excel import write_motor_performance
+        motor_record = write_motor_performance(workbook, motor_performance)
+        # The visible live table owns the points; keep this metadata cell small
+        # even when a user supplies thousands of rows. The manifest retains all inputs.
+        metadata_sheet.append(('Motor performance capability inputs', json.dumps({
+            key: value for key, value in motor_record.items()
+            if key not in {'motor_speed_rpm', 'motor_peak_torque_nm'}})))
+
+    continuous_record = None
+    if continuous_torque_assessment is not None:
+        from .continuous_torque_excel import write_continuous_torque
+        table = write_continuous_torque(workbook, continuous_torque_assessment, motor_performance, excel_plot_ids)
+        continuous_record = {**continuous_torque_assessment.summary(), 'excel_table': table}
+        compact = {key: continuous_record[key] for key in ('duration_s', 'origin', 'manual_provenance', 'excel_editing_note')}
+        compact['excel_table'] = table
+        if continuous_torque_assessment.analysis:
+            compact['motors'] = [{k:v for k,v in m.summary().items() if k != 'episodes'} for m in continuous_torque_assessment.analysis.motors]
+        metadata_sheet.append(('Continuous torque assessment', json.dumps(compact)))
+
+    from .motor_duty_excel import write_motor_duty_summary
+    motor_duty = write_motor_duty_summary(workbook, dataset, profile, continuous_torque_assessment, motor_performance)
+
+    capability = None
+    if profile.metadata.powertrain in {'electric', 'hybrid'}:
+        from .motor_capability_excel import write_motor_capability
+        capability = write_motor_capability(workbook, motor_performance, continuous_torque_assessment)
+        metadata_sheet.append(('Motor torque and power', json.dumps(capability)))
+
     structure = {
         'visible_sheet_names': [s.title for s in workbook if s.sheet_state == 'visible'],
         'hidden_sheet_names': [s.title for s in workbook if s.sheet_state != 'visible'],
@@ -1004,6 +1063,10 @@ def _write_profile_workbook(
                         for key, location in getattr(workbook, '_report_agro_source', {}).items()
                         if key != 'reason'},
         'agro_source_note': getattr(workbook, '_report_agro_source', {}).get('reason', 'Source unavailable'),
+        **({'motor_performance_curve': motor_record} if motor_record is not None else {}),
+        **({'continuous_torque_assessment': continuous_record} if continuous_record is not None else {}),
+        **({'motor_duty_summary': motor_duty} if motor_duty is not None else {}),
+        **({'motor_capability': capability} if capability is not None else {}),
     }
     for cells in metadata_sheet:
         if cells[0].value in {'Visible sheets', 'Hidden sheets'}:

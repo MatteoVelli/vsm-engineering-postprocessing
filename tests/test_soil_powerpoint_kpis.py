@@ -136,7 +136,8 @@ def test_each_slide_has_exactly_six_reference_style_cards_and_unchanged_plots(so
         text = [s.text for s in slide.shapes if s.has_text_frame and s.text.strip()
                 and Inches(1.72) < s.top < Inches(3)]
         expected = [item for label,key,unit in soil_kpi_cards(slide_id)
-                    for item in (label,_format_custom_metric_value(statistics[key],unit))]
+                    for item in (label + '\vCONSUMPTION' if label == 'TOTAL ENERGY' else label,
+                                 _format_custom_metric_value(statistics[key],unit))]
         assert text == expected  # Exactly name and actual value per card; no extra explanatory text.
         pictures = [s for s in slide.shapes if s.shape_type == 13 and s.top > Inches(3)]
         template = Presentation("reference_files/RoboSprayer_Electric_Report_Astauto_Colours.pptx")

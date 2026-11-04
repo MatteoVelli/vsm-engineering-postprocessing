@@ -1,0 +1,83 @@
+ASTAUTO Slide 15 - Standard Plot Style Correction
+3 November 2026
+
+Scope and implementation
+Only the slide-only chart renderer and its regression tests changed for this
+request. Earlier engineering, Excel, GUI and presentation changes remain intact.
+
+src/vsm_postprocessing/torque_maps_presentation.py:
+- Removed _layout_torque_map_chart and its custom title/legend header band,
+  figure-relative legend anchor, axes rectangles and margin fitting loops.
+- render_torque_maps now follows plotting_engine._render_one_plot: standard
+  Figure construction, title fontsize 15 and pad 12, default title position
+  and font properties, normal tight_layout, standard grid colour and spines.
+- Uses the existing _apply_axis_format and _draw_zero_line helpers. Tick
+  formatting now matches standard report unit formatting, with a zero reference
+  where signed torque crosses zero. Original data-derived limits are unchanged.
+- Legends use the standard 'best' location inside the axes, 9-point text,
+  white frame at alpha 0.92 and #B8C2CC border. Two columns accommodate the
+  four measured series plus grouped positive/negative capability entries.
+- Original scatter coordinates, colours, orange peak lines, teal dashed
+  continuous lines, labels and numeric provenance are unchanged.
+
+tests/test_torque_maps_presentation.py:
+- Replaced assertions for the explicitly rejected external legend band with
+  full legend containment inside the numeric axes, for full and partial inputs.
+- Retained canvas, title, plot-area, signed-value, line-style, source immutability,
+  native-series, numeric-range, KPI aggregation and missing-input protections.
+- Added direct style comparison with the actual normal _render_one_plot:
+  title font family/size/weight, title position/alignment/padding transform,
+  axis/tick fonts, legend font/frame/location, grid, spines and layout engine.
+- Tests account explicitly for the standard zero reference, separately from
+  the unchanged four capability lines.
+
+Real report and Office validation
+Fresh Electric 03 report generated from the original 2161-sample CSV, the
+recorded report inputs and original manufacturer curve points. Generation used
+the original report environment. A preliminary run using the test dependency
+shim produced identical pixels but different PNG compression bytes; that run
+was replaced with the byte-preserving fresh report before native validation.
+
+Both charts retain eight original series. All 34944 X/Y coordinates match the
+original native Excel series exactly, with maximum absolute difference zero.
+KPIs remain 82 s, 828 s, 13 episodes and 123.6%. The motor-shaft/wheel-side
+distinction and existing engineering conversions remain untouched.
+
+All 16 slides rendered directly in Microsoft PowerPoint. Normal view and
+full-screen slide 15 were captured and visually inspected. Legends are inside
+the axes, titles match the surrounding chart family, no header band remains,
+and data, labels, axes, cards and legends are unclipped. Slide 14 and slide 15
+are supplied side by side at the same native export resolution.
+
+All other 15 slides have identical XML, notes, embedded image bytes and rendered
+pixels. Slide 15 external shape XML is identical; only its two image assets and
+chart provenance notes differ. Four card dimensions, fonts, colours, values
+and the slide heading, subtitle, icon, logo, background and footer are intact.
+Excel xl/* parts match the original except Metadata!B3 generation timestamp;
+normalising that timestamp gives identical XML. GUI/calculation source hashes
+are protected and unchanged. Native Microsoft Excel series were read directly
+and compared with the plotted data (34944 coordinate checks).
+
+The existing eleven real-data/input variants also rendered in native
+PowerPoint with no card overflows and exact coordinate/KPI preservation.
+Geometry validation covers those variants plus the freshly generated report:
+24 charts with internal legends, standard titles, complete numeric extents
+and all visible text inside the image canvas. All 417612 coordinates across
+these charts also match the actual Matplotlib scatter/line artists exactly.
+
+Regression results and final status are recorded in:
+outputs/slide15_standard_style_2026_11_03/validation_summary.json
+Focused regression: 90 passed.
+Complete suite: 1068 passed, 1 existing skip, across all 57 test modules.
+The increase from the previous 1067 passing baseline is the new direct
+standard-renderer style-parity test. All 1069 collected cases executed once.
+The focused JUnit result, four full-suite JUnit results, current collected test
+IDs, protected-file hashes and native Office checks are retained alongside it.
+
+Review outputs
+outputs/slide15_standard_style_2026_11_03/Electric03_Standard_Plot_Style_Review.pptx
+outputs/slide15_standard_style_2026_11_03/office/revised_slide15.png
+outputs/slide15_standard_style_2026_11_03/office/standard_vs_slide15.png
+outputs/slide15_standard_style_2026_11_03/office/complete_presentation.png
+
+No commit, push, publication or replacement of the official Sergio ZIP.

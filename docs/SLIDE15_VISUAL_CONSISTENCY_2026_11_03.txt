@@ -1,0 +1,100 @@
+ASTAUTO slide 15 visual consistency correction
+
+Starting references
+Downloads/RoboSprayer_8500Kg_Electric_03_UoL_DC_20kph_DriverPC_25pcGrad_FL-RL_Rough (7).pptx
+Downloads/RoboSprayer_8500Kg_Electric_03_UoL_DC_20kph_DriverPC_25pcGrad_FL-RL_Rough (7).xlsx
+Primary reference: slide 14. Supporting comparisons: slides 9, 12 and 13.
+The regenerated reference uses the exact version 7 capability points and its
+recorded reporting inputs, including the existing user-provided battery mass.
+
+Layout and typography (inches unless stated otherwise)
+Four cards use the existing _add_custom_kpi_cards renderer and its native theme
+fill, border, effect/shadow reference, indicator dots and alternating blue/orange
+accent colours. The 12.14-inch standard six-card span is divided into four.
+Card positions x: 0.6000, 3.6750, 6.7500, 9.8250.
+Card width 2.9150; gap 0.1600; top 1.7200; height 1.2800.
+Dots: offset x 0.18, y 0.17; diameter 0.11.
+Labels: Calibri 8.5 pt bold, uppercase; offset x 0.36, y 0.11.
+Values: Calibri 19 pt bold; offset x 0.32, y 0.54, identical vertical alignment
+to slide 14. Accumulated duration and episodes explicitly say PER MOTOR.
+Caption: Calibri 9 pt; x 0.60, y 3.08, width 12.13, height 0.25.
+Manual-only mode retains one centred card using the same standard component.
+Unavailable metrics create no cards. No-card charts use the existing 2.4-inch
+plot-pair top used elsewhere when a KPI row is absent.
+
+Both chart images exactly match slide 14's approved rectangles:
+Left: x 0.72000, y 3.55875, width 5.70500, height 2.85250.
+Right: x 6.90500, y 3.55875, width 5.70500, height 2.85250.
+Their existing white containers add 0.12-inch padding on each side:
+5.94500 x 3.09250; top 3.43875; lefts 0.60000 and 6.78500.
+Plots are regenerated as 1800 x 900 PNGs using the established PlotDefaults
+12 x 6-inch figure at 150 dpi, preserving the native 2:1 aspect ratio.
+No image stretching or clipping is used.
+Chart titles use the normal-weight 15 pt PlotDefaults style (about 7.13 pt at
+the displayed size), matching the other report plots. Axis labels use the
+standard 11 pt figure style; ticks 9 pt. Compact legends use 11 pt figure text,
+grouping positive/negative peak and continuous curves without removing series.
+The existing orange peak and teal dashed continuous lines and scatter colours
+are preserved. Automatic numeric axis limits and all exact XY arrays persist.
+
+Unchanged framing
+Pale-grey ASTAUTO background; Cambria 25 pt navy heading; italic Calibri 12.5 pt
+subtitle; circular blue section icon; logo; footer and 15 / 16 page numbering.
+The complete Electric presentation still has 16 slides.
+
+Modified production functions
+profile_powerpoint_report_engine.py:
+  _add_custom_kpi_cards: exposes optional card width/left/display values so the
+  existing component can draw four cards. Default six-card output is unchanged.
+  _render_additional_plot_pair_slide: uses the approved chart rectangles for
+  Torque Maps instead of the previous custom taller image geometry.
+continuous_torque_ppt.py:
+  continuous_torque_cards: shortens labels only; aggregation is unchanged.
+  add_continuous_torque_kpi: delegates native cards to the standard renderer.
+torque_maps_presentation.py:
+  render_torque_maps: uses PlotDefaults aspect ratio and typography; removes
+  the oversized bold chart headings and retains compact separate legends.
+
+Numerical preservation
+All 34,944 reference XY coordinates and eight series per chart exactly match
+the actual version 7 workbook. Microsoft Excel independently verified every
+native plotted coordinate within 1e-9. Reference indicators remain 82 s, 828 s
+maximum accumulated duration per motor, 13 maximum episodes per motor, and
+123.6% utilisation. Existing per-motor maxima, responsible motors and ties stay
+in speaker notes. There are no engineering conversions in the PowerPoint layer.
+
+Eleven real input variants retain their validated values and series counts:
+both, peak-only, continuous-only, valid continuous wheel conversion, missing
+ratio/efficiency, absent inputs, manual-only, unsupported analysis, a second
+simulation and altered motor ratings. The variant check reuses previously
+validated engineering results and numerical workbooks; it exercises the current
+presentation component without recalculating or inventing engineering data.
+
+Evidence directory: outputs/slide15_consistency_2026_11_03
+reference.json: exact version 7 numeric comparison and current reference report.
+reference_geometry.json: actual baseline shape positions and fonts on slides
+9, 12, 13, 14 and 15. geometry_checks.json records the final automated checks.
+office/revised_slide15.png: final slide preview.
+office/slide14_vs_slide15.png: visual comparison with the primary reference.
+office/normal_view_slide15.png and fullscreen_slide15.png: actual PowerPoint
+normal and full-screen views. Captures are restricted to the private review
+presentation; existing user documents remain open.
+office/pixel_comparison.json: every other slide remains pixel-identical to v7.
+variants.json and office/variants: partial/absent input cases and native renders.
+focused_final.xml and full_suite/*.xml: regression results.
+validation_summary.json: final totals, protected-file hashes and review paths.
+
+Engineering code, Excel writer/formulas/charts, raw channels, mappings, GUI,
+Streamlit state and calculation policy remain unchanged. No commit, push or
+official Sergio ZIP replacement is performed.
+
+Final results
+86 focused checks passed. Complete current regression collection: 1,064 passed,
+one existing diesel soil-plot skip; 57 modules and 1,065 collected cases, each
+executed once. The new standard-geometry regression accounts for the additional
+pass over the previously reported baseline.
+All 129 protected files match their starting hashes. Generated Excel xl/* XML
+is identical to the actual version 7 workbook apart from Metadata!B3, the new
+generation timestamp. This includes all chart XML, formulas and numerical cells.
+All other 15 slides remain pixel-identical to the actual version 7 presentation.
+No remaining issues.

@@ -232,3 +232,42 @@ unavailable. Its existing refill, discontinuity and physical-data safeguards are
 unchanged. Agro Capacity is maximum observed inferred remaining mass, not nominal
 tank capacity. The accepted legacy Diesel diagnostic gravity difference is retained.
 Detailed source, status and warnings are in Statistics and report metadata.
+
+### Motor torque and power (4 November 2026)
+
+For Electric and Hybrid, enter both peak and continuous motor reference curves
+in the current run's Motor Performance Curves editor. Each curve needs at least
+two points with nonnegative, strictly increasing RPM. The grids may differ;
+blank torque cells belong only to the other curve. Inputs are scoped to the
+current source/profile; no manufacturer ratings are installed as defaults.
+
+The generated `Torque Maps` sheet retains the existing operating maps and adds
+`Motor Torque and Power`, a native editable XY chart with torque on the left
+axis [Nm], power on the right [kW], and shared motor speed [rpm]. The power
+columns use live `torque * rpm * 2*PI()/60000` formulas referencing the same
+sheet's blue editable torque/RPM cells. Calculated outputs are black. Final-drive
+ratio and driveline efficiency affect wheel conversions only, never shaft power.
+Power columns are appended in free columns, normally BP:BQ; the chart normally
+occupies AA6 above the data tables, with a free-column fallback if occupied.
+
+PowerPoint reads the four series from this run's generated workbook, including
+evaluated formulas, and adds `Motor Torque & Power Characteristics` immediately
+before `Torque-Speed Operating Maps`. `Simulation Summary` remains last. The
+native text boxes `MOTOR BRAND:` and `MOTOR TYPE / MODEL:` are intentionally blank
+and editable. The curves are an exported image; Excel retains the editable chart.
+Excel edits update its chart; regenerate PowerPoint to reflect changed inputs.
+
+Missing or invalid inputs omit the new chart/slide and produce a visible warning
+in the UI, manifest and report summary. Existing peak-only overlays and
+continuous-only analysis remain available. No external workbook or other-profile
+fallback is used. The earlier experimental `presentation.motor_capability_workbook`
+setting has been removed; supplying that key is a configuration error.
+
+Exact arrays, ranges, formulas, units, workbook SHA-256 and power checks are saved
+in `motor_capability/motor_capability_data.json`, slide notes and the PPT manifest.
+Power is checked against shaft torque/RPM, with a 0.01 kW + 0.1% tolerance. Fewer
+than three nonzero checks produces an acceptance warning without rejecting a
+valid two-point curve. This data is motor reference capability, not VSM telemetry.
+
+Energy KPI card titles receive `CONSUMPTION` only once. Values, units and
+calculations remain unchanged; stable card/slide IDs are recorded in the manifest.

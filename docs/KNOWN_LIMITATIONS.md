@@ -3,6 +3,17 @@
 Version 1.4.1 provides deterministic profile reporting for Electric, Hybrid and
 Full Size Sprayer Diesel, subject to the following boundaries.
 
+The 4 November motor-reporting release is validated with the real Electric 03
+reference and its supplied motor curves. Latest motor-reporting acceptance with
+real Hybrid data remains pending; synthetic Hybrid tests verify implementation
+only. Earlier Caiman validation below does not establish that acceptance.
+Motor curves must be entered for the current run. Missing inputs are not replaced
+by synthetic defaults. PowerPoint motor brand/model fields are intentionally blank
+and editable. Excel edits require report regeneration to refresh PowerPoint and
+continuous-limit episode analysis.
+Use a short extraction location for `VSM_Sergio_v1.4.1`; deeply nested paths plus
+long VSM basenames can exceed the host's Windows path-length limit.
+
 1. Current profiles follow the Diesel `_04` and Electric/Hybrid `_08` reporting layouts; original profiles remain explicit legacy options. Release checks use the updated Diesel `_07` CSV and Electric UoL `_04` CSV, including nonzero gearbox torque and Sergio-confirmed HV power. The available Caiman SP Hybrid reference and controlled integrations are validated, including generator activity and correct rejection of negative chemical contents. A newer client Hybrid export beyond this reference is not claimed as tested.
 2. Optional source channels, including `Track_Height`, are exported only when present in the uploaded data.
 3. The current automatic header/unit detection is validated against normal CSV/XLSX layouts. Unusual multi-sheet or multi-level-header exports may require explicit import settings.

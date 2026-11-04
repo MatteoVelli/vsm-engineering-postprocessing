@@ -1,5 +1,28 @@
 # Deterministic Release Notes - v1.4.1
 
+## Current Sergio requested final release — 4 November 2026
+
+Package: `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip`.
+This delivery includes current-run peak/continuous motor inputs, continuous-limit
+assessment, Motor Duty Summary, the native four-curve Motor Torque and Power
+Excel chart and live shaft-power formulas. PowerPoint adds an editable motor
+brand/model area and characteristics slide before the retained operating maps.
+Requested energy cards say CONSUMPTION. Shared Electric/Hybrid plot containers
+use the approved small corners and explicit subtle shadow; KPI cards are unchanged.
+
+The real Electric 03 reference has 30 native Excel charts and 17 PowerPoint
+slides with complete motor inputs. Missing curves produce an explicit omission
+diagnostic; no synthetic or default manufacturer curve is supplied. Latest
+motor-reporting validation with real Hybrid data remains pending. Synthetic
+Hybrid integration checks do not constitute real-data acceptance.
+
+Python >=3.11,<3.12, the official CPython 3.11.9 bootstrap and the existing root
+SETUP/START launchers beside `Tool` are retained. Density and legitimate
+engineering diagnostics are preserved. Final Git/artifact checksums, test counts
+and installation evidence accompany the designated delivery in its release record.
+
+## Historical 2 November delivery
+
 Current Sergio distribution, 2 November 2026: `Astauto_VSM_v1.4.1_02112026.zip`.
 The final patch retains the approved layouts, eight local editable Torque Maps
 datasets, corrected KERS/RR statistics and source-specific 350 kWh confirmation.

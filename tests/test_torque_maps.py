@@ -303,8 +303,10 @@ def test_powerpoint_maps_precede_summary_and_preserve_numbering(map_report):
     assert len(images) == 2 and images[0].left+images[0].width < images[1].left
     assert caption.top+caption.height < min(s.top for s in images)
     rendered = {p.plot_id: p for p in report.plotting_result.rendered_plots}
+    notes = json.loads(slide.notes_slide.notes_text_frame.text)
     for image, key in zip(images, MAPS):
-        assert image.image.blob == Path(rendered[key].png_file).read_bytes()
+        expected = notes.get('torque_maps_presentation', {}).get('charts', {}).get(key, {}).get('image', rendered[key].png_file)
+        assert image.image.blob == Path(expected).read_bytes()
 
 
 def test_feature_can_be_disabled_without_removing_existing_reports(tmp_path):

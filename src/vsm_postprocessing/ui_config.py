@@ -17,6 +17,8 @@ from .utils import source_report_filename
 from .report_metadata import ReportMetadata, resolve_report_metadata
 from .report_profile import ReportingProfile, load_reporting_profile, resolve_profile
 from .report_selection import ProfileReportSelection
+from .motor_performance import MotorPerformanceCurve
+from .continuous_torque_reporting import ContinuousTorqueInputs
 
 
 @dataclass(frozen=True)
@@ -259,6 +261,8 @@ def generate_reporting_profile_excel_report(
     *,
     machine_name_override: str | None = None,
     reporting_inputs: Mapping[str, Any] | None = None,
+    motor_performance: MotorPerformanceCurve | None = None,
+    continuous_torque_inputs: ContinuousTorqueInputs | None = None,
 ) -> ProfileExcelReportResult:
     validate_profile_upload_extension(source_file)
     profile = load_reporting_profile(profile_file)
@@ -269,6 +273,8 @@ def generate_reporting_profile_excel_report(
         output_dir,
         import_options or ImportOptions(strict=not bool(getattr(profile.metadata, "excel_template", None))),
         report_metadata=report_metadata,
+        **({'motor_performance': motor_performance} if motor_performance is not None else {}),
+        **({'continuous_torque_inputs': continuous_torque_inputs} if continuous_torque_inputs is not None else {}),
     )
 
 
@@ -281,6 +287,8 @@ def generate_reporting_profile_engineering_report(
     machine_name_override: str | None = None,
     selection: ProfileReportSelection | None = None,
     reporting_inputs: Mapping[str, Any] | None = None,
+    motor_performance: MotorPerformanceCurve | None = None,
+    continuous_torque_inputs: ContinuousTorqueInputs | None = None,
 ) -> ReportingProfileEngineeringReportResult:
     validate_profile_upload_extension(source_file)
     profile = load_reporting_profile(profile_file)
@@ -288,6 +296,10 @@ def generate_reporting_profile_engineering_report(
     destination.mkdir(parents=True, exist_ok=True)
     report_metadata = resolve_report_metadata(source_file, profile, machine_name_override=machine_name_override, reporting_inputs=reporting_inputs)
     selection_options = {"selection": selection} if selection is not None else {}
+    if motor_performance is not None:
+        selection_options['motor_performance'] = motor_performance
+    if continuous_torque_inputs is not None:
+        selection_options['continuous_torque_inputs'] = continuous_torque_inputs
     excel_result = generate_profile_excel_report(
         source_file,
         profile_file,

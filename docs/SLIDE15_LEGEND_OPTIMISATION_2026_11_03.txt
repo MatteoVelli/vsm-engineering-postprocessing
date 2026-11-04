@@ -1,0 +1,104 @@
+ASTAUTO slide 15: compact legends and enlarged axes
+
+Implementation scope
+Only src/vsm_postprocessing/torque_maps_presentation.py changes in production.
+render_torque_maps retains every numerical series and delegates internal layout
+to _layout_torque_map_chart. There are no new inputs, calculations or report
+features. tests/test_torque_maps_presentation.py strengthens the existing full
+curve geometry checks and adds peak-only, continuous-only and no-curve cases.
+
+Authoritative baseline
+outputs/slide15_consistency_2026_11_03/Electric03_Visual_Consistency_Review.pptx
+The corresponding previous report and source hashes were checked before edits.
+Regenerating both baseline chart images with the original repository renderer
+produced byte-identical PNGs to the saved review deck. There was no source/output
+discrepancy to resolve. The original renderer is archived in the task evidence.
+
+Legend and plot-area optimisation
+The legend remains a native Matplotlib legend, using figure coordinates inside
+the existing white image/container. It sits immediately below the normal-weight
+chart title and above the data axes. Its rendered bounding box determines the
+axes top; it never covers operating points or capability envelopes.
+Four measured-series entries plus the signed peak and continuous style entries
+use three columns and two compact rows. Existing names and (+ / -) meanings are
+preserved; both signed curves remain separate data series. No surrounding frame.
+When only four legend entries are present, one row reclaims additional height.
+
+Legend figure font: 11 -> 10.5 pt, a 4.5% reduction. Title remains 15 pt normal;
+axis labels remain 11 pt; numeric ticks remain 9 pt. The standard 12 x 6 inch,
+150 dpi render remains 1800 x 900 pixels, with no stretching or resampling.
+Legend border padding 0.15 em; row spacing 0.12 em; column spacing 1 em.
+The initial axes left/bottom margins are reduced. Visible tick and unit-label
+extents then expand margins only where required, including signed wheel torque.
+No numerical X/Y limits, points, line styles or colours are changed.
+
+Measured geometry, before -> after
+All physical dimensions below are at the displayed PowerPoint image size.
+Chart image: 5.705 x 2.8525 inches -> unchanged.
+Outer native white panel including padding: 5.945 x 3.0925 inches -> unchanged.
+Image positions: x 0.720 / 6.905, y 3.55875 inches -> unchanged.
+Motor axes: 5.048925 x 1.797075 -> 5.277125 x 2.257262 inches.
+Wheel axes: 5.048925 x 1.797075 -> 5.245959 x 2.257262 inches.
+Motor axes area: 55.755% -> 73.1978% of the chart image; +31.2847% relative.
+Wheel axes area: 55.755% -> 72.7655% of the chart image; +30.5094% relative.
+Both axes heights increase 25.6076%; widths increase 4.52% motor / 3.90% wheel.
+
+Reference bounding boxes in source-PNG pixels, origin at bottom left (1800x900):
+Motor legend before: x 652.33, y 742.30, width 648.33, height 75.63.
+Motor legend after:  x 660.94, y 791.39, width 577.13, height 53.70.
+Wheel legend before: x 645.33, y 742.30, width 662.33, height 75.63.
+Wheel legend after:  x 656.85, y 791.39, width 595.13, height 53.70.
+Title-to-legend clearance: 12.62 -> 5.40 pixels (0.017115 displayed inches after).
+Legend-to-axes clearance: 31.30 -> 7.20 pixels (0.022820 displayed inches after).
+X-label bottom clearance: 79.42 -> 7.42 pixels, still inside the chart image.
+Y-label left clearance after: 7.17 pixels motor / 5.00 pixels wheel.
+The unchanged native panel adds another 0.12 inch outside the image on every side.
+All titles, legends, visible ticks and unit labels fit within the image boundary.
+
+Alternative evaluated
+A six-column single-row legend yields 75.76% / 75.31% axes area, but is almost
+twice as wide. The selected two-row layout follows the requested preference,
+groups the four measured series and two capability styles clearly, and still
+provides about 31% more usable plotting area. One-row legends are used naturally
+when capability entries are absent.
+
+Numerical preservation
+Fresh Electric 03 generation uses the actual 8,500 kg simulation and the validated
+workbook's curve data, plus the baseline's original reporting inputs/provenance.
+Both charts retain eight series. All 34,944 numerical XY coordinates match Excel
+exactly. Microsoft Excel independently checks every native coordinate within
+1e-9. The four dynamic KPI results remain 82 s, 828 s per motor, 13 maximum
+episodes per motor and 123.6% continuous utilisation. Existing aggregation,
+motor identities, ties, negative torques and source-cell references are retained.
+
+Dynamic validation
+Eleven real-data scenarios cover both, peak-only, continuous-only, no capability
+curves, missing ratio/efficiency, continuous wheel conversion, manual-only,
+unsupported analysis, a different simulation and altered motor ratings.
+The existing validated numerical results are reused for these presentation-only
+variant checks. All 22 rendered chart layouts have legends inside the image,
+outside the data axes, and unclipped visible tick/unit labels. All eleven native
+PowerPoint variant renders pass without KPI text overflow.
+
+Evidence: outputs/slide15_legend_2026_11_03
+authoritative_baseline_check.json: original source and saved review agreement.
+geometry_comparison.json: measured before/after bounds and one-row alternative.
+variant_geometry.json: all actual rendered header/axes bounds checks.
+reference.json: fresh real-data reference and exact numerical comparison.
+office/revised_slide15.png: updated preview.
+office/before_after_slide15.png: native before/after at identical 2000x1125 size.
+office/normal_view_slide15.png and fullscreen_slide15.png: actual PowerPoint views.
+office/pixel_comparison.json: all other 15 slides are pixel-identical.
+focused.xml and full_suite/*.xml: focused and complete regression results.
+validation_summary.json: final verdict, test totals and preservation checks.
+
+No commit, push, publication or official Sergio ZIP replacement is performed.
+
+Final regression results
+89 focused checks passed. The full current collection has 1,067 passed and one
+existing diesel soil-plot skip, across 57 modules / 1,068 cases. Every collected
+case was executed once. The three added partial-input geometry cases account
+for the increase over the previous 1,064-pass baseline. Existing tests retain
+their numerical, styling and preservation assertions.
+
+Final verdict: VERIFIED.

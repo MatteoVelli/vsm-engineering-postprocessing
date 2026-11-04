@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 import math
 import re
+import warnings
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Mapping
@@ -189,7 +190,9 @@ class ProfilePowerPointReportResult:
 
     @property
     def displayed_kpi_count(self) -> int:
-        return self.powerpoint_result.displayed_kpi_count
+        assessment = self.excel_result.continuous_torque_assessment
+        from .continuous_torque_ppt import continuous_torque_cards
+        return self.powerpoint_result.displayed_kpi_count + (len(continuous_torque_cards(assessment)) if any(s.slide_id == 'torque_maps' for s in self.powerpoint_result.config.slides) else 0)
 
 
 @dataclass(frozen=True)
@@ -410,6 +413,20 @@ def build_profile_powerpoint_report(
         excel_result,
         output_filename=output_filename or _report_output_filename(excel_result.report_metadata, ".pptx"),
     )
+    motor_capability = None
+    motor_status = None
+    if profile.metadata.powertrain in {'electric', 'hybrid'}:
+        from .motor_capability import read_motor_capability, render_motor_capability, insert_motor_slide_definition
+        motor_status = (excel_result.workbook_structure or {}).get('motor_capability', {
+            'status': 'omitted', 'warning': 'Motor capability slide omitted: this report has no validated motor capability inputs.'})
+        if motor_status['status'] == 'included':
+            motor_capability = render_motor_capability(read_motor_capability(excel_result.report_path), destination / 'motor_capability')
+            motor_capability['profile_id'] = profile.profile_id
+            motor_capability['input_origin'] = 'Current-run user-provided motor reference curves'
+            payload['slides'] = insert_motor_slide_definition(payload['slides'])
+            motor_status = {'status': 'included', **motor_capability}
+            for warning in motor_capability['warnings']:
+                warnings.warn(warning, UserWarning, stacklevel=2)
     extra_ids = {row['metric_id'] for row in reporting_metric_rows(excel_result.statistics_result, excel_result.report_metadata)}
     for slide in payload['slides']:
         if slide['slide_id'] == 'agrochemical_battery':
@@ -441,11 +458,13 @@ def build_profile_powerpoint_report(
         from .diesel_powerpoint_report import build_diesel_powerpoint
 
         builder = build_diesel_powerpoint
+    builder_options = {} if profile.metadata.powertrain == 'diesel' else {'motor_capability': motor_capability, 'motor_status': motor_status}
     powerpoint_result = builder(
         excel_result,
         config_path,
         destination,
         plot_assets_dir=excel_result.plot_assets_dir,
+        **builder_options,
     )
     result = ProfilePowerPointReportResult(
         presentation_path=powerpoint_result.presentation_path,
@@ -495,6 +514,8 @@ def _build_template_profile_powerpoint_report(
     output_dir: Path,
     *,
     plot_assets_dir: Path,
+    motor_capability: dict | None = None,
+    motor_status: dict | None = None,
 ) -> PowerPointReportResult:
     config = load_powerpoint_report_config(config_path)
     template_path = _resolve_visual_template()
@@ -506,6 +527,12 @@ def _build_template_profile_powerpoint_report(
     statistics_by_id = {item.statistic_id: item for item in statistics_result.statistics}
     plotting_result = _profile_powerpoint_plots(excel_result, output_dir)
     plots_by_id = {item.plot_id: item for item in plotting_result.rendered_plots}
+    torque_presentation = None
+    if any(s.slide_id == 'torque_maps' for s in config.slides):
+        from .torque_maps_presentation import render_torque_maps, torque_maps_metadata
+        from .continuous_torque_ppt import continuous_torque_cards
+        torque_presentation = torque_maps_metadata(render_torque_maps(excel_result.report_path, output_dir / 'torque_maps_presentation'))
+        torque_presentation['kpi_cards'] = continuous_torque_cards(excel_result.continuous_torque_assessment)
     assets = Path(plot_assets_dir).expanduser().resolve()
     layout = _ELECTRIC_LAYOUT
     prs = Presentation(template_path)
@@ -588,16 +615,28 @@ def _build_template_profile_powerpoint_report(
 
     for slide_number, slide_def in enumerate(config.slides[11:-1], start=12):
         slide = prs.slides.add_slide(_blank_slide_layout(prs))
+        if slide_def.slide_id == 'motor_torque_power':
+            if motor_capability is None:
+                raise PowerPointReportError('Motor capability slide requires validated source data.')
+            _render_motor_capability_slide(slide, prs, motor_capability, assets, config.footer, excel_result,
+                                           slide_number=slide_number, slide_count=len(config.slides))
+            continue
         _render_additional_plot_pair_slide(
             slide, prs, slide_def, statistics_by_id, plots_by_id, assets, config.footer, excel_result, pair_rects,
             slide_number=slide_number, slide_count=len(config.slides),
+            torque_presentation=torque_presentation,
         )
 
     _move_slide(prs, 9, len(prs.slides) - 1)
+    energy_title_updates = _update_energy_kpi_titles(prs, config.slides)
     _add_reusable_content_layout(prs)
 
     presentation_path = output_dir / config.output_filename
-    _write_machine_notes(prs, excel_result, config)
+    _write_machine_notes(prs, excel_result, config, torque_presentation)
+    if motor_capability is not None:
+        for slide, definition in zip(prs.slides, config.slides):
+            if definition.slide_id == 'motor_torque_power':
+                slide.notes_slide.notes_text_frame.text = json.dumps(motor_capability, indent=2, allow_nan=False)
     try:
         prs.save(presentation_path)
     except Exception as exc:
@@ -614,6 +653,17 @@ def _build_template_profile_powerpoint_report(
         plotting_result=plotting_result,  # type: ignore[arg-type]
     )
     _write_powerpoint_metadata(result)
+    manifest = json.loads(result.manifest_path.read_text(encoding='utf-8'))
+    manifest['energy_title_updates'] = energy_title_updates
+    manifest['motor_capability'] = motor_status
+    result.manifest_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding='utf-8')
+    if motor_status and motor_status.get('warning'):
+        with result.summary_path.open('a', encoding='utf-8') as summary:
+            summary.write('\nWARNING: ' + motor_status['warning'] + '\n')
+    if torque_presentation is not None:
+        manifest = json.loads(result.manifest_path.read_text(encoding='utf-8'))
+        manifest['torque_maps_presentation'] = torque_presentation
+        result.manifest_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding='utf-8')
     _write_template_fidelity_summary(result, template_path)
     return result
 
@@ -706,6 +756,70 @@ def _render_template_slide(
             _add_text_box(slide, '\n'.join(slide_def.body), Inches(.6), Inches(6.66), Inches(12.13), Inches(.24),
                           font_size=10.5, color=_ASTAUTO_MUTED, italic=True)
     _replace_drive_cycle_terminology(slide)
+
+
+_ENERGY_KPI_TITLES = {'TYRE TOTAL ENERGY', 'AUX ENERGY', 'TOTAL ENERGY'}
+_ENERGY_KPI_PREFIX = 'VSM energy KPI: '
+
+
+def _mark_energy_kpi_title(shape: Any, metric_id: str) -> None:
+    if ' '.join(shape.text.split()) in _ENERGY_KPI_TITLES:
+        shape.name = _ENERGY_KPI_PREFIX + metric_id
+
+
+def _update_energy_kpi_titles(prs: Presentation, definitions: Any) -> list[dict]:
+    """Change identified card labels only; retain all value XML and card geometry."""
+    updates = []
+    before_number = 0
+    for number, (slide, definition) in enumerate(zip(prs.slides, definitions), 1):
+        if definition.slide_id == 'motor_torque_power':
+            continue
+        before_number += 1
+        for shape in slide.shapes:
+            if not shape.name.startswith(_ENERGY_KPI_PREFIX):
+                continue
+            old = ' '.join(shape.text.split())
+            if old not in _ENERGY_KPI_TITLES:
+                continue
+            paragraph = shape.text_frame.paragraphs[0]
+            style = deepcopy(paragraph.runs[0]._r.rPr) if paragraph.runs else None
+            paragraph.clear()
+            for i, text in enumerate((old, 'CONSUMPTION')):
+                if i:
+                    paragraph.add_line_break()
+                run = paragraph.add_run()
+                run.text = text
+                if style is not None:
+                    run._r.insert(0, deepcopy(style))
+            for extra in list(shape.text_frame.paragraphs)[1:]:
+                extra._p.getparent().remove(extra._p)
+            shape.text_frame.word_wrap = True
+            shape.text_frame.margin_top = 0
+            shape.text_frame.margin_bottom = 0
+            shape.text_frame.vertical_anchor = MSO_ANCHOR.TOP
+            shape.height = max(shape.height, Inches(.4))
+            updates.append(dict(slide_id=definition.slide_id, slide_before=before_number,
+                                slide_after=number, metric_id=shape.name.removeprefix(_ENERGY_KPI_PREFIX),
+                                before=old, after=old + ' CONSUMPTION'))
+    return updates
+
+
+def _render_motor_capability_slide(slide, prs, data, assets, footer, excel_result, *, slide_number, slide_count):
+    from .motor_capability import SLIDE_TITLE
+    slide.name = 'VSM motor_torque_power'
+    _apply_custom_astauto_background(slide, prs)
+    _add_custom_header(slide, SLIDE_TITLE, 'Motor capability reference / design data', assets,
+                       icon_slide_number=9, reference_slide=prs.slides[8])
+    for text, left in [('MOTOR BRAND:', .6), ('MOTOR TYPE / MODEL:', 6.65)]:
+        _add_text_box(slide, text, Inches(left), Inches(1.52), Inches(5.9), Inches(.38),
+                      font_size=15, color=_ASTAUTO_TEXT)
+    _add_custom_plot_panel(slide, Path(data['image']), _rect((.6, 2.05, 12.13, 4.5)),
+                           _rect((.8, 2.10, 11.73, 4.40)))
+    if data['warnings']:
+        _add_text_box(slide, 'Power validation incomplete; review source checks in slide notes.',
+                      Inches(.6), Inches(6.65), Inches(12.13), Inches(.25), font_size=10, color=_ASTAUTO_MUTED)
+    _add_custom_footer(slide, prs, excel_result, footer, slide_number, slide_count)
+    _add_astauto_logo(slide, prs)
 
 
 def _render_road_profile_slide(
@@ -831,6 +945,7 @@ def _render_additional_plot_pair_slide(
     slide_count: int,
     caption_element: Any = None,
     reference_slide: Any = None,
+    torque_presentation: Any = None,
 ) -> None:
     reference_slide = reference_slide if reference_slide is not None else prs.slides[8]
     _apply_custom_astauto_background(slide, prs, reference_slide=reference_slide)
@@ -841,8 +956,11 @@ def _render_additional_plot_pair_slide(
     )
     cards = tuple(card for card in soil_kpi_cards(slide_def.slide_id) if card[1] in slide_def.statistic_ids)
     _add_custom_kpi_cards(slide, statistics_by_id, cards)
-    # With cards, reuse the approved plot-pair position beneath the KPI row.
-    # Plot pixels, data, axes and dimensions remain unchanged.
+    torque_cards = []
+    if slide_def.slide_id == 'torque_maps':
+        from .continuous_torque_ppt import add_continuous_torque_kpi
+        torque_cards = add_continuous_torque_kpi(slide, excel_result.continuous_torque_assessment)
+    # Other plot-pair slides retain their approved template positions.
     definitions = excel_result.profile.plots_by_id()
     unavailable = {p.definition.plot_id: p.reason for p in excel_result.plotting_result.unavailable_plots}
     for index, plot_id in enumerate(slide_def.plot_ids):
@@ -850,6 +968,10 @@ def _render_additional_plot_pair_slide(
         top = reference_top if cards else Inches(2.4)
         margin = Inches(.12)
         path = _plot_path_or_none(plot_id, plots_by_id, assets)
+        if slide_def.slide_id == 'torque_maps' and torque_presentation is not None:
+            chart = torque_presentation['charts'].get(plot_id, {})
+            path = Path(chart['image']) if chart.get('image') else None
+            top = reference_top if torque_cards else Inches(2.4)
         _add_custom_plot_panel(
             slide, path,
             (left - margin, top - margin, width + 2 * margin, height + 2 * margin),
@@ -983,15 +1105,22 @@ def _add_custom_kpi_cards(
     slide: Any,
     statistics_by_id: Mapping[str, StatisticResult],
     cards: tuple[tuple[str, str, str], ...],
-) -> None:
+    *,
+    card_width: float = _V7_KPI_CARD_WIDTH,
+    card_left: float = _V7_KPI_CARD_LEFT,
+    display_values: Mapping[str, str] | None = None,
+) -> list[tuple[Any, Any, Any, Any]]:
+    """Draw the established cards, optionally spanning a different column count."""
+    created = []
+    extra_width = card_width - _V7_KPI_CARD_WIDTH
     for index, (label, metric_id, unit) in enumerate(cards):
-        card_left = Inches(
-            _V7_KPI_CARD_LEFT + index * (_V7_KPI_CARD_WIDTH + _V7_KPI_CARD_GAP)
+        left = Inches(
+            card_left + index * (card_width + _V7_KPI_CARD_GAP)
         )
         top = Inches(_V7_KPI_CARD_TOP)
-        width = Inches(_V7_KPI_CARD_WIDTH)
+        width = Inches(card_width)
         height = Inches(_V7_KPI_CARD_HEIGHT)
-        card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, card_left, top, width, height)
+        card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
         card.fill.solid()
         card.fill.fore_color.rgb = RGBColor.from_string("FFFFFF")
         card.line.color.rgb = _ASTAUTO_CARD_BORDER
@@ -1001,7 +1130,7 @@ def _add_custom_kpi_cards(
         dot_left, dot_top, dot_width, dot_height = _V7_KPI_DOT_OFFSET
         dot = slide.shapes.add_shape(
             MSO_SHAPE.OVAL,
-            card_left + Inches(dot_left),
+            left + Inches(dot_left),
             top + Inches(dot_top),
             Inches(dot_width),
             Inches(dot_height),
@@ -1011,25 +1140,27 @@ def _add_custom_kpi_cards(
         dot.line.fill.background()
 
         label_left, label_top, label_width, label_height = _V7_KPI_LABEL_OFFSET
-        _add_text_box(
+        label_shape = _add_text_box(
             slide,
             label,
-            card_left + Inches(label_left),
+            left + Inches(label_left),
             top + Inches(label_top),
-            Inches(label_width),
+            Inches(label_width + extra_width),
             Inches(label_height),
             font_size=8.5,
             color=_ASTAUTO_MUTED,
             bold=True,
             font_name="Calibri",
         )
+        _mark_energy_kpi_title(label_shape, metric_id)
         value_left, value_top, value_width, value_height = _V7_KPI_VALUE_OFFSET
+        value_width += extra_width
         if unit == "kWh/km":
-            value_left, value_width = .08, _V7_KPI_CARD_WIDTH - .16
+            value_left, value_width = .08, card_width - .16
         value_shape = _add_text_box(
             slide,
-            _format_custom_metric_value(statistics_by_id.get(metric_id), unit),
-            card_left + Inches(value_left),
+            display_values[metric_id] if display_values is not None else _format_custom_metric_value(statistics_by_id.get(metric_id), unit),
+            left + Inches(value_left),
             top + Inches(value_top),
             Inches(value_width),
             Inches(value_height),
@@ -1042,6 +1173,8 @@ def _add_custom_kpi_cards(
         if unit == "kWh/km":
             value_shape.text_frame.word_wrap = False
             value_shape.text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        created.append((card, dot, label_shape, value_shape))
+    return created
 
 
 def _custom_kpi_accent_color(index: int) -> RGBColor:
@@ -1058,9 +1191,7 @@ def _add_custom_plot_panel(
 ) -> None:
     left, top, width, height = panel_rect
     panel = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
-    panel.fill.solid()
-    panel.fill.fore_color.rgb = RGBColor.from_string("FFFFFF")
-    panel.line.fill.background()
+    _style_plot_background_card(panel)
     if image_path is None:
         _add_unavailable_plot_text(slide, left, top, width, height)
         return
@@ -1068,6 +1199,38 @@ def _add_custom_plot_panel(
     slide.shapes.add_picture(
         str(image_path), image_left, image_top, width=image_width, height=image_height
     )
+
+
+def _style_plot_background_card(panel: Any) -> None:
+    """Use the approved template plot-card geometry and explicit subtle shadow.
+
+    Only chart/image containers use this helper; KPI card styling is separate.
+    Remove theme references so their effects cannot override the explicit style.
+    """
+    panel.adjustments[0] = 0.01617
+    panel.fill.solid()
+    panel.fill.fore_color.rgb = RGBColor.from_string("FFFFFF")
+    panel.line.fill.background()
+    for style in panel.element.findall(qn('p:style')):
+        panel.element.remove(style)
+    properties = panel.element.spPr
+    for tag in ('a:effectLst', 'a:effectDag'):
+        for effect in properties.findall(qn(tag)):
+            properties.remove(effect)
+    effects = OxmlElement('a:effectLst')
+    shadow = OxmlElement('a:outerShdw')
+    for name, value in {'blurRad': '152400', 'dist': '50800', 'dir': '5400000',
+                        'sx': '100000', 'sy': '100000', 'kx': '0', 'ky': '0',
+                        'algn': 'bl', 'rotWithShape': '0'}.items():
+        shadow.set(name, value)
+    colour = OxmlElement('a:srgbClr')
+    colour.set('val', '0A1524')
+    alpha = OxmlElement('a:alpha')
+    alpha.set('val', '13000')
+    colour.append(alpha)
+    shadow.append(colour)
+    effects.append(shadow)
+    properties.append(effects)
 
 
 def _add_road_height_unavailable_panel(slide: Any, left: int, top: int, width: int, height: int) -> None:
@@ -1295,7 +1458,7 @@ def _cover_metadata_items(result: ProfileExcelReportResult) -> tuple[str, str, s
     return machine_metadata_pills(result.report_metadata)
 
 
-def _write_machine_notes(prs, result, config):
+def _write_machine_notes(prs, result, config, torque_presentation=None):
     """Replace template notes on every page with this run's provenance."""
     metrics = {s.statistic_id: s.to_dict() for s in _profile_statistics_as_powerpoint_statistics(result).statistics}
     for slide, definition in zip(prs.slides, config.slides):
@@ -1313,6 +1476,8 @@ def _write_machine_notes(prs, result, config):
             'agro_reporting': result.statistics_result.reporting_agro.to_dict() if result.statistics_result.reporting_agro else None,
             'statistics': {key: metrics[key] for key in definition.statistic_ids if key in metrics},
             'plots': list(definition.plot_ids),
+            **({'continuous_torque': result.continuous_torque_assessment.summary()} if definition.slide_id == 'torque_maps' and result.continuous_torque_assessment is not None else {}),
+            **({'torque_maps_presentation': torque_presentation} if definition.slide_id == 'torque_maps' and torque_presentation is not None else {}),
         }, indent=2, allow_nan=False)
 
 
@@ -1448,6 +1613,7 @@ def _replace_kpi_slots(
         if index >= len(statistics):
             continue
         _set_shape_text(shapes[slot.label], _statistic_label(statistics[index]))
+        _mark_energy_kpi_title(shapes[slot.label], getattr(statistics[index], 'statistic_id', _statistic_label(statistics[index])))
         display = _format_statistic_value(statistics[index])
         if display_overrides:
             display = display_overrides.get(getattr(statistics[index], 'statistic_id', ''), display)
@@ -2355,6 +2521,8 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
         "excel_report": str(result.excel_result.report_path),
         "plot_assets_dir": str(result.plot_assets_dir),
     }
+    if result.excel_result.continuous_torque_assessment is not None:
+        payload['continuous_torque_assessment'] = result.excel_result.continuous_torque_assessment.summary()
     profile_manifest = result.presentation_path.with_name("profile_powerpoint_report_manifest.json")
     soil_statistics = [s.to_dict() for s in result.powerpoint_result.statistics_result.statistics
                        if s.placement_group in {"tyre_total", "soil_bulldozing", "soil_compaction"}]
@@ -2366,4 +2534,7 @@ def _write_profile_manifest(result: ProfilePowerPointReportResult) -> None:
     manifest = json.loads(result.manifest_path.read_text(encoding='utf-8'))
     for key in ('reporting_inputs', 'reporting_metrics', 'agro_reporting', 'configuration_detection', 'machine_specifications', 'metadata_warnings', 'diagnostic_records'):
         manifest[key] = payload[key]
+    if 'continuous_torque_assessment' in payload:
+        manifest['continuous_torque_assessment'] = payload['continuous_torque_assessment']
+        manifest['displayed_kpi_count'] = result.displayed_kpi_count
     result.manifest_path.write_text(json.dumps(manifest, indent=2, allow_nan=False), encoding='utf-8')

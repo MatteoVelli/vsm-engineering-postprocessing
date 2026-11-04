@@ -1,0 +1,136 @@
+ASTAUTO Phase 3 - Executive-first Motor Duty Summary
+3 November 2026
+
+Scope
+One optional Motor Duty Summary worksheet is appended when the existing
+assessment has a valid automatic result for all four motors. Missing curves,
+manual-only results, partial coverage and unsupported RPM omit the sheet.
+The user confirmed Downloads/Time_Above_Continuous_Torque_04.xlsx as the
+reference; Summary A1:I19, Duty Summary A1:F27, Segments, Motor Curve and
+Drive Data were inspected and independently compared.
+
+Implementation
+src/vsm_postprocessing/motor_duty_summary.py builds deterministic evidence
+from the existing continuous-duty assessment and its channel provenance.
+Continuous flags, limits, elapsed timing, episodes and maxima come directly
+from that assessment. New sample statistics are independent for each motor.
+src/vsm_postprocessing/motor_duty_excel.py writes the optional worksheet.
+excel_report_engine.py calls this writer and records its evidence in the
+existing manifest. No GUI controls, new configuration or input sheet added.
+The existing continuous-report test now requires seven sheets when the
+optional summary is present; all original worksheet preservation assertions
+remain. Fifteen new tests cover the worksheet and its numerical contracts.
+
+Worksheet layout
+Rows 1-10: source/scenario, profile, observed duration, sample count,
+capability status, four indicators and their responsible motors/ties.
+Rows 12-18: four motor rows, seven numerical comparisons and restrained
+column-maximum highlighting. Close values are not declared tied by rounding.
+Rows 20-25: neutral deterministic engineering interpretation and timing note.
+Rows 27-43: two native editable XY charts, each with four motor series.
+Rows 45 onward: detailed statistics, local speed-band chart data, complete
+filterable/sortable event history, definitions, diagnostics and provenance.
+The episode chart uses local COUNTIFS/SUMIFS source cells keyed by motor and
+episode number, so sorting the event table cannot relabel another motor's
+events. Missing or duplicate keys produce N/A rather than fabricated events.
+Freeze panes A14 retain the overview and comparison header. Native Excel
+screenshots were inspected at 90% and 80%; the latter shows rows 1-33 without
+scrolling and all five requested engineering questions are answered above
+the charts. The first 40 rows are supplied as a separate native range render.
+The executive print area A1:P25 is separate from the charts and detailed
+evidence A27:P(last), on landscape A3. Existing worksheet views are preserved.
+
+Electric 03 numerical results
+2161 samples; observed duration 2160 s. Each motor independently has 829
+flagged samples, 828 elapsed seconds above continuous, 13 episodes and an
+82-second longest episode. Four indicators: 82 s, 828 s, 38.3333333% and
+123.5678442% (displayed 38.3% and 123.6%). The first three indicators tie
+across all four motors; EM2 / FR has the actual maximum utilisation.
+
+Motor       Sample RMS [Nm]      RMS / continuous at mean RPM (indicative)
+EM1 / FL    281.957357356852     0.6156520481 approximately
+EM2 / FR    281.687640784922     0.6154962503 approximately
+EM3 / RL    299.598303797681     0.6283875775 approximately
+EM4 / RR    299.496158498536     0.6285054735 approximately
+
+Definitions and reference differences
+Timing retains the existing forward-interval hold policy. The final flagged
+sample has zero elapsed duration; the spreadsheet convention of multiplying
+all 829 flags by one second is not adopted. Percent is 828 / 2160, not a
+sample-count fraction. Full-cycle sample RMS is sqrt(mean(T^2)), matching
+Sergio's definition, including the terminal sample; it is not time-weighted.
+Mean absolute RPM and mean positive torque are arithmetic sample means.
+The indicative ratio divides sample RMS by continuous torque interpolated
+at mean absolute RPM. It is not a thermal model or a suitability test.
+
+The approved report retains six-decimal curve inputs, whereas Sergio's
+original has greater precision. Maximum continuous-input difference is
+below 0.0000005 Nm. Both input sets were independently validated: Sergio's
+full-precision inputs reproduce his cached statistics; the approved inputs
+reproduce the new sheet exactly to serialization precision. Approved
+inputs, Main Report and Torque Maps were not changed to erase this difference.
+
+Strict peak residual counts remain 2, 5, 2 and 2 samples. The largest
+positive residuals are approximately 0.000419, 0.001117, 0.001511 and
+0.001031 Nm, respectively. Peak utilisation rounds to 100.0%. Those facts
+are retained without presenting them as confirmed physical overloads.
+One decimal percent is a reporting screen, not an acceptance tolerance.
+Uncovered RPM, missing peak input and unsupported peak points produce N/A
+with a diagnostic reason; there is no extrapolation or partial-cycle pass.
+
+Speed bands are dynamically generated from observed absolute RPM. The
+reference yields 0-500, 500-1000, 1000-1500, 1500-2000 and 2000-2500 rpm.
+All 20 motor/band RMS values match Sergio's original. Empty bands have
+blank numerical chart cells (gaps) with N/A comments and diagnostics, never
+fabricated zero RMS. Sample counts make the band occupancy explicit.
+Event durations come unchanged from the validated segmentation. Event
+sample means, signed maximum torque, maximum absolute torque, utilisation,
+and source-torque-sign driving/regeneration labels are documented. Reverse
+RPM creates an explicit interpretation diagnostic. Event count is dynamic,
+including zero and counts exceeding the reference; no truncation is allowed.
+
+Microsoft Office verification
+The complete new sheet, first 40 rows, executive overview, original Sergio
+areas and both charts were rendered directly in Microsoft Excel.
+For both charts, editing a local numerical cell changed the plotted point;
+adding/editing and removing a manufacturer XY series preserved the original
+four series. Standard copy/paste into a private two-slide PowerPoint deck
+retained two native editable chart objects, with four series each. All QA
+numeric edits were discarded. The approved presentation was not edited.
+Sorting the complete event table by descending duration also preserved all
+four motor series and their original start/duration coordinate pairs.
+Eight native Excel variants were opened/rendered across two real cycles
+and four valid curve cases; four unavailable-input cases omitted the sheet.
+Zero-event charts contain no fabricated events. Smoothed interpolation of
+the band chart is explicitly disabled.
+
+Preservation
+All original worksheet XML and native chart parts are unchanged except
+Metadata's generation timestamp and visible-sheet inventory. Original style
+definitions and IDs are preserved; new styles append. All 16 generated
+PowerPoint slides have identical shape XML and embedded images; notes are
+unchanged except regenerated artifact paths on slide 15. The approved
+PowerPoint, engine, GUI, battery/KERS logic, source files and official ZIP
+are protected by unchanged hashes.
+
+Validation artifacts
+outputs/motor_duty_summary_2026_11_03/validation_summary.json
+outputs/motor_duty_summary_2026_11_03/numerical_validation.json
+outputs/motor_duty_summary_2026_11_03/preservation.json
+outputs/motor_duty_summary_2026_11_03/office/checks.json
+outputs/motor_duty_summary_2026_11_03/office/variants/checks.json
+Focused regression: 105 passing cases; complete-suite JUnit results and
+the current collected-case inventory are retained in the same output folder.
+Final complete regression: 1083 passed, 1 existing skip, across 58 modules.
+All 1084 currently collected cases executed exactly once in the final run.
+The full suite was repeated after correcting event-table sorting behaviour.
+
+Engineering limitations
+Thermal acceptability still requires manufacturer confirmation. No validated
+motor thermal model, loss map, cooling conditions, transient acceptance
+criteria or manufacturer approval was supplied. Shared motor capability and
+symmetric regeneration remain explicit supplied assumptions. No new gearbox
+conversion is introduced. Assessment metrics are generated snapshots: re-run
+after editing simulation/curve inputs; native charts update from local tables.
+
+No commit, push, publication or replacement of the official Sergio ZIP.
