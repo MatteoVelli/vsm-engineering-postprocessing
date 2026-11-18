@@ -2,7 +2,7 @@
 
 ## First-Time Setup
 
-1. Extract the complete ZIP into a writable Windows folder; do not run it inside the ZIP.
+1. Extract the complete v1.4.1 ZIP into `C:\VSM_PostProcessing\` or another short writable local folder outside OneDrive; do not run it inside the ZIP. Desktop and Documents may be synced.
 2. Open the extracted folder.
 3. Double-click `SETUP_VSM_TOOL.bat`.
 4. Follow the on-screen instructions.
@@ -12,6 +12,17 @@ Setup automatically checks Python, offers to install the supported official CPyt
 
 The first setup requires internet access if Python or Python packages are not already available locally.
 
+## Replacing an Existing Installation
+
+The new ZIP is a complete replacement, not a patch. Close the old browser and
+launcher, and back up simulation files, reports and personal configurations.
+Rename the old installation as a backup, or remove it only after preserving your
+data. Extract the new ZIP into a fresh local folder; keep SETUP/START beside `Tool`.
+Do not copy an old `.venv`, `.python`, `setup_cache` or old application files into
+the new installation. Review custom configuration changes separately rather than
+overwriting the supplied defaults. Run SETUP, then START. Setup does not delete
+your previous installation or personal files; no files from it are required.
+
 ## Normal Use
 
 1. Double-click `START_VSM_TOOL.bat`.
@@ -20,13 +31,22 @@ The first setup requires internet access if Python or Python packages are not al
 4. Review the automatically detected **Diesel**, **Hybrid** or **Electric** profile and machine information; change the selection only if needed.
 5. Click **STEP 3 - Validate**. Resolve any missing required channels or invalid data before continuing; the UI lists the affected channels and blocks report generation.
 6. For Electric or Hybrid, enter **Battery pack mass (kg)** if known. Leave it blank to show N/A. Enter a finite positive value; no mass is inferred automatically.
-7. For motor capability reporting, open **Motor Performance Curves** and enter the current motor's peak and continuous torque curves versus RPM, plus the applicable ratio and efficiency. These are user reference inputs, not inferred ratings. Both curves are required for the four-curve Motor Torque and Power chart and slide. Leave unavailable inputs blank; the tool reports the omission.
+7. For motor capability reporting, open **Motor Performance Curves (Optional)**, enable the shared curve, and upload the motor's `.xlsx` torque map. Download the blank template if needed. Review the imported curves and enter the applicable final-drive ratio and efficiency. No clipboard operation is required. These are user reference inputs, not inferred ratings. Leave unknown inputs blank.
 8. Click **STEP 4 - Generate Engineering Report**.
 9. Download the Excel report and, when needed, the PowerPoint report from **STEP 5 - Access Output**. The profile workflow generates both reports; using the PowerPoint is optional.
 
 The launcher opens the local Streamlit interface in your browser. If the browser does not open automatically, use `http://localhost:8501`. Keep the launcher running while using the application; close it when finished.
 
 ## Workflows
+
+For Electric/Hybrid motor maps, open **Motor Performance Curves (Optional)**,
+enable the shared curve, and select **Upload Motor Torque Map (.xlsx)**.
+Use the downloadable blank template with `Motor RPM`, `Peak Torque` and
+`Cont Torque` headers in row 1 (rpm and Nm). Supply at least two complete rows.
+Review the import confirmation, table and curves; correct any validation errors
+in the workbook and upload again. Enter the known final-drive ratio and
+efficiency for peak/wheel overlays. No clipboard operation is required.
+See the [motor Excel import guide](MOTOR_TORQUE_EXCEL_IMPORT.md) for details.
 
 **Engineering Report** generates the client Excel report and optional PowerPoint directly from the uploaded source data and selected reporting profile.
 
@@ -89,10 +109,10 @@ The existing combined soil charts and all other plots remain available. Missing
 or invalid wheel resistance measurements disable only their dependent plots;
 PowerPoint identifies unavailable plot data. Explicit legacy profiles are unchanged.
 
-The 4 November 2026 ZIP is named
-`VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip` and contains
+The 18 November 2026 ZIP is named
+`VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready_18.11.26.zip` and contains
 the shorter folder `VSM_Sergio_v1.4.1` to avoid Windows path-length problems.
-Use a short extraction location, such as your Desktop, rather than deeply nested folders.
+Use a short local extraction location, such as `C:\VSM_PostProcessing\`, outside OneDrive.
 Keep the two root launchers beside `Tool`. With the complete real Electric 03
 reference inputs, this release generates 30 native Excel charts and 17 slides:
 Motor Torque & Power Characteristics on slide 15 and operating maps on slide 16.

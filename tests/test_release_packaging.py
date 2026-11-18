@@ -5,6 +5,7 @@ import shutil
 
 import pytest
 import tomllib
+import json
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -160,3 +161,45 @@ def test_runtime_assets_have_exact_source_paths_and_gitignore_exceptions():
         path = PROJECT_ROOT / relative
         assert path.name in {entry.name for entry in path.parent.iterdir()}, "Case must match on Linux"
         assert path.is_file() and path.stat().st_size > 0
+
+
+@pytest.fixture
+def sergio_builder(tmp_path, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('sergio_release_builder', PROJECT_ROOT / 'scripts/build_sergio_release.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    root = tmp_path / 'source'
+    names = ['SETUP_VSM_TOOL.bat', 'START_VSM_TOOL.bat', 'scripts/client_setup.ps1',
+        'scripts/client_start.ps1', 'src/vsm_postprocessing/motor_capability_excel.py',
+        'src/vsm_postprocessing/motor_torque_import.py', 'src/vsm_postprocessing/motor_performance_ui.py',
+        'src/vsm_postprocessing/profile_powerpoint_report_engine.py', 'docs/MOTOR_TORQUE_EXCEL_IMPORT.md',
+        'docs/SERGIO_CLIENT_README.md', 'config/report_profiles/sergio_2026_10/robosprayer_electric.yaml',
+        'config/report_profiles/sergio_2026_10/robosprayer_hybrid.yaml']
+    for name in names:
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('test packaging input\n')
+    monkeypatch.setattr(module, '_collect_client_files', lambda _: [root / n for n in names])
+    monkeypatch.setattr(module.subprocess, 'check_output', lambda *a, **k: '')
+    return module, root
+
+
+@pytest.mark.parametrize('date_label,suffix', [(None, ''), ('18.11.26', '_18.11.26')])
+def test_sergio_date_label_preserves_version_layout_and_required_import_files(sergio_builder, tmp_path, date_label, suffix):
+    module, root = sergio_builder
+    result = module.build(root, tmp_path / 'stage', '2026-11-18', date_label=date_label)
+    assert Path(result['archive']).name == f'VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready{suffix}.zip'
+    with ZipFile(result['archive']) as archive:
+        manifest = json.loads(archive.read('VSM_Sergio_v1.4.1/RELEASE_MANIFEST.json'))
+        assert manifest['date_label'] == date_label and manifest['version'] == '1.4.1'
+        assert 'VSM_Sergio_v1.4.1/Tool/docs/MOTOR_TORQUE_EXCEL_IMPORT.md' in archive.namelist()
+    with pytest.raises(FileExistsError):
+        module.build(root, tmp_path / 'stage', '2026-11-18', date_label=date_label)
+
+
+@pytest.mark.parametrize('date_label', ['181126', '19.11.26', '../release'])
+def test_sergio_date_label_must_match_release_date(sergio_builder, tmp_path, date_label):
+    module, root = sergio_builder
+    with pytest.raises(ValueError, match='DD.MM.YY'):
+        module.build(root, tmp_path / 'stage', '2026-11-18', date_label=date_label)

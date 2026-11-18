@@ -2,15 +2,25 @@
 
 Professional deterministic Python tool for VSM simulation/test post-processing and engineering reporting.
 
-## Current release: 1.4.1 (4 November 2026) - Sergio requested final
+## Current release: 1.4.1 (18 November 2026) - Sergio Excel motor import
 
-The current delivery is `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip`.
+The current delivery is `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready_18.11.26.zip`.
+Install into a fresh short local folder such as `C:\VSM_PostProcessing\`, outside
+OneDrive. Preserve personal data before replacing an old installation; see the
+[client guide](docs/CLIENT_QUICK_START.md). Diesel ordinary temporal charts use
+zero-based Distance [km]; explicit “Vs Time”/“Time Based” charts use original
+Time [s]. Torque maps retain RPM, with a 0.25-inch Diesel PowerPoint card gutter.
+Engineering calculations and approved Electric/Hybrid layouts are preserved.
 Electric and Hybrid add user-provided peak/continuous motor inputs, continuous
 assessment and Motor Duty Summary, a native four-curve Motor Torque and Power
 Excel chart with live shaft-power formulas, and a matching PowerPoint slide with
 editable brand/model fields. Requested energy KPI labels say CONSUMPTION, and
 plot containers use the approved small corners and subtle shadow. Missing motor
 inputs produce an omission diagnostic; no synthetic ratings are substituted.
+Motor torque maps can now be uploaded directly as `.xlsx` workbooks in the
+existing Electric/Hybrid motor configuration section, without clipboard use.
+See the [motor Excel import guide](docs/MOTOR_TORQUE_EXCEL_IMPORT.md) for the
+required columns, blank template and validation rules.
 Real Electric 03 acceptance is complete; latest motor-reporting acceptance with
 real Hybrid inputs remains pending. See [client release notes](docs/FINAL_RELEASE_NOTES.md).
 

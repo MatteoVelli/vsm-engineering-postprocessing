@@ -1,11 +1,13 @@
 """Build the established portable Sergio layout with the repository ZIP writer.
 
-Run from the repository root with the validated environment. The final build
-requires clean tracked source; --candidate permits pre-commit validation only.
+Run from the repository root with the validated environment. Final builds require
+clean source unless --allow-uncommitted-source is explicitly supplied. Every
+packaged file is hashed so a working-tree release remains traceable.
 """
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
@@ -17,13 +19,19 @@ from vsm_postprocessing.release_builder import _collect_client_files, _zip_write
 from vsm_postprocessing.version import __version__
 
 
-def build(root: Path, destination: Path, release_date: str, candidate: bool = False):
+def build(root: Path, destination: Path, release_date: str, candidate: bool = False,
+          allow_uncommitted_source: bool = False, date_label: str | None = None):
     root = root.resolve()
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=root, text=True).strip()
-    if not candidate and git('status', '--porcelain', '--untracked-files=no'):
-        raise RuntimeError('Commit validated source before final packaging.')
-    name = f'VSM_Engineering_PostProcessing_v{__version__}_Sergio_Requested_Final'
+    source_changes = git('status', '--porcelain', '--untracked-files=all')
+    if not candidate and not allow_uncommitted_source and source_changes:
+        raise RuntimeError('Source has uncommitted changes; validate it and explicitly use --allow-uncommitted-source, or commit before packaging.')
+    name = f'VSM_Engineering_PostProcessing_v{__version__}_Sergio_Ready'
+    if date_label is not None:
+        if date_label != date.fromisoformat(release_date).strftime('%d.%m.%y'):
+            raise ValueError('Date label must match the release date in DD.MM.YY format.')
+        name += '_' + date_label
     # Keep real VSM basenames below Windows path limits in normal extraction paths.
     package_root = f'VSM_Sergio_v{__version__}'
     destination.mkdir(parents=True, exist_ok=True)
@@ -59,6 +67,9 @@ def build(root: Path, destination: Path, release_date: str, candidate: bool = Fa
             assert not re.search(rb'[A-Za-z]:[\\/]+Users[\\/]+', data, re.IGNORECASE), relative
     for relative in ('SETUP_VSM_TOOL.bat', 'START_VSM_TOOL.bat', 'Tool/scripts/client_setup.ps1',
                      'Tool/scripts/client_start.ps1', 'Tool/src/vsm_postprocessing/motor_capability_excel.py',
+                     'Tool/src/vsm_postprocessing/motor_torque_import.py',
+                     'Tool/src/vsm_postprocessing/motor_performance_ui.py',
+                     'Tool/docs/MOTOR_TORQUE_EXCEL_IMPORT.md',
                      'Tool/src/vsm_postprocessing/profile_powerpoint_report_engine.py',
                      'Tool/config/report_profiles/sergio_2026_10/robosprayer_electric.yaml',
                      'Tool/config/report_profiles/sergio_2026_10/robosprayer_hybrid.yaml'):
@@ -66,12 +77,16 @@ def build(root: Path, destination: Path, release_date: str, candidate: bool = Fa
     manifest = {
         'product': 'VSM Engineering Post-Processing', 'version': __version__,
         'release_date': release_date, 'package_root': package_root,
+        'date_label': date_label,
         'source_commit': git('rev-parse', 'HEAD'), 'source_tree': git('rev-parse', 'HEAD^{tree}'),
-        'source_state': 'validation candidate' if candidate else 'clean committed source',
+        'source_state': ('validation candidate' if candidate else
+                         'validated working tree (uncommitted)' if source_changes else 'clean committed source'),
+        'source_changes': source_changes.splitlines(),
+        'allow_uncommitted_source': allow_uncommitted_source,
         'python_range': '>=3.11,<3.12', 'bootstrap_python': '3.11.9',
         'build_script_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'client_reference_data_included': False, 'generated_reports_included': False,
-        'hybrid_acceptance': 'Latest motor-reporting real Hybrid acceptance pending; synthetic checks are not real-data validation.',
+        'validation_scope': 'See the accompanying release record for executed regression and extracted-package installation checks.',
         'excluded_development_files': excluded,
         'files': [{'path': p, 'size_bytes': len(d), 'sha256': hashlib.sha256(d).hexdigest()}
                   for p, d in sorted(files.items())],
@@ -90,7 +105,8 @@ def build(root: Path, destination: Path, release_date: str, candidate: bool = Fa
     record = {'archive': str(archive_path.resolve()), 'sha256': digest,
               'size_bytes': archive_path.stat().st_size, 'file_count': len(files),
               'package_root': package_root, 'version': __version__, 'release_date': release_date,
-              'source_commit': manifest['source_commit'], 'candidate': candidate}
+              'source_commit': manifest['source_commit'], 'source_state': manifest['source_state'],
+              'candidate': candidate, 'allow_uncommitted_source': allow_uncommitted_source}
     (destination / 'build.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
     return record
 
@@ -101,5 +117,9 @@ if __name__ == '__main__':
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--release-date', required=True, help='Release date, YYYY-MM-DD')
     parser.add_argument('--candidate', action='store_true')
+    parser.add_argument('--date-label', help='Optional DD.MM.YY filename suffix matching --release-date.')
+    parser.add_argument('--allow-uncommitted-source', action='store_true',
+                        help='Package explicitly validated working-tree changes without creating a commit; record provenance and payload hashes.')
     args = parser.parse_args()
-    print(json.dumps(build(args.project_root, args.output_dir, args.release_date, args.candidate), indent=2))
+    print(json.dumps(build(args.project_root, args.output_dir, args.release_date, args.candidate,
+                           args.allow_uncommitted_source, args.date_label), indent=2))

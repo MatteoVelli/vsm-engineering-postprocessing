@@ -1,6 +1,37 @@
 # Deterministic Release Notes - v1.4.1
 
-## Current Sergio requested final release — 4 November 2026
+## Current Sergio release — 18 November 2026 (18.11.26)
+
+Package: `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready_18.11.26.zip`.
+Electric and Hybrid accept motor torque maps directly as `.xlsx` files in
+Motor Performance Curves. Download the blank template, supply Motor RPM,
+Peak Torque and Cont Torque in rpm/Nm, upload, review the curves, and enter the
+applicable ratio and efficiency. Clipboard operations are no longer required;
+manual entry remains available. Validation rejects incomplete, ambiguous or
+invalid engineering data without substituting zeros or a prior upload.
+
+The existing calculations, interpolation, operating limits, KPIs, charts and
+report layouts are preserved. No illustrative motor map, manufacturer rating
+or fictional engineering report is supplied as production data. Windows Python
+3.11, the existing SETUP/START workflow and declared dependencies are unchanged.
+The dated release record beside the ZIP identifies executed tests and package
+installation checks. The previous delivery is retained in the historical archive.
+
+## Previous Sergio replacement release — 15 November 2026
+
+Package: `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready.zip`.
+Diesel temporal charts use zero-based cumulative Distance [km], except explicit
+“Vs Time” and “Time Based” titles, which use original Time [s]. The three time
+exceptions are Speed Vs Time, Fuel Consumption Vs Time and Remaining Agrochemical
+Mass Vs Time. Torque–speed maps retain RPM. Their Diesel PowerPoint cards now have
+a 0.25-inch gutter. Engineering arrays, KPIs, formulas and Electric/Hybrid layouts
+are preserved. This complete replacement supports a fresh local installation
+outside OneDrive using the existing Python 3.11 SETUP/START workflow.
+
+The accompanying release record identifies the packaged working-tree source and
+executed validation. No Git commit or push is part of this replacement release.
+
+## Previous Sergio requested final release — 4 November 2026
 
 Package: `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip`.
 This delivery includes current-run peak/continuous motor inputs, continuous-limit
@@ -90,8 +121,8 @@ existing rolling power and accumulated energy; the four additive tyre-total
 channels are removed. Soil components remain separate diagnostics. Live Excel
 KPI formulas and the 15-slide Electric presentation are preserved.
 
-The historical portable delivery was Astauto_VSM_v1.3.1_28102026.zip. Application
-version is 1.3.1, with Python >=3.11,<3.12 and CPython 3.11.9 bootstrap.
+The historical portable delivery was Astauto_VSM_v1.3.1_28102026.zip. Its application
+version was 1.3.1, with Python >=3.11,<3.12 and CPython 3.11.9 bootstrap.
 Validation covers Diesel, Electric UoL and the available older Hybrid reference;
 acceptance of an unavailable latest-client Hybrid source is not claimed.
 

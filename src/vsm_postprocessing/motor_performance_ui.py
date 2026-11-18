@@ -6,6 +6,7 @@ from .continuous_torque import CONTINUOUS, ContinuousTorqueCurve, POLICY, blank
 from .continuous_torque_reporting import ContinuousTorqueInputs, assess_continuous_torque
 from .errors import ConfigurationError, VSMPostProcessingError
 from .motor_performance import MotorPerformanceCurve, SPEED, TORQUE, ASSUMPTION
+from .motor_torque_import import motor_torque_template, motor_torque_worksheets, parse_motor_torque_workbook
 
 
 @dataclass(frozen=True)
@@ -41,12 +42,39 @@ def render_motor_performance_inputs(st, source_scope):
             help='Needed for peak/wheel overlays; continuous motor-side assessment needs no gearbox conversion.')
         efficiency = st.number_input('Driveline efficiency [fraction]', min_value=0.0, max_value=1.0,
             value=seed.get('efficiency'), format='%.6f', key=key('efficiency'), disabled=not enabled)
-        initial = seed.get('rows', [{SPEED:float('nan'), TORQUE:float('nan'), CONTINUOUS:float('nan')} for _ in range(2)])
-        initial = [{name:float('nan') if blank(row.get(name)) else row[name] for name in (SPEED,TORQUE,CONTINUOUS)} for row in initial]
-        rows = st.data_editor(initial,num_rows='dynamic',hide_index=True,key=key('table'),disabled=not enabled,
-            column_config={SPEED:st.column_config.NumberColumn(SPEED,format='%.6f'),
-                           TORQUE:st.column_config.NumberColumn(TORQUE,min_value=0.0,format='%.6f'),
-                           CONTINUOUS:st.column_config.NumberColumn(CONTINUOUS,min_value=0.0,format='%.6f')},width='stretch')
+        st.markdown('**Electric Motor Characteristics - Excel import**')
+        st.download_button('Download blank motor torque map template (.xlsx)', data=motor_torque_template(),
+            file_name='Motor_Torque_Map_Template.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', key=key('template'))
+        uploaded = st.file_uploader('Upload Motor Torque Map (.xlsx)', type=['xlsx'], key=key('upload'),
+            disabled=not enabled, help='Row 1: Motor RPM, Peak Torque, Cont Torque. Units: rpm and Nm. No clipboard needed.')
+        import_valid = True
+        if enabled and uploaded is not None:
+            rows = []
+            try:
+                content = uploaded.getvalue()
+                sheets = motor_torque_worksheets(content)
+                # Content identity resets worksheet selection even for a replacement
+                # upload with the same filename. No prior workbook data are cached.
+                sheet_key = key('sheet_'+hashlib.sha256(content).hexdigest())
+                sheet = st.selectbox('Motor torque worksheet', sheets, key=sheet_key) if len(sheets) > 1 else sheets[0]
+                rows = parse_motor_torque_workbook(content, sheet)
+            except ConfigurationError as exc:
+                import_valid = False
+                st.error('Motor Excel import failed: '+str(exc))
+            else:
+                st.success(f'Imported {len(rows)} valid RPM points from {sheet}.')
+                st.caption('RPM is sorted with peak and continuous torque kept together. Preview uses rpm and Nm.')
+                st.dataframe(rows, hide_index=True, width='stretch')
+                st.line_chart(rows, x=SPEED, y=[TORQUE, CONTINUOUS])
+        else:
+            st.caption('Manual table entry / paste fallback. Upload an Excel map above to avoid clipboard operations.')
+            initial = seed.get('rows', [{SPEED:float('nan'), TORQUE:float('nan'), CONTINUOUS:float('nan')} for _ in range(2)])
+            initial = [{name:float('nan') if blank(row.get(name)) else row[name] for name in (SPEED,TORQUE,CONTINUOUS)} for row in initial]
+            rows = st.data_editor(initial,num_rows='dynamic',hide_index=True,key=key('table'),disabled=not enabled,
+                column_config={SPEED:st.column_config.NumberColumn(SPEED,format='%.6f'),
+                               TORQUE:st.column_config.NumberColumn(TORQUE,min_value=0.0,format='%.6f'),
+                               CONTINUOUS:st.column_config.NumberColumn(CONTINUOUS,min_value=0.0,format='%.6f')},width='stretch')
         peak = None; curve = None
         if enabled:
             st.caption(ASSUMPTION)
@@ -87,7 +115,7 @@ def render_motor_performance_inputs(st, source_scope):
                     manual_inputs.manual_provenance if manual_inputs else None)
         if enabled and (peak is not None or curve is not None):
             st.session_state['motor_specifications_for_explicit_reuse'] = {'scope':source_scope,'rows':rows,'ratio':ratio,'efficiency':efficiency}
-        valid = not (enabled or fallback) or peak is not None or continuous is not None
+        valid = import_valid and (not (enabled or fallback) or peak is not None or continuous is not None)
         if enabled and not peak and not continuous:
             st.caption('Enter at least two RPM/torque pairs for either curve, or clear/disable the optional specification. Continuous-only analysis needs neither peak torque nor drivetrain parameters.')
         return MotorReportingInputs(peak,continuous,valid)

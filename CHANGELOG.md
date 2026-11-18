@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.1 - 18 November 2026 - Sergio motor Excel import
+
+- Add direct `.xlsx` motor torque-map upload for Electric and Hybrid, with worksheet selection, strict validation, paired RPM sorting, previews and a blank template. Clipboard use is no longer required; manual entry remains available.
+- Preserve existing curve calculations, operating limits, KPIs, Excel formulas and PowerPoint reporting. No production motor ratings or drivetrain defaults are supplied.
+- Deliver the established Sergio layout as `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready_18.11.26.zip`, with verified rollback of the previous official package.
+
+## 1.4.1 - 15 November 2026 - Sergio replacement release
+
+- Use zero-based cumulative Distance [km] for ordinary Diesel traces; explicit “Vs Time” and “Time Based” charts use actual Time [s]. Preserve torque-map RPM sources and all engineering values.
+- Separate the Diesel PowerPoint torque-map cards by 0.25 inches while retaining their imagery, styling and outer margins.
+- Document fresh installation outside OneDrive and safe replacement of an old installation using the existing Python 3.11 SETUP/START workflow.
+- Package the validated working tree with file hashes as `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready.zip`; no commit or push is part of this release.
+
 ## 1.4.1 - 4 November 2026 - Sergio requested final release
 
 - Add current-run peak and continuous motor reference inputs, continuous-limit assessment and Motor Duty Summary, without substituting manufacturer data.

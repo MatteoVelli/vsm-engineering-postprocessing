@@ -1,5 +1,38 @@
 # Git / GitHub Release Procedure - v1.4.1
 
+## Current instruction — 18 November 2026
+
+Build `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready_18.11.26.zip` with the
+existing builder and the dotted date suffix. Keep version 1.4.1. Do not commit,
+push, tag or clean up the repository in this release phase. Preserve unrelated
+working-tree changes. Validate the full supported-environment suite and a clean
+extraction, setup, doctor and actual browser motor-upload/report workflows before
+promotion. Preserve and checksum the active ZIP and metadata under
+`dist/Archived_Client_Packages/2026-11-18_before_motor_excel_import_delivery/`.
+
+```powershell
+python scripts/build_sergio_release.py --output-dir outputs/release_2026_11_18/staging --release-date 2026-11-18 --date-label 18.11.26 --allow-uncommitted-source
+```
+
+Keep exactly one official delivery ZIP in `dist/Sergio_Request`, with its SHA-256
+and release record. Publish only after every mandatory gate passes. Do not ship
+illustrative motor workbooks or test reports as client engineering specifications.
+
+## Historical instruction — 15 November 2026
+
+Build `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Ready.zip` from the validated
+working tree. Do not commit or push in this phase. Use the existing portable
+builder with explicit `--allow-uncommitted-source`; its manifest records the
+base commit/tree, source status and every packaged file hash. Validate regression,
+fresh extraction, setup/start and real reports before replacing the sole active
+ZIP in `dist/Sergio_Request`. Preserve historical archives and user data.
+
+```powershell
+python scripts/build_sergio_release.py --output-dir outputs/release_2026_11_15/staging --release-date 2026-11-15 --allow-uncommitted-source
+```
+
+## Historical 4 November procedure (not current authorization)
+
 The 4 November 2026 requested final release uses application version 1.4.1 and
 `VSM_Engineering_PostProcessing_v1.4.1_Sergio_Requested_Final.zip`.
 The reproducible portable builder is `scripts/build_sergio_release.py`; it uses
