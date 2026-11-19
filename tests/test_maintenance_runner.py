@@ -169,6 +169,46 @@ def test_cleanup_refuses_junction_or_symlink_and_preserves_target(project):
             link.unlink()
 
 
+@pytest.mark.parametrize("target_name", ["test_probe0", "."])
+def test_cleanup_removes_internal_directory_links_without_following(project, target_name):
+    workspace = runner.create_workspace(project[1])
+    target = workspace.path / target_name
+    if target_name != ".":
+        target.mkdir()
+    (target / "diagnostic.txt").write_text("probe evidence")
+    link = workspace.path / "test_probecurrent"
+    if os.name == "nt":
+        # Junctions exercise directory reparse points without symlink privileges.
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                       check=True, capture_output=True)
+    else:
+        link.symlink_to(target, target_is_directory=True)
+    runner.remove_owned_workspace(workspace)
+    assert not workspace.path.exists()
+    assert (project[1] / "vsm-test-pre-existing/sentinel.txt").read_text() == "preserve"
+
+
+def test_cleanup_refuses_pytest_named_link_to_external_directory(project):
+    workspace = runner.create_workspace(project[1])
+    target = project[1] / "vsm-test-pre-existing"
+    link = workspace.path / "test_probecurrent"
+    if os.name == "nt":
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                       check=True, capture_output=True)
+    else:
+        link.symlink_to(target, target_is_directory=True)
+    try:
+        with pytest.raises(ValueError, match="outside workspace"):
+            runner.remove_owned_workspace(workspace)
+        assert workspace.path.is_dir()
+        assert (target / "sentinel.txt").read_text() == "preserve"
+    finally:
+        if os.name == "nt":
+            link.rmdir()
+        else:
+            link.unlink()
+
+
 @pytest.mark.parametrize("error,expected", [(OSError("synthetic start error"), 2), (KeyboardInterrupt(), 130)])
 def test_start_error_or_interruption_preserves_workspace(project, monkeypatch, error, expected):
     def interrupted(*args):

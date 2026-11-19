@@ -9,12 +9,12 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.14"
       - name: Create Python environment
-        run: uv venv .venv --python 3.11
+        run: uv venv .venv --python 3.11.9
       - name: Install project and tests
         run: uv pip install --python .\.venv\Scripts\python.exe -e ".[dev]"
       - name: Run regression tests

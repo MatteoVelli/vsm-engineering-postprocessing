@@ -43,7 +43,7 @@ def create_workspace(parent: Path) -> Workspace:
 
 
 def remove_owned_workspace(workspace: Workspace) -> None:
-    """Remove only this invocation's unchanged workspace; fail closed on links."""
+    """Remove this invocation's workspace; refuse links outside its boundary."""
     path = workspace.path
     if (path.resolve(strict=True) != path or path.parent != workspace.parent
             or path.is_relative_to(PROJECT_ROOT) or not path.name.startswith("vsm-test-")):
@@ -51,13 +51,20 @@ def remove_owned_workspace(workspace: Workspace) -> None:
     info = path.stat()
     if (info.st_dev, info.st_ino) != workspace.identity:
         raise ValueError("Workspace identity changed; cleanup refused")
-    # Inspect without following links, including Windows junctions/reparse points.
+    # Pytest creates *current directory links when the OS permits them. Inspect
+    # their targets, but never traverse them; rmtree also removes these links
+    # without following them (including Windows junctions on Python 3.11).
     pending = [path]
     while pending:
         entry = pending.pop()
         info = entry.lstat()
-        if (stat.S_ISLNK(info.st_mode)
-                or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+        is_link = (stat.S_ISLNK(info.st_mode)
+                   or getattr(info, "st_reparse_tag", 0) == stat.IO_REPARSE_TAG_MOUNT_POINT)
+        if is_link:
+            if not entry.resolve(strict=True).is_relative_to(path):
+                raise ValueError(f"Link outside workspace; cleanup refused: {entry}")
+            continue
+        if getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
             raise ValueError(f"Link or reparse point found; cleanup refused: {entry}")
         if stat.S_ISDIR(info.st_mode):
             pending.extend(entry.iterdir())
